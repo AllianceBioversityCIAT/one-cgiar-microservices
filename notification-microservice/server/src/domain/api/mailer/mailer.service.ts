@@ -10,10 +10,10 @@ import { ClarisaService } from '../../tools/clarisa/clarisa.service';
 import { ServiceResponseDto } from '../../shared/global-dto/service-response.dto';
 import { CustomLogger } from '../../shared/utils/logger.utils';
 import { mailerConnection } from '../../tools/mailer/mailer.connection';
+import * as juice from 'juice';
 
 @Injectable()
 export class MailerService {
-  private readonly juice = require('juice');
   private transporter: Transporter<SMTPTransport.SentMessageInfo>;
   constructor(
     private readonly _clarisaService: ClarisaService,
@@ -43,12 +43,13 @@ export class MailerService {
       address: emailFrom,
     };
     const text: string = configMessage?.emailBody?.message?.text || '';
-
-    if (!emailsTo.length) throw new BadRequestException('Email is required');
+    const validEmail = this.validMultiplesEmails(emailsTo, emailsCc);
+    if (!validEmail)
+      throw new BadRequestException('No valid emails found in "TO" or "CC"');
 
     let htmlBody = '';
     if (configMessage?.emailBody?.message?.file) {
-      htmlBody = this.juice(
+      htmlBody = juice(
         Buffer.from(configMessage?.emailBody?.message?.file)?.toString('utf8'),
         {
           inlinePseudoElements: false,
@@ -104,5 +105,24 @@ export class MailerService {
           status: HttpStatus.CREATED,
         }),
       );
+  }
+
+  private validMultiplesEmails(...emails: string[]): boolean {
+    return emails.reduce(
+      (acc, email) => this.validateEmail(email) || acc,
+      false,
+    );
+  }
+
+  private validateEmail(emails: string) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailList = emails?.split(',').map((email) => email.trim());
+    if (!emailList?.length) return false;
+    for (const email of emailList) {
+      if (!emailRegex.test(email)) {
+        return false;
+      }
+    }
+    return true;
   }
 }
