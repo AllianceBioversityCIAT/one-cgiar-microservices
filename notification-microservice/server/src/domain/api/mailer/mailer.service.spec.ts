@@ -221,7 +221,7 @@ describe('MailerService', () => {
       emailBody: {
         subject: null,
         to: 'to.testingemail.com',
-        cc: 'cc.testingemail.com',
+        cc: ['cc.testingemail.com'],
         bcc: null,
         message: {
           text: 'string',
