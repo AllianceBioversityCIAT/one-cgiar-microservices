@@ -14,6 +14,9 @@ export const disconnectSocketIO = (client: Socket, io: socketIO.Server) => {
   client.on('disconnect', () => {
     const user = userList.deleteUser(client.id);
 
+    console.log('disconnect: ', user);
+    console.log(client.id);
+
     if (user) {
       io.emit(`all-connected-users-${user.platform}`, userList.getListByPlatform(user.platform));
 
