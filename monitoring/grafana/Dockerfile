@@ -1,7 +1,19 @@
 FROM grafana/grafana:latest
 
-COPY grafana.ini /etc/grafana/grafana.ini
+# Cambiar a usuario root
+USER root
 
-EXPOSE 3000
+# Instalar Nginx
+RUN apk add --no-cache nginx
 
-CMD ["/run.sh"]
+# Copiar la configuración de Nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Exponer puertos
+EXPOSE 80
+
+# Cambiar de nuevo a usuario grafana para ejecutar Grafana
+USER grafana
+
+# Comando para iniciar Nginx y Grafana
+CMD openrc default && nginx && /run.sh
