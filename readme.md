@@ -53,4 +53,4 @@ Promtail
 ```
 ### Usage
 
-Once all the containers are deployed, access Grafana at http://localhost:3000. Configure Loki as a data source and start querying the logs from your containers.
+Once all the containers are deployed, access Grafana at http://localhost:3000. Configure Loki as a data source and start querying the logs from your containers..
