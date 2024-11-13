@@ -1,26 +1,91 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateThreadDto } from './dto/create-thread.dto';
-import { UpdateThreadDto } from './dto/update-thread.dto';
+import { OpenaiService } from '../openai/openai.service';
+import { ResponseUtils } from '../../common/utils/response.utils';
 
 @Injectable()
 export class ThreadsService {
-  create(createThreadDto: CreateThreadDto) {
-    return 'This action adds a new thread';
+  private _logger = new Logger(ThreadsService.name);
+
+  constructor(private readonly _openaiService: OpenaiService) {}
+
+  async create(createThreadDto: CreateThreadDto) {
+    try {
+      const messageThread =
+        await this._openaiService.openAI.beta.threads.create();
+
+      return ResponseUtils.format({
+        data: messageThread,
+        description: 'Thread created successfully',
+        status: HttpStatus.CREATED,
+      });
+    } catch (error) {
+      return ResponseUtils.format({
+        data: null,
+        description: 'Error creating thread',
+        errors: error,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
   }
 
-  findAll() {
-    return `This action returns all threads`;
+  async retrieve(threadId: string) {
+    try {
+      if (!threadId) {
+        return ResponseUtils.format({
+          data: null,
+          description: 'Missing thread ID',
+          status: HttpStatus.BAD_REQUEST,
+          errors: 'Some required fields are missing',
+        });
+      }
+
+      const myThread =
+        await this._openaiService.openAI.beta.threads.retrieve(threadId);
+
+      return ResponseUtils.format({
+        data: myThread,
+        description: 'Thread retrieved successfully',
+        status: HttpStatus.ACCEPTED,
+      });
+    } catch (error) {
+      this._logger.error(error);
+      return ResponseUtils.format({
+        data: null,
+        description: 'Error retrieving thread',
+        errors: error,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} thread`;
-  }
+  async delete(threadId: string) {
+    try {
+      if (!threadId) {
+        return ResponseUtils.format({
+          data: null,
+          description: 'Missing thread ID',
+          status: HttpStatus.BAD_REQUEST,
+          errors: 'Some required fields are missing',
+        });
+      }
 
-  update(id: number, updateThreadDto: UpdateThreadDto) {
-    return `This action updates a #${id} thread`;
-  }
+      const response =
+        await this._openaiService.openAI.beta.threads.del(threadId);
 
-  remove(id: number) {
-    return `This action removes a #${id} thread`;
+      return ResponseUtils.format({
+        data: response,
+        description: 'Thread deleted successfully',
+        status: HttpStatus.OK,
+      });
+    } catch (error) {
+      this._logger.error(error);
+      return ResponseUtils.format({
+        data: null,
+        description: 'Error deleting thread',
+        errors: error,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
   }
 }

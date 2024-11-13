@@ -1,13 +1,3 @@
-import {
-  IsString,
-  IsEnum,
-  IsArray,
-  ValidateNested,
-  IsEmpty,
-  IsObject,
-  IsNotEmpty,
-} from 'class-validator';
-import { Type } from 'class-transformer';
 import { AssistantTool } from 'openai/resources/beta/assistants';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -18,7 +8,6 @@ enum ToolType {
 }
 
 class Tool {
-  @IsEnum(ToolType)
   type: ToolType;
 }
 
@@ -28,7 +17,6 @@ export class CreateAssistantDto {
     description: 'The instructions for the assistant.',
     example: 'This assistant will help you with your coding needs.',
   })
-  @IsString()
   instructions: string;
 
   @ApiProperty({
@@ -36,7 +24,6 @@ export class CreateAssistantDto {
     description: 'The name of the assistant.',
     example: 'Code Interpreter',
   })
-  @IsString()
   name: string;
 
   @ApiProperty({
@@ -44,9 +31,6 @@ export class CreateAssistantDto {
     description: 'The tools for the assistant.',
     example: [{ type: 'file_search' }],
   })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => Tool)
   tools: AssistantTool[];
 
   @ApiProperty({
@@ -58,8 +42,6 @@ export class CreateAssistantDto {
       },
     },
   })
-  @IsObject()
-  @IsEmpty()
   tool_resources?: {
     file_search: {
       vector_store_ids: string[];
@@ -71,7 +53,5 @@ export class CreateAssistantDto {
     description: 'The model of the assistant.',
     example: 'text-davinci-003',
   })
-  @IsString()
-  @IsNotEmpty()
   model: string;
 }

@@ -7,9 +7,10 @@ import { ThreadsModule } from './module/threads/threads.module';
 import { MessagesModule } from './module/messages/messages.module';
 import { DynamoModule } from './connection/dynamo/dynamo.module';
 import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR, RouterModule } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, RouterModule } from '@nestjs/core';
 import { MainRoutes } from './main.routes';
 import { LoggingInterceptor } from './common/interceptor/loggin.interceptor';
+import { GlobalExceptions } from './common/error/global.exceptions';
 
 @Module({
   imports: [
@@ -30,6 +31,10 @@ import { LoggingInterceptor } from './common/interceptor/loggin.interceptor';
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
     },
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptions
+    }
   ],
 })
 export class AppModule {}
