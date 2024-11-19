@@ -1,4 +1,12 @@
-import { Body, Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -24,5 +32,10 @@ export class MessagesController {
     @Payload() file: Express.Multer.File,
   ) {
     return this.messagesService.create(createMessageDto, file);
+  }
+
+  @Get('list/:threadId')
+  findAll(@Param('threadId') threadId: string) {
+    return this.messagesService.findAll(threadId);
   }
 }

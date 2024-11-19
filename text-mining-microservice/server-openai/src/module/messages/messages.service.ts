@@ -11,6 +11,14 @@ export class MessagesService {
   async create(createMessageDto: CreateMessageDto, file: Express.Multer.File) {
     const { assistantId, threadId, role, tool, content } = createMessageDto;
     try {
+      if (!file) {
+        return ResponseUtils.format({
+          data: null,
+          description: 'File is required',
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+
       const fileName = Date.now() + file.originalname.trim().toLowerCase();
 
       const fileLike = new File([file.buffer], fileName.trim(), {
@@ -83,6 +91,26 @@ export class MessagesService {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
         });
       }
+    } catch (error) {
+      this._logger.error(error);
+      return ResponseUtils.format({
+        data: null,
+        description: error.message,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        errors: error,
+      });
+    }
+  }
+
+  async findAll(threadId: string) {
+    try {
+      const messages =
+        await this._openaiService.openAI.beta.threads.messages.list(threadId);
+      return ResponseUtils.format({
+        data: messages,
+        description: 'Messages retrieved successfully',
+        status: HttpStatus.OK,
+      });
     } catch (error) {
       this._logger.error(error);
       return ResponseUtils.format({

@@ -11,6 +11,7 @@ import { APP_FILTER, APP_INTERCEPTOR, RouterModule } from '@nestjs/core';
 import { MainRoutes } from './main.routes';
 import { LoggingInterceptor } from './common/interceptor/loggin.interceptor';
 import { GlobalExceptions } from './common/error/global.exceptions';
+import { ResponseInterceptor } from './common/interceptor/response.interceptor';
 
 @Module({
   imports: [
@@ -30,6 +31,10 @@ import { GlobalExceptions } from './common/error/global.exceptions';
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseInterceptor
     },
     {
       provide: APP_FILTER,
