@@ -1,24 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '../../messages/enum/role.enum';
 import { Tool } from '../../messages/enum/tool.enum';
+import { UploadedFile } from '@nestjs/common';
 
 export class CreateMiningDto {
-  //   @ApiProperty({
-  //     description: 'The ID of the assistant',
-  //     example: 'asst_abc123',
-  //     type: String,
-  //     required: true,
-  //   })
-  //   assistantId: string;
-
-  // @ApiProperty({
-  //   description: 'The content of the message',
-  //   example: 'thread_abc123',
-  //   type: String,
-  //   required: true,
-  // })
-  // threadId: string;
-
   @ApiProperty({
     description: 'The role of the sender, either user or assistant',
     example: Role.User,
@@ -35,23 +20,19 @@ export class CreateMiningDto {
   })
   tool: Tool;
 
-  @ApiProperty({
-    description: 'The content of the message',
-    example: 'I need help',
-    type: String,
-    required: true,
-  })
-  content: string;
-
   // @ApiProperty({
-  //   description: 'The file attachment',
-  //   type: 'object',
-  //   properties: {
-  //     file: {
-  //       type: 'string',
-  //       format: 'binary',
-  //     },
-  //   },
+  //   description: 'The file to be uploaded',
+  //   required: false
   // })
-  // file: Express.Multer.File;
+  // file?: Buffer;
+
+  @ApiProperty({
+    description: 'File data as a buffer encoded in base64',
+    type: String,
+    required: false,
+  })
+  fileData?: any;
+
+  fileName?: string;
+  mimeType?: string;
 }

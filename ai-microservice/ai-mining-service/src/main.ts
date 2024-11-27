@@ -26,6 +26,7 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   const queueName: string = `${configService.get<string>('QUEUE_NAME')}mining_queue`;
+  console.log(configService.get<string>('RABBITMQ_URL'))
 
   const microservice =
     await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
@@ -42,6 +43,7 @@ async function bootstrap() {
   await app
     .listen(port)
     .then(() => {
+      logger.debug('Queue name: ' + queueName);
       logger.debug(`Application is running http://localhost:${port}`);
       logger.debug(`Documentation is running http://localhost:${port}/api`);
     })

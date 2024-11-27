@@ -6,6 +6,7 @@ import { OpenaiModule } from '../openai/openai.module';
 import { AssistantModule } from '../assistant/assistant.module';
 import { MessagesModule } from '../messages/messages.module';
 import { NotificationsModule } from '../../notifications/notifications.module';
+import { ClarisaModule } from '../../tools/clarisa/clarisa.module';
 
 @Module({
   controllers: [MiningController],
@@ -16,6 +17,7 @@ import { NotificationsModule } from '../../notifications/notifications.module';
     ThreadsModule,
     MessagesModule,
     NotificationsModule,
+    ClarisaModule
   ],
   exports: [MiningService],
 })

@@ -12,7 +12,7 @@ export class MessagesService {
     const { assistantId, threadId, role, tool, content } = createMessageDto;
     try {
       this._logger.log('Creating message');
-      if (!file) {
+      if (!file || file === undefined) {
         return ResponseUtils.format({
           data: null,
           description: 'File is required',
