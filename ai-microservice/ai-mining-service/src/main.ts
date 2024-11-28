@@ -26,7 +26,6 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   const queueName: string = `${configService.get<string>('QUEUE_NAME')}mining_queue`;
-  console.log(configService.get<string>('RABBITMQ_URL'))
 
   const microservice =
     await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
