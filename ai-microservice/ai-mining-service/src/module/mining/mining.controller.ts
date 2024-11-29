@@ -10,17 +10,20 @@ import { MiningService } from './mining.service';
 import { CreateMiningDto } from './dto/create-mining.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubscribeApplicationDto } from './dto/subscribe-application.dto';
+import { AuthInterceptor } from '../../shared/interceptors/microservice.intercetor';
 
 @Controller()
 export class MiningController {
   constructor(private readonly miningService: MiningService) {}
 
   @MessagePattern('mining-create')
+  @UseInterceptors(AuthInterceptor)
   async create(@Payload() dataMining: CreateMiningDto) {
     return this.miningService.createMining(dataMining, dataMining.fileData);
   }
 
   @Post('mining-create')
+  @UseInterceptors(AuthInterceptor)
   @UseInterceptors(FileInterceptor('fileUpload'))
   createApi(
     @Body() dataMining: CreateMiningDto,

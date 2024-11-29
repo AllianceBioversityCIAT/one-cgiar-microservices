@@ -52,7 +52,8 @@ export class MiningService {
           parsedData = JSON.parse(newMessage.data);
         } catch (parseError) {
           throw new Error(
-            'Failed to parse AI Model Data Response to JSON: ' + parseError.message,
+            'Failed to parse AI Model Data Response to JSON: ' +
+              parseError.message,
           );
         }
       } else {
@@ -62,9 +63,9 @@ export class MiningService {
       this._logger.log('Mining complete successfully');
       this._notificationsService.sendSlackNotification(
         ':hammer:',
-        'AI ROAR - Mining complete successfully',
+        this.configService.get<string>('MS_NAME'),
         '#03FF00',
-        'Mining for user Test complete successfully',
+        'Mining for user complete successfully',
         '',
         'High',
       );
@@ -76,12 +77,12 @@ export class MiningService {
     } catch (error) {
       this._notificationsService.sendSlackNotification(
         ':warning:',
-        'AI ROAR - Error extracting results from document',
+        this.configService.get<string>('MS_NAME'),
         'danger',
-        'Error creating mining',
+        'Error extracting results from document',
         error.message,
         'High',
-      )
+      );
       this._logger.error(error);
       return ResponseUtils.format({
         data: null,
@@ -107,9 +108,9 @@ export class MiningService {
       this._logger.error(`Error subscribing application: ${error}`);
       this._notificationsService.sendSlackNotification(
         ':report:',
-        'Reports Microservice - PDF',
+        this.configService.get<string>('MS_NAME'),
         '#FF0000',
-        'Error notification details',
+        'Error subscribing application',
         `Error subscribing application: ${error}`,
         'High',
       );
