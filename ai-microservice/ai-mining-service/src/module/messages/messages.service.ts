@@ -12,6 +12,7 @@ export class MessagesService {
     const { assistantId, threadId, role, tool, content } = createMessageDto;
     try {
       this._logger.log('Creating message');
+      this._logger.log(`Uploading file: ${file}`);
       if (!file || file === undefined) {
         return ResponseUtils.format({
           data: null,
@@ -21,15 +22,14 @@ export class MessagesService {
       }
 
       this._logger.log('Uploading file');
-      const fileName = Date.now() + file.originalname.trim().toLowerCase();
+      const fileName = `${Date.now()}_${file.originalname.trim().toLowerCase()}`;
 
-      const fileLike = new File([file.buffer], fileName.trim(), {
-        type: file.mimetype,
-        lastModified: Date.now(),
-      });
+      const normalizedBuffer = Buffer.isBuffer(file.buffer)
+        ? file.buffer
+        : Buffer.from(file.buffer['data']);
 
       const upload = await this._openaiService.openai.files.create({
-        file: fileLike,
+        file: new File([normalizedBuffer], fileName, { type: file.mimetype }),
         purpose: 'assistants',
       });
       this._logger.log(`File uploaded successfully: ${fileName}`);

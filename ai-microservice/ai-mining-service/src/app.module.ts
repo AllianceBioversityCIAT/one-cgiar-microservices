@@ -57,10 +57,6 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(JwtMiddleware).forRoutes(
       {
-        path: '/api/mining/mining-create',
-        method: RequestMethod.ALL,
-      },
-      {
         path: '/test-slack-notification',
         method: RequestMethod.ALL,
       },

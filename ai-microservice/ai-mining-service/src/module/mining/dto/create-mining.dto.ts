@@ -20,19 +20,16 @@ export class CreateMiningDto {
   })
   tool: Tool;
 
-  // @ApiProperty({
-  //   description: 'The file to be uploaded',
-  //   required: false
-  // })
-  // file?: Buffer;
+  @ApiProperty({
+    description: 'The file to be uploaded',
+    required: false
+  })
+  file?: Express.Multer.File;
+
 
   @ApiProperty({
-    description: 'File data as a buffer encoded in base64',
-    type: String,
+    description: 'The credentials to be used to authenticate the user',
     required: false,
   })
-  fileData?: any;
-
-  fileName?: string;
-  mimeType?: string;
+  credentials?: any;
 }

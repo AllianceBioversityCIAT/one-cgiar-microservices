@@ -25,7 +25,7 @@ export class MiningService {
 
   async createMining(
     createMiningDto: CreateMiningDto,
-    fileUpload?: Express.Multer.File,
+    file?: Express.Multer.File,
   ) {
     try {
       const { role, tool } = createMiningDto;
@@ -43,7 +43,7 @@ export class MiningService {
           tool,
           content,
         },
-        fileUpload,
+        file,
       );
 
       let parsedData;
@@ -60,7 +60,7 @@ export class MiningService {
         parsedData = newMessage.data;
       }
 
-      this._logger.log('Mining complete successfully');
+      this._logger.log(`Mining complete successfully: ${parsedData}`);
       this._notificationsService.sendSlackNotification(
         ':hammer:',
         this.configService.get<string>('MS_NAME'),

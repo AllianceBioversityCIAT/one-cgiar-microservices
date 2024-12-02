@@ -7,17 +7,18 @@ import { AssistantModule } from '../assistant/assistant.module';
 import { MessagesModule } from '../messages/messages.module';
 import { NotificationsModule } from '../../notifications/notifications.module';
 import { ClarisaModule } from '../../tools/clarisa/clarisa.module';
+import { Test } from '../../tools/broker-connection/test';
 
 @Module({
   controllers: [MiningController],
-  providers: [MiningService],
+  providers: [MiningService, Test],
   imports: [
     OpenaiModule,
     AssistantModule,
     ThreadsModule,
     MessagesModule,
     NotificationsModule,
-    ClarisaModule
+    ClarisaModule,
   ],
   exports: [MiningService],
 })

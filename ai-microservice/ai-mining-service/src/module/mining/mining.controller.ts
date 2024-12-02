@@ -11,25 +11,68 @@ import { CreateMiningDto } from './dto/create-mining.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubscribeApplicationDto } from './dto/subscribe-application.dto';
 import { AuthInterceptor } from '../../shared/interceptors/microservice.intercetor';
+import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { Test } from '../../tools/broker-connection/test';
 
 @Controller()
 export class MiningController {
-  constructor(private readonly miningService: MiningService) {}
+  constructor(
+    private readonly miningService: MiningService,
+    private readonly test: Test,
+  ) {}
 
   @MessagePattern('mining-create')
-  @UseInterceptors(AuthInterceptor)
   async create(@Payload() dataMining: CreateMiningDto) {
-    return this.miningService.createMining(dataMining, dataMining.fileData);
+    return this.miningService.createMining(dataMining, dataMining.file);
   }
 
   @Post('mining-create')
-  @UseInterceptors(AuthInterceptor)
-  @UseInterceptors(FileInterceptor('fileUpload'))
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload',
+        },
+      },
+    },
+  })
   createApi(
     @Body() dataMining: CreateMiningDto,
-    @UploadedFile() fileUpload?: Express.Multer.File,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.miningService.createMining(dataMining, fileUpload);
+    return this.miningService.createMining(dataMining);
+  }
+
+  @Post('mining-create-test')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload',
+        },
+      },
+    },
+  })
+  createApiTest(
+    @Body() dataMining: CreateMiningDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const json = {
+      role: 'user',
+      tool: 'file_search',
+      file: file,
+    };
+    return this.test.sendToPattern('mining-create', json);
   }
 
   @Post('subscribe-application')
