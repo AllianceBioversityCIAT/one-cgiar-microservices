@@ -65,7 +65,7 @@ export class MiningService {
         ':hammer:',
         this.configService.get<string>('MS_NAME'),
         '#03FF00',
-        'Mining for user complete successfully',
+        'Mining complete successfully',
         '',
         'High',
       );
