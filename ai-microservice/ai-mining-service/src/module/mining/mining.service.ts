@@ -46,18 +46,18 @@ export class MiningService {
         file,
       );
 
+      const filteredData = this.removeCommentsFromOutput(newMessage.data);
+
       let parsedData;
-      if (typeof newMessage.data === 'string') {
-        try {
-          parsedData = JSON.parse(newMessage.data);
-        } catch (parseError) {
-          throw new Error(
-            'Failed to parse AI Model Data Response to JSON: ' +
-              parseError.message,
-          );
+      try {
+        parsedData = JSON.parse(filteredData);
+        if (typeof parsedData !== 'object' || Array.isArray(parsedData)) {
+          throw new Error('Parsed data is not a valid JSON object');
         }
-      } else {
-        parsedData = newMessage.data;
+      } catch (error) {
+        throw new Error(
+          'Failed to parse AI Model Data Response: ' + error.message,
+        );
       }
 
       this._logger.log(`Mining complete successfully: ${parsedData}`);
@@ -90,6 +90,17 @@ export class MiningService {
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
+  }
+
+  private removeCommentsFromOutput(data: string): string {
+    if (typeof data !== 'string') {
+      return data;
+    }
+
+    const cleanedData = data.replace(/\/\/.*|#.*|\(.*?\)|\[.*?\]/g, '').trim();
+
+    this._logger.log('Comments removed from AI output');
+    return cleanedData;
   }
 
   async subscribeApplication(newApplication: SubscribeApplicationDto) {
