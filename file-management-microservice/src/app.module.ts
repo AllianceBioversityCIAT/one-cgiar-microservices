@@ -14,6 +14,8 @@ import { GlobalExceptions } from './errors/global.exception';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
 import { JwtMiddleware } from './middleware/jwt.middleware';
 import { NotificationsModule } from './api/notifications/notifications.module';
+import { PdfModule } from './api/pdf/pdf.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -21,6 +23,10 @@ import { NotificationsModule } from './api/notifications/notifications.module';
     FileManagementModule,
     ClarisaModule,
     NotificationsModule,
+    PdfModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
   ],
   controllers: [AppController],
   providers: [

@@ -8,5 +8,6 @@ import { ClarisaModule } from '../../tools/clarisa/clarisa.module';
   controllers: [FileManagementController],
   providers: [FileManagementService],
   imports: [NotificationsModule, ClarisaModule],
+  exports: [FileManagementService],
 })
 export class FileManagementModule {}

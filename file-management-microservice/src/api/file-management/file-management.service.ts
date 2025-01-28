@@ -61,9 +61,7 @@ export class FileManagementService {
     }
   }
 
-  async fileValidation(
-    fileValidationDto: FileValidationDto,
-  ): Promise<ResponseUtils> {
+  async fileValidation(fileValidationDto: FileValidationDto) {
     const { bucketName, key } = fileValidationDto;
     if (!bucketName || !key) {
       this._logger.error('Bucket name and key are required');
@@ -89,11 +87,11 @@ export class FileManagementService {
         if (Body instanceof Readable) {
           const fileUrl = `https://${bucketName}.s3.amazonaws.com/${key}`;
           this._logger.log(`File found: streaming the file ${key}`);
-          return ResponseUtils.format({
+          return {
             data: fileUrl,
             description: 'File successfully validated and retrieved as url',
             status: HttpStatus.CREATED,
-          });
+          };
         }
       } catch (error) {
         this._logger.warn(
