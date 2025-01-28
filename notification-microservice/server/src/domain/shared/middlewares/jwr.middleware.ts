@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import {
   BadGatewayException,
   Injectable,
+  Logger,
   NestMiddleware,
   Next,
   Req,
@@ -14,6 +15,7 @@ import { ResClarisaValidateConectioDto } from '../../tools/clarisa/dtos/clarisa-
 
 @Injectable()
 export class JwtMiddleware implements NestMiddleware {
+  private readonly _logger = new Logger(JwtMiddleware.name);
   constructor(private readonly clarisaService: ClarisaService) {}
 
   async use(
@@ -26,6 +28,7 @@ export class JwtMiddleware implements NestMiddleware {
       try {
         authHeader = JSON.parse(req.headers['auth']);
       } catch (error) {
+        this._logger.error(error);
         throw new UnauthorizedException('Invalid auth header format.');
       }
     } else {
