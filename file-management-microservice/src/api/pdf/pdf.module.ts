@@ -10,7 +10,6 @@ import Handlebars, { Exception } from 'handlebars';
 import { ClarisaModule } from '../../tools/clarisa/clarisa.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { FileManagementModule } from '../file-management/file-management.module';
-import { FileManagementService } from '../file-management/file-management.service';
 import { JwtMiddleware } from '../../middleware/jwt.middleware';
 
 @Module({
