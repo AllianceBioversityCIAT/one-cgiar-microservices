@@ -61,7 +61,7 @@ export class PdfService {
       const pdfStream: ReadStream = await createPDF(document, options);
       const pdfBuffer = await this.streamToBuffer(pdfStream);
 
-      const s3Upload = await this.s3Client.send(
+      await this.s3Client.send(
         new PutObjectCommand({
           Bucket: bucketName,
           Key: fileName,
@@ -70,17 +70,22 @@ export class PdfService {
         }),
       );
 
-      if (s3Upload) {
-        this._logger.debug(
-          `PDF file generated: ${fileName} and uploaded to S3 Bucket: ${bucketName} successfully`,
-        );
-      }
+      this._logger.debug(
+        `PDF file generated: ${fileName} and uploaded to S3 Bucket: ${bucketName} successfully`,
+      );
 
-      return ResponseUtils.format({
-        data: s3Upload,
-        description: 'PDF file generated successfully',
-        status: HttpStatus.CREATED,
-      });
+      const fileUrl = `https://${bucketName}.s3.amazonaws.com/${fileName}`;
+
+      await this._notificationsService.sendSlackNotification(
+        ':report:',
+        'Reports Microservice - PDF',
+        '#36a64f',
+        'PDF file generated successfully',
+        `PDF file generated successfully: ${fileName} and uploaded to S3 Bucket: ${bucketName} successfully`,
+        'Low',
+      );
+
+      return fileUrl;
     } catch (error) {
       const errorMessage = `Error generating PDF: ${error.message}`;
       this._logger.error(errorMessage, error.stack);

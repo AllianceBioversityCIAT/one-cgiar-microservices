@@ -42,7 +42,9 @@ export class NotificationsService {
               },
               {
                 title: 'Environment',
-                value: this.isProduction ? 'Production' : 'Development :construction:',
+                value: this.isProduction
+                  ? 'Production'
+                  : 'Development :construction:',
                 short: true,
               },
               {

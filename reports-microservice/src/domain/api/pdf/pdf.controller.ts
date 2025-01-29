@@ -16,7 +16,7 @@ export class PdfController {
     return await this.pdfService.generatePdf(createPdfDto);
   }
 
-  @MessagePattern({ cmd: 'generate' })
+  @MessagePattern('pdf.generate')
   @UseInterceptors(AuthInterceptor)
   async generatePdfNode(@Payload() createPdfDto: CreatePdfDto) {
     return await this.pdfService.generatePdf(createPdfDto);
