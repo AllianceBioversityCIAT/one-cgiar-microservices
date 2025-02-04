@@ -31,7 +31,7 @@ export class MiningService {
       const { role, tool } = createMiningDto;
       const assistantId = this.configService.get<string>('ASSISTANT_ID');
 
-      const content = `Analyze the attached document to extract innovations.`;
+      const content = `Analyze the attached document to extract results.`;
 
       await this._assistantService.findOne(assistantId);
       const newThread = await this._threadsService.create();
