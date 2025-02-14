@@ -59,7 +59,7 @@ describe('FileService', () => {
       await expect(
         Test.createTestingModule({
           providers: [FileService],
-        }).compile()
+        }).compile(),
       ).rejects.toThrow();
     });
 
@@ -74,7 +74,7 @@ describe('FileService', () => {
                 useValue: undefined,
               },
             ],
-          }).compile()
+          }).compile(),
         ).rejects.toThrow();
       } catch (error) {
         // @ts-ignore - Accessing private property for testing

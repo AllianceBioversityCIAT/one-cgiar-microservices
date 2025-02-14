@@ -64,7 +64,7 @@ describe('MiningController', () => {
               useValue: testBroker,
             },
           ],
-        }).compile()
+        }).compile(),
       ).rejects.toThrow();
     });
 
@@ -78,7 +78,7 @@ describe('MiningController', () => {
               useValue: miningService,
             },
           ],
-        }).compile()
+        }).compile(),
       ).rejects.toThrow();
     });
   });

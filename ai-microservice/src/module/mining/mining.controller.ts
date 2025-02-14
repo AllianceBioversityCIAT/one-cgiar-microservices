@@ -40,15 +40,15 @@ export class MiningController {
         role: {
           type: 'string',
           description: 'User role for the mining process',
-          example: 'user'
+          example: 'user',
         },
         tool: {
           type: 'string',
           description: 'Tool to be used for mining',
-          example: 'file_search'
-        }
+          example: 'file_search',
+        },
       },
-      required: ['file', 'role', 'tool']
+      required: ['file', 'role', 'tool'],
     },
   })
   createApi(
@@ -70,12 +70,21 @@ export class MiningController {
           format: 'binary',
           description: 'File to upload',
         },
+        role: {
+          type:'string',
+          description: 'User role for the mining process',
+          example: 'user',
+        },
+        tool: {
+          type:'string',
+          description: 'Tool to be used for mining',
+          example: 'file_search',
+        },
       },
+      required: ['file', 'role', 'tool'],
     },
   })
-  createApiTest(
-    @UploadedFile() file?: Express.Multer.File,
-  ) {
+  createApiTest(@UploadedFile() file?: Express.Multer.File) {
     const json = {
       role: 'user',
       tool: 'file_search',

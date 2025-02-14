@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OpenaiModule } from './module/openai/openai.module';
@@ -57,11 +62,9 @@ import { FileModule } from './module/file/file.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(JwtMiddleware).forRoutes(
-      {
-        path: '/test-slack-notification',
-        method: RequestMethod.ALL,
-      },
-    );
+    consumer.apply(JwtMiddleware).forRoutes({
+      path: '/test-slack-notification',
+      method: RequestMethod.ALL,
+    });
   }
 }

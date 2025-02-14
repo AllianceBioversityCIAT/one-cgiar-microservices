@@ -20,7 +20,7 @@ import { FileModule } from '../file/file.module';
     MessagesModule,
     NotificationsModule,
     ClarisaModule,
-    FileModule
+    FileModule,
   ],
   exports: [MiningService],
 })

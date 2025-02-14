@@ -88,44 +88,32 @@ describe('MiningService', () => {
     });
 
     it('should have ConfigService injected', () => {
-      // @ts-ignore - Accessing private property for testing
       expect(service['configService']).toBeDefined();
-      // @ts-ignore - Accessing private property for testing
       expect(service['configService']).toEqual(configService);
     });
 
     it('should have NotificationsService injected', () => {
-      // @ts-ignore - Accessing private property for testing
       expect(service['_notificationsService']).toBeDefined();
-      // @ts-ignore - Accessing private property for testing
       expect(service['_notificationsService']).toEqual(notificationsService);
     });
 
     it('should have AssistantService injected', () => {
-      // @ts-ignore - Accessing private property for testing
       expect(service['_assistantService']).toBeDefined();
-      // @ts-ignore - Accessing private property for testing
       expect(service['_assistantService']).toEqual(assistantService);
     });
 
     it('should have ThreadsService injected', () => {
-      // @ts-ignore - Accessing private property for testing
       expect(service['_threadsService']).toBeDefined();
-      // @ts-ignore - Accessing private property for testing
       expect(service['_threadsService']).toEqual(threadsService);
     });
 
     it('should have MessagesService injected', () => {
-      // @ts-ignore - Accessing private property for testing
       expect(service['_messageService']).toBeDefined();
-      // @ts-ignore - Accessing private property for testing
       expect(service['_messageService']).toEqual(messagesService);
     });
 
     it('should have ClarisaService injected', () => {
-      // @ts-ignore - Accessing private property for testing
       expect(service['_clarisaService']).toBeDefined();
-      // @ts-ignore - Accessing private property for testing
       expect(service['_clarisaService']).toEqual(clarisaService);
     });
   });

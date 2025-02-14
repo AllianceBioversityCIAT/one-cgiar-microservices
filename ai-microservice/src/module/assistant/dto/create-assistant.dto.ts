@@ -7,10 +7,6 @@ enum ToolType {
   FUNCTION = 'function',
 }
 
-class Tool {
-  type: ToolType;
-}
-
 export class CreateAssistantDto {
   @ApiProperty({
     required: true,

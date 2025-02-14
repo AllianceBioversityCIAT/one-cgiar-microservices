@@ -22,10 +22,9 @@ export class CreateMiningDto {
 
   @ApiProperty({
     description: 'The file to be uploaded',
-    required: false
+    required: false,
   })
   file?: Express.Multer.File;
-
 
   @ApiProperty({
     description: 'The credentials to be used to authenticate the user',

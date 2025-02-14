@@ -34,7 +34,7 @@ export class JwtMiddleware implements NestMiddleware {
       try {
         authHeader = JSON.parse(req.headers['auth']);
       } catch (error) {
-        throw new UnauthorizedException('Invalid auth header format.');
+        throw new UnauthorizedException(`Invalid auth header format: ${error}`);
       }
     } else {
       throw new BadGatewayException(
