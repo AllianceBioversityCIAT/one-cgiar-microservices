@@ -150,5 +150,9 @@ export class PdfModule {
           return options.inverse(this);
       }
     });
+
+    Handlebars.registerHelper('or', function () {
+      return Array.prototype.slice.call(arguments, 0, -1).some(Boolean);
+    });
   }
 }
