@@ -154,5 +154,9 @@ export class PdfModule {
     Handlebars.registerHelper('or', function (...args) {
       return args.slice(0, -1).some(Boolean);
     });
+
+    Handlebars.registerHelper('typeof', function (value) {
+      return typeof value;
+    });
   }
 }
