@@ -158,5 +158,9 @@ export class PdfModule {
     Handlebars.registerHelper('typeof', function (value) {
       return typeof value;
     });
+
+    Handlebars.registerHelper('json', function (context) {
+      return JSON.stringify(context, null, 2);
+    });
   }
 }
