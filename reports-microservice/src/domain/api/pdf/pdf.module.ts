@@ -162,5 +162,14 @@ export class PdfModule {
     Handlebars.registerHelper('json', function (context) {
       return JSON.stringify(context, null, 2);
     });
+
+    Handlebars.registerHelper('parseJSON', function (jsonString) {
+      try {
+        return JSON.parse(jsonString);
+      } catch (e) {
+        console.error('Error parsing JSON:', e);
+        return [];
+      }
+    });
   }
 }
