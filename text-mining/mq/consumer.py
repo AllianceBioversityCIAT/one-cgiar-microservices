@@ -7,6 +7,7 @@ from s3_utils.downloader import download_document
 from llm.vectorizer import vectorize_document
 from llm.mining import extract_relevant_information
 from prompts.default_prompt import DEFAULT_PROMPT
+from clarisa.clarisa_service import ClarisaService
 
 
 def get_rabbitmq_connection():
@@ -23,19 +24,29 @@ def callback(ch, method, properties, body):
         message = json.loads(body.decode())
         key_value = message.get("key")
         bucket_name = message.get("bucket")
+        client_mis = message.get("client_mis")
+        client_secret = message.get("client_secret")
         prompt = message.get("prompt", DEFAULT_PROMPT)
 
-        print(f"Received message: key={key_value}, bucket={bucket_name}")
+        clarisa_service = ClarisaService()
+        authorized, auth_data = clarisa_service.authorize_client(
+            client_mis, client_secret)
+        if not authorized:
+            raise Exception("Client is not authorized via Clarisa")
 
+        print(f"[INFO] Authorized client: {client_mis}")
+
+        print(
+            f"[INFO] Received message: key={key_value}, bucket={bucket_name}")
         local_file = download_document(bucket_name, key_value)
         with open(local_file, "r", encoding="utf-8") as f:
             document_text = f.read()
 
         embedding = vectorize_document(document_text)
-        print("Document vectorized. Embedding:", embedding)
+        print("[INFO] Document vectorized. Embedding:", embedding)
 
         extracted_info = extract_relevant_information(document_text, prompt)
-        print("Extracted information:", extracted_info)
+        print("[INFO] Extracted information:", extracted_info)
 
         if properties.reply_to:
             response = {
@@ -50,10 +61,10 @@ def callback(ch, method, properties, body):
                     correlation_id=properties.correlation_id),
                 body=json.dumps(response)
             )
-            print(f"Response sent to {properties.reply_to}")
+            print(f"[INFO] Response sent to {properties.reply_to}")
 
     except Exception as e:
-        print("Error processing message:", e)
+        print("[ERROR] Error processing message:", e)
         if properties.reply_to:
             error_response = {
                 "status": "error",
@@ -70,7 +81,7 @@ def callback(ch, method, properties, body):
     finally:
         if local_file and os.path.exists(local_file):
             os.remove(local_file)
-            print(f"Temporary file removed: {local_file}")
+            print(f"[INFO] Temporary file removed: {local_file}")
 
 
 def start_consumer():
@@ -79,5 +90,5 @@ def start_consumer():
     channel.queue_declare(queue=RABBITMQ["queue"])
     channel.basic_consume(
         queue=RABBITMQ["queue"], on_message_callback=callback, auto_ack=True)
-    print('Waiting for messages. Press CTRL+C to exit.')
+    print('[INFO] Waiting for messages. Press CTRL+C to exit.')
     channel.start_consuming()
