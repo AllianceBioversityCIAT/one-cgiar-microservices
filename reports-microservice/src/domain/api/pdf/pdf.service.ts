@@ -31,6 +31,9 @@ export class PdfService {
           'AWS_SECRET_ACCESS_KEY',
         ),
       },
+      requestHandler: {
+        timeoutInMs: 10000,
+      },
     });
   }
 

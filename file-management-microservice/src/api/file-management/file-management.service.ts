@@ -37,27 +37,67 @@ export class FileManagementService {
     });
   }
 
-  async uploadFile(uploadFileDto: UploadFileDto): Promise<ResponseUtils> {
+  async uploadFile(
+    file: Express.Multer.File,
+    uploadFileDto: UploadFileDto,
+  ): Promise<ResponseUtils> {
     try {
-      const { fileName, bucketName, file } = uploadFileDto;
+      const { fileName, bucketName } = uploadFileDto;
+
+      if (!file || !fileName || !bucketName) {
+        this._logger.error('File, fileName and bucketName are required');
+        return ResponseUtils.format({
+          data: null,
+          description: 'File, fileName and bucketName are required',
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
 
       const key: string = fileName;
       const uploadParams = {
         Bucket: bucketName,
         Key: key,
-        Body: file,
+        Body: file.buffer,
+        ContentType: file.mimetype,
       };
-      const s3Upload = await this.s3Client.send(
-        new PutObjectCommand(uploadParams),
+
+      await this.s3Client.send(new PutObjectCommand(uploadParams));
+
+      await this._notificationsService.sendSlackNotification(
+        ':file_folder:',
+        'File Management Microservice',
+        '#4CAF50',
+        'File Upload Successful',
+        `File "${fileName}" (${file.size} bytes, ${file.mimetype}) successfully uploaded to bucket "${bucketName}"`,
+        'Low',
       );
 
       return ResponseUtils.format({
-        data: s3Upload,
+        data: {
+          filename: fileName,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          location: `https://${bucketName}.s3.amazonaws.com/${key}`,
+        },
         description: 'File uploaded successfully',
         status: HttpStatus.CREATED,
       });
     } catch (error) {
-      this._logger.error(`Error generating pdf: ${error}`);
+      this._logger.error(`Error uploading file: ${error}`);
+      await this._notificationsService.sendSlackNotification(
+        ':x:',
+        'File Management Microservice',
+        '#FF0000',
+        'File Upload Error',
+        `Failed to upload file "${uploadFileDto?.fileName}" to bucket "${uploadFileDto?.bucketName}". Error: ${error.message}`,
+        'High',
+      );
+      return ResponseUtils.format({
+        data: null,
+        description: `Error uploading file: ${error.message}`,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
     }
   }
 
