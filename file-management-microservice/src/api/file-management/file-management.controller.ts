@@ -1,12 +1,28 @@
-import { Controller, Post, Body, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Delete,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileManagementService } from './file-management.service';
+import { Express } from 'express';
 import {
   FileValidationDto,
   UploadFileDto,
 } from './dto/upload-file-managment.dto';
-import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ResponseUtils } from '../../utils/response.utils';
 import { SubscribeApplicationDto } from './dto/subscribe-application.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('File Management')
 @Controller()
@@ -29,9 +45,36 @@ export class FileManagementController {
     description: 'Bucket name, file name, and file are required.',
   })
   @ApiResponse({ status: 500, description: 'Internal server error.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        bucketName: {
+          type: 'string',
+          description: 'S3 bucket name',
+        },
+        fileName: {
+          type: 'string',
+          description: 'Name to save the file as',
+        },
+      },
+    },
+  })
   @Post('upload')
-  async create(@Body() createFileManagmentDto: UploadFileDto) {
-    return await this.fileManagementService.uploadFile(createFileManagmentDto);
+  @UseInterceptors(FileInterceptor('file'))
+  async create(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() createFileManagmentDto: UploadFileDto,
+  ) {
+    return await this.fileManagementService.uploadFile(
+      file,
+      createFileManagmentDto,
+    );
   }
 
   @ApiOperation({ summary: 'Validate and retrieve a file from S3' })
