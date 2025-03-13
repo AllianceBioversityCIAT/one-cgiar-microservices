@@ -9,7 +9,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 def extract_relevant_information(document_text, prompt):
     """
-    Extrae información relevante del documento usando un prompt.
+    Extracts relevant information from the document using a prompt.
     """
     input_text = f"{prompt}:\n{document_text}"
     inputs = tokenizer(input_text, return_tensors="pt",

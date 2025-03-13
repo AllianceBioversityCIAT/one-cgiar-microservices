@@ -12,8 +12,8 @@ s3_client = boto3.client(
 
 def download_document(bucket, key):
     """
-    Descarga el archivo desde S3 y lo guarda en /tmp.
-    Retorna la ruta local del archivo descargado.
+    Downloads the file from S3 and saves it to /tmp.
+    Returns the local path of the downloaded file.
     """
     local_filename = f"/tmp/{os.path.basename(key)}"
     s3_client.download_file(bucket, key, local_filename)

@@ -9,7 +9,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 def vectorize_document(document_text):
     """
-    Genera una representación vectorial del documento.
+    Generates a vector representation of the document.
     """
     inputs = tokenizer(document_text, return_tensors="pt",
                        truncation=True, max_length=512)
