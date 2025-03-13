@@ -23,9 +23,11 @@ def callback(ch, method, properties, body):
     try:
         message = json.loads(body.decode())
         key_value = message.get("key")
-        bucket_name = message.get("bucket")
-        client_mis = message.get("client_mis")
-        client_secret = message.get("client_secret")
+        bucket_name = message.get("bucketName")
+        credentials_json = message.get("credentials")
+        credentials = json.loads(credentials_json) if credentials_json else {}
+        client_mis = credentials.get("username")
+        client_secret = credentials.get("password")
         prompt = message.get("prompt", DEFAULT_PROMPT)
 
         clarisa_service = ClarisaService()
@@ -35,9 +37,9 @@ def callback(ch, method, properties, body):
             raise Exception("Client is not authorized via Clarisa")
 
         print(f"[INFO] Authorized client: {client_mis}")
-
         print(
-            f"[INFO] Received message: key={key_value}, bucket={bucket_name}")
+            f"[INFO] Received message: key={key_value}, bucketName={bucket_name}")
+
         local_file = download_document(bucket_name, key_value)
         with open(local_file, "r", encoding="utf-8") as f:
             document_text = f.read()
