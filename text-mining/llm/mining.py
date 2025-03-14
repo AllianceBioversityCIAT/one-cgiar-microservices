@@ -21,7 +21,9 @@ def extract_relevant_information(document_text, prompt):
         max_length=1024,
         min_length=30,
         num_beams=4,
-        do_sample=False
+        temperature=0.7,
+        repetition_penalty=1.2,
+        do_sample=True
     )
 
     generated_text = response[0]["generated_text"]
