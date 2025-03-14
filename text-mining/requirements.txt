@@ -6,3 +6,4 @@ torch
 sentence-transformers
 jwt
 requests
+PyJWT>=2.0.0

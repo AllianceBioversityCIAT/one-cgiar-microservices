@@ -1,7 +1,9 @@
 import os
 import requests
+import jwt
 from dotenv import load_dotenv
-from jwt import decode as jwt_decode, InvalidTokenError
+
+load_dotenv()
 
 load_dotenv()
 
@@ -29,10 +31,10 @@ class ClarisaService:
 
     def _valid_token(self, token):
         try:
-            decoded = jwt_decode(token, options={"verify_signature": False})
+            decoded = jwt.decode(token, options={"verify_signature": False})
             now = int(__import__("time").time())
             return decoded.get("exp", 0) > now
-        except InvalidTokenError:
+        except jwt.InvalidTokenError:
             return False
 
     def authorize_client(self, client_mis: str, client_secret: str) -> (bool, dict):
