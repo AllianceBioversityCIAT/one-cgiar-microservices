@@ -1,26 +1,32 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
-tokenizer = AutoTokenizer.from_pretrained(
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B")
-model = AutoModelForCausalLM.from_pretrained(
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B")
+model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
 
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+generator = pipeline(
+    "text-generation",
+    model=AutoModelForCausalLM.from_pretrained(model_name),
+    tokenizer=tokenizer,
+    device=0
+)
 
 def extract_relevant_information(document_text, prompt):
     """
     Extracts relevant information from the document using a prompt.
+    It uses a text generation pipeline on GPU (device=0) for inference.
     """
-    input_text = f"{prompt}:\n{document_text}"
-    inputs = tokenizer(input_text, return_tensors="pt",
-                       truncation=True, max_length=1024)
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs.input_ids,
-            max_length=150,
-            min_length=30,
-            do_sample=False,
-            num_beams=4
-        )
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return response
+    input_text = f"{prompt}:\n\n{document_text}"
+    
+    response = generator(
+        input_text,
+        max_length=1024,
+        min_length=30,
+        num_beams=4,
+        do_sample=False
+    )
+    
+    generated_text = response[0]["generated_text"]
+    if generated_text.startswith(input_text):
+        generated_text = generated_text[len(input_text):].strip()
+    return generated_text
