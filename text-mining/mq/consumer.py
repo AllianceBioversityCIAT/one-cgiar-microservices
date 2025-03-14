@@ -3,7 +3,7 @@ import json
 import pika
 from common.config import RABBITMQ
 from urllib.parse import quote
-from s3_utils.downloader import download_document
+from s3_utils.donwload import download_document
 from llm.vectorizer import vectorize_document
 from llm.mining import extract_relevant_information
 from prompt.default_prompt import DEFAULT_PROMPT
