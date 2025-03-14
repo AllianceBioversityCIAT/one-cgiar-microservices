@@ -1,5 +1,5 @@
 import torch
-from transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 
 embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embedding_model = SentenceTransformer(embedding_model_name)
