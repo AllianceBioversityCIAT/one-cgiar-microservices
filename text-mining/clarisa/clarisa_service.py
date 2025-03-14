@@ -8,7 +8,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-
 class ClarisaService:
     def __init__(self):
         self.clarisa_host = os.getenv("CLARISA_HOST")

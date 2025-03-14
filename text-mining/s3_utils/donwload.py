@@ -1,6 +1,9 @@
 import os
 import boto3
+import logging
 from common.config import S3
+
+logger = logging.getLogger(__name__)
 
 s3_client = boto3.client(
     's3',
@@ -15,6 +18,14 @@ def download_document(bucket, key):
     Downloads the file from S3 and saves it to /tmp.
     Returns the local path of the downloaded file.
     """
+    logger.info(f"Downloading file from S3: bucket={bucket}, key={key}")
     local_filename = f"/tmp/{os.path.basename(key)}"
-    s3_client.download_file(bucket, key, local_filename)
+
+    try:
+        s3_client.download_file(bucket, key, local_filename)
+        logger.info(f"Successfully downloaded file to {local_filename}")
+    except Exception as e:
+        logger.error(f"Failed to download file from S3: {str(e)}")
+        raise
+
     return local_filename
