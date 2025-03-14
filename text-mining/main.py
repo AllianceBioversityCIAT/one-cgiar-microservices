@@ -1,8 +1,9 @@
 import logging
 import os
-
+from mq.consumer import start_consumer
 
 def setup_logging():
+    """Configure logging for the application"""
     log_level = os.getenv("LOG_LEVEL", "INFO")
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
@@ -24,4 +25,7 @@ def setup_logging():
     logging.info(f"Logging initialized at {log_level} level")
 
 
-setup_logging()
+if __name__ == "__main__":
+    setup_logging()
+    logging.info("Starting text-mining microservice")
+    start_consumer()
