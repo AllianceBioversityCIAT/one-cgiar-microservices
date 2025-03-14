@@ -1,33 +1,27 @@
-name: Trigger Jenkins Job
+name: Trigger Jenkins Job Text Mining Microservice Swarm
 
 on:
   push:
     branches:
-      - "**" # This will trigger the workflow on any branch that receives a push
-  workflow_dispatch: # This allows the workflow to be manually triggered if needed
+      - "main-mining" # Only on push to main-mining
+  pull_request:
+    branches:
+      - "main-mining" # Only on PR to main-mining
+  workflow_dispatch: # Allows manual trigger if needed
 
 jobs:
   trigger-job:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Get the branch name and build the Jenkins URL dynamically
-      - name: Get branch name and build Jenkins URL
+      # Step 1: Build Jenkins URL (we already ensure branch is correct via "on")
+      - name: Build Jenkins URL
         run: |
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}  # Remove 'refs/heads/' from GITHUB_REF
-
-          # Conditionally set the Jenkins URL based on the branch
-          if [[ "$BRANCH_NAME" == "main-mining" ]]; then
-            JENKINS_URL="https://automation.prms.cgiar.org/job/text-mining-microservice-swarm-prod/build"
-          else
-            echo "Branch $BRANCH_NAME does not match any predefined conditions."
-            exit 1  # Exit the workflow if the branch doesn't match any condition
-          fi
-
-          echo "Jenkins job URL for the branch $BRANCH_NAME is: $JENKINS_URL"
+          JENKINS_URL="https://automation.prms.cgiar.org/job/text-mining-microservice-swarm-prod/build"
+          echo "Jenkins job URL: $JENKINS_URL"
           echo "JENKINS_URL=${JENKINS_URL}" >> $GITHUB_ENV
 
-      # Step 2: Trigger the Jenkins job with the dynamically built URL
+      # Step 2: Trigger Jenkins Job
       - name: Trigger Jenkins Job
         run: |
           curl -X POST ${{ env.JENKINS_URL }} --user ${{ secrets.JENKINS_USERNAME }}:${{ secrets.JENKINS_API_TOKEN }}
