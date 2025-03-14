@@ -6,7 +6,7 @@ from urllib.parse import quote
 from s3_utils.downloader import download_document
 from llm.vectorizer import vectorize_document
 from llm.mining import extract_relevant_information
-from prompts.default_prompt import DEFAULT_PROMPT
+from prompt.default_prompt import DEFAULT_PROMPT
 from clarisa.clarisa_service import ClarisaService
 
 
