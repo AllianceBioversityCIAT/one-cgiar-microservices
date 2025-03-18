@@ -4,6 +4,7 @@ import pika
 import fitz
 import mimetypes
 import logging
+import PyPDF2
 from common.config import RABBITMQ
 from urllib.parse import quote
 from s3_utils.donwload import download_document
