@@ -3,6 +3,7 @@ import json
 import pika
 import fitz
 import mimetypes
+import logging
 from common.config import RABBITMQ
 from urllib.parse import quote
 from s3_utils.donwload import download_document
