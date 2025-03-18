@@ -5,7 +5,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 logger = logging.getLogger(__name__)
 
-model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 
 logger.info(f"Loading LLM model: {model_name}")
 start_time = time.time()
