@@ -46,7 +46,6 @@ channel.basic_consume(
 message = {
     "key": "FiBL Tech Report Jan to Jun 2024.pdf",
     "bucketName": "microservice-mining",
-    "prompt": "Extract the relevant information",
     "credentials": json.dumps({
         "username": os.getenv("API_USERNAME"),
         "password": os.getenv("API_PASSWORD")

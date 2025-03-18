@@ -107,14 +107,14 @@ def callback(ch, method, properties, body):
 
         logger.info(f"Processing message for document: {key_value}")
 
-        clarisa_service = ClarisaService()
-        authorized, auth_data = clarisa_service.authorize_client(
-            client_mis, client_secret)
-        if not authorized:
-            logger.error(f"Unauthorized client: {client_mis}")
-            raise Exception("Client is not authorized via Clarisa")
+        # clarisa_service = ClarisaService()
+        # authorized, auth_data = clarisa_service.authorize_client(
+        #     client_mis, client_secret)
+        # if not authorized:
+        #     logger.error(f"Unauthorized client: {client_mis}")
+        #     raise Exception("Client is not authorized via Clarisa")
 
-        logger.info(f"Authorized client: {client_mis}")
+        # logger.info(f"Authorized client: {client_mis}")
 
         local_file = download_document(bucket_name, key_value)
         document_text = read_document(local_file)
