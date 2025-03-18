@@ -69,6 +69,7 @@ def extract_relevant_information(document_text, prompt):
         processing_time = time.time() - start_time
         logger.info(
             f"Information extracted successfully in {processing_time:.2f} seconds")
+        print(generated_text)
         logger.debug(f"Generated response: {generated_text[:100]}...")
 
         return generated_text
