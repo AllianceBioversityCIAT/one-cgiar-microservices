@@ -1,7 +1,7 @@
 import os
 import json
 import pika
-import PyPDF2
+import fitz
 import mimetypes
 from common.config import RABBITMQ
 from urllib.parse import quote
