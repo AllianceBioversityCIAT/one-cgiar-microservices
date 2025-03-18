@@ -11,6 +11,7 @@ from llm.mining import extract_relevant_information
 from prompt.default_prompt import DEFAULT_PROMPT
 from clarisa.clarisa_service import ClarisaService
 
+logger = logging.getLogger(__name__)
 
 def get_rabbitmq_connection():
     try:
