@@ -4,16 +4,17 @@ import pika
 import fitz
 import mimetypes
 import logging
-import PyPDF2
+import PyMuPDF as fitz 
 from common.config import RABBITMQ
 from urllib.parse import quote
 from s3_utils.donwload import download_document
-from llm.vectorizer import vectorize_document
-from llm.mining import extract_relevant_information
 from prompt.default_prompt import DEFAULT_PROMPT
 from clarisa.clarisa_service import ClarisaService
+from llm.vectorize import process_document_in_directory
+from llm.mining import generate_response
 
 logger = logging.getLogger(__name__)
+
 
 def get_rabbitmq_connection():
     try:
@@ -27,46 +28,6 @@ def get_rabbitmq_connection():
         return connection
     except Exception as e:
         logger.error(f"Failed to connect to RabbitMQ: {str(e)}")
-        raise
-
-
-def read_document(file_path):
-    """Read document content based on file type"""
-    file_extension = os.path.splitext(file_path)[1].lower()
-
-    logger.info(f"Processing file with extension: {file_extension}")
-
-    if file_extension == '.pdf':
-        return read_pdf(file_path)
-    else:
-        mime_type, _ = mimetypes.guess_type(file_path)
-        logger.debug(f"Detected MIME type: {mime_type}")
-
-        if mime_type and 'text/' in mime_type:
-            return read_text(file_path)
-        elif file_extension in ['.txt', '.csv', '.md', '.json', '.xml', '.html']:
-            return read_text(file_path)
-        else:
-            logger.warning(
-                f"Unsupported file type: {file_extension}. Attempting to read as text.")
-            return read_text(file_path, fallback=True)
-
-
-def read_pdf(file_path):
-    """Extract text from PDF file"""
-    logger.info(f"Reading PDF file: {file_path}")
-    try:
-        text = ""
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            for page_num in range(len(pdf_reader.pages)):
-                page = pdf_reader.pages[page_num]
-                text += page.extract_text() + "\n"
-
-        logger.info(f"Successfully extracted {len(text)} characters from PDF")
-        return text
-    except Exception as e:
-        logger.error(f"Error extracting text from PDF: {str(e)}")
         raise
 
 
@@ -117,20 +78,22 @@ def callback(ch, method, properties, body):
 
         # logger.info(f"Authorized client: {client_mis}")
 
+
+        # document_text = read_document(local_file)
+        # embedding = vectorize_document(document_text)
+
         local_file = download_document(bucket_name, key_value)
-        document_text = read_document(local_file)
-        embedding = vectorize_document(document_text)
+        local_file_dir = str(Path(local_file).parent)
+        vectorize_doc = process_document_in_directory(local_file_dir)
         logger.debug(f"Document vectorized successfully")
 
-        extracted_info = extract_relevant_information(document_text, prompt)
-        logger.info(
-            f"Information extracted successfully, length: {len(extracted_info)}")
+        mining = generate_response()
 
         if properties.reply_to:
             response = {
                 "status": "success",
                 "key": key_value,
-                "extracted_info": extracted_info
+                "extracted_info": mining
             }
             ch.basic_publish(
                 exchange='',

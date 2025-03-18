@@ -1,79 +1,82 @@
+import lancedb
 import torch
-import logging
 import time
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from pathlib import Path
+from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
+from threading import Thread
+from prompt.default_prompt import DEFAULT_PROMPT
 
-logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DB_PATH = str(BASE_DIR / "text-mining" / "db" / "miningdb")
+TABLE_NAME = "files"
 
-model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-
-logger.info(f"Loading LLM model: {model_name}")
-start_time = time.time()
-
+db = lancedb.connect(DB_PATH)
 try:
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    table = db.open_table(TABLE_NAME)
+except Exception:
+    table = db.create_table(TABLE_NAME, schema=schema)
 
-    device = 0 if torch.cuda.is_available() else -1
-    device_name = f"CUDA:{device}" if device >= 0 else "CPU"
-    logger.info(f"Using device: {device_name}")
+embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+embedding_model = SentenceTransformer(embedding_model_name)
 
-    generator = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        device=device
+
+def get_embedding(text):
+    return embedding_model.encode(text)
+
+
+def search_context(query, top_k=3):
+    query_embedding = get_embedding(query)
+    results = table.search(query_embedding.tolist(),
+                           vector_column_name="vector").limit(top_k).to_list()
+    context_list = [res["title"] for res in results if "title" in res]
+    context = " ".join(context_list)
+    return context
+
+
+gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
+model = AutoModelForCausalLM.from_pretrained(gen_model_name)
+generator = pipeline("text-generation", model=model,
+                     tokenizer=tokenizer, device=0)
+
+
+def generate_response(user_input = DEFAULT_PROMPT):
+    context = search_context(user_input)
+    prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
+
+    streamer = TextIteratorStreamer(tokenizer)
+    generation_kwargs = dict(
+        max_new_tokens=1024,
+        do_sample=True,
+        temperature=0.7,
+        repetition_penalty=1.2,
+        streamer=streamer,
     )
 
-    logger.info(
-        f"Model loaded successfully in {time.time() - start_time:.2f} seconds")
-except Exception as e:
-    logger.error(f"Error loading LLM model: {str(e)}")
-    raise
+    thread = Thread(
+        target=generator, 
+        kwargs={
+            "text_inputs": prompt, 
+            **generation_kwargs
+        }
+    )
+    
+    thread.start()
 
+    generated_text = ""
+    print("Chatbot: ", end="", flush=True)
+    for new_text in streamer:
+        if "<|endoftext|>" in new_text:
+            break
+        print(new_text, end="", flush=True)
+        generated_text += new_text
+        time.sleep(0.01)
+    print()
 
-def extract_relevant_information(document_text, prompt):
-    """
-    Extract relevant information from document text using the LLM.
-
-    Args:
-        document_text (str): The text of the document to analyze
-        prompt (str): The prompt to guide the extraction process
-
-    Returns:
-        str: The extracted information
-    """
-    input_text = f"{prompt}:\n\n{document_text}"
-    doc_preview = document_text[:100] + \
-        "..." if len(document_text) > 100 else document_text
-
-    logger.info(
-        f"Extracting information with prompt: '{prompt}', document preview: '{doc_preview}'")
-    start_time = time.time()
-
-    try:
-        response = generator(
-            input_text,
-            max_new_tokens=1024,
-            min_length=30,
-            num_beams=4,
-            temperature=0.7,
-            repetition_penalty=1.2,
-            do_sample=True
-        )
-
-        generated_text = response[0]["generated_text"]
-        if generated_text.startswith(input_text):
-            generated_text = generated_text[len(input_text):].strip()
-
-        processing_time = time.time() - start_time
-        logger.info(
-            f"Information extracted successfully in {processing_time:.2f} seconds")
-        print(generated_text)
-        logger.debug(f"Generated response: {generated_text[:100]}...")
-
-        return generated_text
-
-    except Exception as e:
-        logger.error(f"Error during information extraction: {str(e)}")
-        raise
+    generated_text = generated_text.replace(
+        "<|begin▁of▁sentence|>", "").strip()
+    answer_parts = generated_text.split("Final Answer:")
+    if len(answer_parts) > 1:
+        return answer_parts[-1].strip()
+    return generated_text.strip()

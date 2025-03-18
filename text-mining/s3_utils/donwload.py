@@ -19,7 +19,7 @@ def download_document(bucket, key):
     Returns the local path of the downloaded file.
     """
     logger.info(f"Downloading file from S3: bucket={bucket}, key={key}")
-    local_filename = f"/tmp/{os.path.basename(key)}"
+    local_filename = str(BASE_DIR / "text-mining" / "data" / "file")
 
     try:
         s3_client.download_file(bucket, key, local_filename)
