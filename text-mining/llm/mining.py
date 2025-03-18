@@ -54,7 +54,7 @@ def extract_relevant_information(document_text, prompt):
     try:
         response = generator(
             input_text,
-            max_length=1024,
+            max_new_tokens=1024,
             min_length=30,
             num_beams=4,
             temperature=0.7,
