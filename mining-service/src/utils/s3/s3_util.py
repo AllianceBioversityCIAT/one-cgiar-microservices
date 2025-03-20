@@ -1,4 +1,5 @@
 import boto3
+from pathlib import Path
 from src.utils.config.config_util import S3
 from src.utils.logger.logger_util import get_logger
 
@@ -11,9 +12,12 @@ s3_client = boto3.client(
     region_name=S3['aws_region']
 )
 
-def download_document_s3(bucket, key, base_dir):
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
+def download_document_s3(bucket, key):
     logger.info(f"Downloading document from S3: {bucket}/{key}")
-    local_filename = str(base_dir / "data" / "files")
+    local_filename = str(BASE_DIR / "data" / "files" / key)
+    print(local_filename)
     
     try:
         s3_client.download_file(bucket, key, local_filename)

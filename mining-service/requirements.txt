@@ -1,3 +1,10 @@
 lancedb
 pathlib
 sentence_transformers
+pandas
+fitz
+PyMuPDF
+langchain
+boto3
+python-dotenv
+python-docx

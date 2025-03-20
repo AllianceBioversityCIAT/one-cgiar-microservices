@@ -1,6 +1,9 @@
 import re
+import docx
 import fitz
 import lancedb
+import datetime
+import pandas as pd
 import pyarrow as pa
 import logging as log
 from pathlib import Path
@@ -13,7 +16,7 @@ logger = get_logger()
 
 class Content(LanceModel):
     pageId: str
-    vector: Vector(384)
+    vector: Vector(384) # type: ignore
     title: str
     Namedocument: str
     modificationD: str
@@ -22,6 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = str(BASE_DIR / "src" / "db" / "miningdb")
 FILE_SOURCE_DIRECTORY_PATH = str(BASE_DIR / "data" / "files")
 FILE_PROCESSED_LOG = str(BASE_DIR / "data" / "train" / "processed_files.txt")
+
 
 def save_processed_file(file_path):
     with open(FILE_PROCESSED_LOG, 'a') as f:
@@ -46,6 +50,7 @@ table = db.open_table(table_name)
 
 embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
+
 def load_processed_files():
     try:
         with open(FILE_PROCESSED_LOG, 'r') as f:
@@ -53,8 +58,37 @@ def load_processed_files():
     except FileNotFoundError:
         return set()
 
+
+def extract_text(file_path):
+    ext = Path(file_path).suffix.lower()
+    text = ""
+    try:
+        if ext == ".pdf":
+            doc = fitz.open(file_path)
+            for page in doc:
+                page_text = page.get_text()
+                if page_text:
+                    text += page_text + "\n"
+            doc.close()
+        elif ext == ".docx":
+            doc = docx.Document(file_path)
+            text = "\n".join([para.text for para in doc.paragraphs])
+        elif ext in [".xlsx", ".xls"]:
+            df = pd.read_excel(file_path)
+            text = " ".join(df.astype(str).values.flatten().tolist())
+        elif ext == ".txt":
+            with open(file_path, "r", encoding="utf-8") as f:
+                text = f.read()
+        else:
+            print(f"Unsupported format: {ext}")
+    except Exception as e:
+        print(f"Error extracting text from {file_path}: {e}")
+    return text
+
+
 def embed_text(text):
     return embedding_model.encode(text).tolist()
+
 
 def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
     try:
@@ -74,7 +108,7 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
                     logger.info(f"Skipping empty page {page_num + 1} of {pdf_name}")
                     continue 
                 
-                chunks = text_splitter.split(page_text)
+                chunks = text_splitter.split_text(page_text)
                 for chunk in chunks:
                     cleaned_text = re.sub(r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
                     if cleaned_text:
@@ -107,7 +141,7 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
         if 'doc' in locals():
             doc.close()
 
-def extract_content(file_path):
+def extract_content(file_path, chunk_size=1000):
     try:
         print(f"Processing document: {file_path}")
         text = extract_text(file_path)
@@ -161,5 +195,7 @@ def process_file():
                 extract_pdf_content(str(file))
             else:
                 extract_content(str(file))
+            
+            save_processed_file(str(file))
         except Exception as e:
             logger.error(f"Error processing file: {file}. \n {e}")
