@@ -41,9 +41,9 @@ def search_context(query):
     return context
 
 
-gen_model_name = "deepseek-ai/DeepSeek-R1-Zero"
-tokenizer = AutoTokenizer.from_pretrained(gen_model_name, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(gen_model_name, trust_remote_code=True)
+gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
+model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 generator = pipeline("text-generation", model=model,
                      tokenizer=tokenizer, device=0)
 
