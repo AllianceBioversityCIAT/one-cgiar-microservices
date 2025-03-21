@@ -67,6 +67,7 @@ def extract_text(file_path):
     text = ""
     try:
         if ext == ".pdf":
+            logger.info("Extracting a pdf file")
             doc = fitz.open(file_path)
             for page in doc:
                 page_text = page.get_text()
@@ -74,12 +75,15 @@ def extract_text(file_path):
                     text += page_text + "\n"
             doc.close()
         elif ext == ".docx":
+            logger.info("Extracting a docx file")
             doc = docx.Document(file_path)
             text = "\n".join([para.text for para in doc.paragraphs])
         elif ext in [".xlsx", ".xls"]:
+            logger.info("Extracting an excel file")
             df = pd.read_excel(file_path)
             text = " ".join(df.astype(str).values.flatten().tolist())
         elif ext == ".txt":
+            logger.info("Extracting a text file")
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
         else:
@@ -154,10 +158,10 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
 
 def extract_content(file_path, chunk_size=1000):
     try:
-        print(f"Processing document: {file_path}")
+        logger.debug(f"Processing document: {file_path}")
         text = extract_text(file_path)
         if not text.strip():
-            print(f"No text extracted from {file_path}. Skipping.")
+            logger.info(f"No text extracted from {file_path}. Skipping.")
             return
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=0, length_function=len)
@@ -187,9 +191,9 @@ def extract_content(file_path, chunk_size=1000):
                     data_list = []
         if data_list:
             table.add([Content(**item).model_dump() for item in data_list])
-        print(f"{doc_name} processed successfully.")
+        logger.info(f"{doc_name} processed successfully.")
     except Exception as e:
-        print(f"Error processing document {file_path}: {e}")
+        logger.info(f"Error processing document {file_path}: {e}")
 
 
 def process_file():
