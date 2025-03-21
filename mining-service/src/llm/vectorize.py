@@ -200,7 +200,7 @@ def process_file():
     supported_file_types = [".pdf", ".docx", ".txt", ".xlsx", ".xls"]
     processed_files = load_processed_files()
     files = [f for f in Path(FILE_SOURCE_DIRECTORY_PATH).rglob(
-        "*") if f.is_file() and f.suffix.lower() in supported_file_types and str(f) not in processed_files]
+        "*") if f.is_file() and f.suffix.lower() in supported_file_types]
 
     if not files:
         logger.info("No new files to process.")
