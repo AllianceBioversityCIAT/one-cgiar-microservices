@@ -3,6 +3,8 @@ from src.llm.vectorize import process_file, delete_document_from_db
 from src.utils.logger.logger_util import get_logger
 from src.llm.mining import generate_response
 
+logger = get_logger()
+
 def start_consumer():
     key = "FiBL Tech Report Jan to Jun 2024.pdf"
     logger.debug("Starting the mining service...")
