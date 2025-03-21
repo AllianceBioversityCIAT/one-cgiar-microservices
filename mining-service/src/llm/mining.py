@@ -25,11 +25,15 @@ def get_embedding(text):
     return embedding_model.encode(text)
 
 
-def search_context(query, top_k=3):
+def search_context(query):
     query_embedding = get_embedding(query)
-    results = table.search(query_embedding.tolist(),
-                           vector_column_name="vector").limit(top_k).to_list()
+    results = table.search(
+        query_embedding.tolist(),
+        vector_column_name="vector"
+    ).to_list()
+
     context_list = [res["title"] for res in results if "title" in res]
+    logger.debug(f"Context list: {context_list}")
     context = " ".join(context_list)
     return context
 
@@ -41,7 +45,7 @@ generator = pipeline("text-generation", model=model,
                      tokenizer=tokenizer, device=0)
 
 
-def generate_response(user_input = DEFAULT_PROMPT):
+def generate_response(user_input=DEFAULT_PROMPT):
     context = search_context(user_input)
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
@@ -55,13 +59,13 @@ def generate_response(user_input = DEFAULT_PROMPT):
     )
 
     thread = Thread(
-        target=generator, 
+        target=generator,
         kwargs={
-            "text_inputs": prompt, 
+            "text_inputs": prompt,
             **generation_kwargs
         }
     )
-    
+
     thread.start()
 
     generated_text = ""
