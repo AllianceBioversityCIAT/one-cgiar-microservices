@@ -197,6 +197,7 @@ def extract_content(file_path, chunk_size=1000):
 
 
 def process_file():
+    reset_vector_table()
     supported_file_types = [".pdf", ".docx", ".txt", ".xlsx", ".xls"]
     processed_files = load_processed_files()
     files = [f for f in Path(FILE_SOURCE_DIRECTORY_PATH).rglob(
@@ -222,17 +223,20 @@ def process_file():
             logger.error(f"Error processing file: {file}. \n {e}")
 
 
-def delete_document_from_db(document_name):
-    logger.info(f"Deleting document from database: {document_name}")
+def reset_vector_table():
+    logger.info("Resetting vector table...")
     try:
-        df = table.search().where(
-            f'"Namedocument" = \'{document_name}\'').to_pandas()
-        logger.info(f"Docs encontrados: {df.shape[0]}")
-        logger.debug(df["Namedocument"].unique())
+        db.drop_table(table_name)
+        logger.info(f"Table '{table_name}' dropped successfully.")
 
-        deleted = table.delete(f'"Namedocument" = \'{document_name}\'')
-        logger.info(f"Resultado de delete: {deleted}")
-        return True
+        schema = pa.schema([
+            pa.field("pageId", pa.string()),
+            pa.field("vector", pa.list_(pa.float32(), vector_dim)),
+            pa.field("title", pa.string()),
+            pa.field("Namedocument", pa.string()),
+            pa.field("modificationD", pa.string())
+        ])
+        db.create_table(table_name, schema=schema)
+        logger.info(f"Table '{table_name}' recreated successfully.")
     except Exception as e:
-        logger.error(f"Error deleting document from database: {e}")
-        return False
+        logger.error(f"Error resetting vector table: {e}")
