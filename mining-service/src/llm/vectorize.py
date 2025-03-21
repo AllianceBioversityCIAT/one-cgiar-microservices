@@ -223,20 +223,17 @@ def process_file():
             logger.error(f"Error processing file: {file}. \n {e}")
 
 
-def reset_vector_table():
+def reset_vector_table() -> None:
+    """Drop and recreate the vector table if it exists."""
     logger.info("Resetting vector table...")
     try:
-        db.drop_table(table_name)
-        logger.info(f"Table '{table_name}' dropped successfully.")
-
-        schema = pa.schema([
-            pa.field("pageId", pa.string()),
-            pa.field("vector", pa.list_(pa.float32(), vector_dim)),
-            pa.field("title", pa.string()),
-            pa.field("Namedocument", pa.string()),
-            pa.field("modificationD", pa.string())
-        ])
-        db.create_table(table_name, schema=schema)
-        logger.info(f"Table '{table_name}' recreated successfully.")
+        if TABLE_NAME in db.table_names():
+            db.drop_table(TABLE_NAME)
+            logger.info(f"Table '{TABLE_NAME}' dropped successfully.")
+        else:
+            logger.info(
+                f"Table '{TABLE_NAME}' does not exist. No need to drop.")
+        db.create_table(TABLE_NAME, schema=get_table_schema())
+        logger.info(f"Table '{TABLE_NAME}' recreated successfully.")
     except Exception as e:
         logger.error(f"Error resetting vector table: {e}")
