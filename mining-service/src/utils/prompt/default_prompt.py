@@ -105,9 +105,8 @@ Training Duration Validation
 - "Start date" and "End date" should capture the training period as stated in the document.
 - "Length of training" should be calculated as the time elapsed between the Start date and the End date.
 - If either date is missing, return "Not collected" for the start date, end date, and length of training.
-- Long-term training refers to any training that goes for 3 or more months.
-- Short-term training refers to any training that goes for less than 3 months.
-- Only training programs that have been completed (end date in the past) should be reported.
+- Long-term training refers to training that goes for 3 or more months.
+- Short-term training refers to training that goes for less than 3 months.
 
 For any fields (training_modality, start_date, end_date, length_of_training) not present in the document, return "Not collected".
 
@@ -136,14 +135,14 @@ Follow this structure exactly:
                 "sub_list": <[array of codes or region names] or null>
             },
             "training_type": "<Individual training or Group training (only if applicable)>",
-            "total_participants": <number (only if group training)>,
-            "male_participants": <number (only if group training)>,
-            "female_participants": <number (only if group training)>,
-            "non_binary_participants": <number (only if group training)>,
+            "total_participants": <number or 'Not collected' (only if group training)>,
+            "male_participants": <number or 'Not collected' (only if group training)>,
+            "female_participants": <number or 'Not collected' (only if group training)>,
+            "non_binary_participants": <number or 'Not collected' (only if group training)>,
             "training_modality": "<value or 'Not collected'>",
             "start_date": "<value or 'Not collected'>",
             "end_date": "<value or 'Not collected'>",
-            "length_of_training": "<calculated value or 'Not collected'>",
+            "length_of_training": "<Short-term or Long-term (depending on Training Duration Validation) or 'Not collected'>",
             "alliance_main_contact_person": "<value or 'Not collected'>"
         }
     ]
