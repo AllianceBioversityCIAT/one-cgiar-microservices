@@ -197,5 +197,6 @@ def process_file():
                 extract_content(str(file))
             
             save_processed_file(str(file))
+            return True
         except Exception as e:
             logger.error(f"Error processing file: {file}. \n {e}")
