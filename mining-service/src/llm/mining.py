@@ -6,6 +6,9 @@ from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
 from threading import Thread
 from src.utils.prompt.default_prompt import DEFAULT_PROMPT
+from src.utils.logger.logger_util import get_logger
+
+logger = get_logger()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = str(BASE_DIR / "src" / "db" / "miningdb")
