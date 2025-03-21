@@ -17,7 +17,7 @@ logger = get_logger()
 
 class Content(LanceModel):
     pageId: str
-    vector: Vector(384)  # type: ignore
+    vector: Vector(384)
     title: str
     Namedocument: str
     modificationD: str
@@ -77,7 +77,14 @@ def extract_text(file_path):
         elif ext == ".docx":
             logger.info("Extracting a docx file")
             doc = docx.Document(file_path)
-            text = "\n".join([para.text for para in doc.paragraphs])
+            paragraphs = [para.text for para in doc.paragraphs]
+            tables = []
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        tables.append(cell.text)
+
+            text = "\n".join(paragraphs + tables)
         elif ext in [".xlsx", ".xls"]:
             logger.info("Extracting an excel file")
             df = pd.read_excel(file_path)
