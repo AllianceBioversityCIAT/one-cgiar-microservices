@@ -14,12 +14,14 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 logger = get_logger()
 
+
 class Content(LanceModel):
     pageId: str
-    vector: Vector(384) # type: ignore
+    vector: Vector(384)  # type: ignore
     title: str
     Namedocument: str
     modificationD: str
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = str(BASE_DIR / "src" / "db" / "miningdb")
@@ -30,6 +32,7 @@ FILE_PROCESSED_LOG = str(BASE_DIR / "data" / "train" / "processed_files.txt")
 def save_processed_file(file_path):
     with open(FILE_PROCESSED_LOG, 'a') as f:
         f.write(f"{file_path}\n")
+
 
 db = lancedb.connect(DB_PATH)
 table_name = "files"
@@ -94,23 +97,28 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
     try:
         doc = fitz.open(file_path)
         pdf_name = Path(file_path).name
-        modification_date = str(datetime.datetime.fromtimestamp(Path(file_path).stat().st_mtime))
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
+        modification_date = str(datetime.datetime.fromtimestamp(
+            Path(file_path).stat().st_mtime))
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
         data_list = []
         batch_size = 100
         for page_num in range(len(doc)):
-            logger.info(f"Processing page {page_num + 1}/{len(doc)} of {pdf_name}")
+            logger.info(
+                f"Processing page {page_num + 1}/{len(doc)} of {pdf_name}")
             try:
                 page = doc.load_page(page_num)
                 page_text = page.get_text()
-                
+
                 if not page_text.strip():
-                    logger.info(f"Skipping empty page {page_num + 1} of {pdf_name}")
-                    continue 
-                
+                    logger.info(
+                        f"Skipping empty page {page_num + 1} of {pdf_name}")
+                    continue
+
                 chunks = text_splitter.split_text(page_text)
                 for chunk in chunks:
-                    cleaned_text = re.sub(r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
+                    cleaned_text = re.sub(
+                        r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
                     if cleaned_text:
                         embedding_vector = embed_text(cleaned_text)
                         data = {
@@ -122,24 +130,27 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
                         }
                         data_list.append(data)
                         if len(data_list) >= batch_size:
-                            table.add([Content(**item).model_dump() for item in data_list])
+                            table.add([Content(**item).model_dump()
+                                      for item in data_list])
                             data_list = []
-            
+
             except Exception as e:
-                logger.error(f"Error processing page {page_num + 1} of {pdf_name}. \n {e}")
+                logger.error(
+                    f"Error processing page {page_num + 1} of {pdf_name}. \n {e}")
                 continue
 
         if data_list:
             table.add([Content(**item).model_dump() for item in data_list])
-        
+
         doc.close()
 
         logger.info(f"Finished processing {pdf_name}")
-    
+
     except Exception as e:
         logger.error(f"Error processing file: {file_path}. \n {e}")
         if 'doc' in locals():
             doc.close()
+
 
 def extract_content(file_path, chunk_size=1000):
     try:
@@ -148,15 +159,18 @@ def extract_content(file_path, chunk_size=1000):
         if not text.strip():
             print(f"No text extracted from {file_path}. Skipping.")
             return
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0, length_function=len)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size, chunk_overlap=0, length_function=len)
         chunks = text_splitter.split_text(text)
         doc_name = Path(file_path).name
-        modification_date = str(datetime.datetime.fromtimestamp(Path(file_path).stat().st_mtime))
+        modification_date = str(datetime.datetime.fromtimestamp(
+            Path(file_path).stat().st_mtime))
         page_id = "1"
         data_list = []
         batch_size = 100
         for idx, chunk in enumerate(chunks):
-            cleaned_text = re.sub(r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
+            cleaned_text = re.sub(r"[&\[\]\-\)\(\-]",
+                                  "", chunk).lower().strip()
             if cleaned_text:
                 embedding_vector = embed_text(cleaned_text)
                 data = {
@@ -168,7 +182,8 @@ def extract_content(file_path, chunk_size=1000):
                 }
                 data_list.append(data)
                 if len(data_list) >= batch_size:
-                    table.add([Content(**item).model_dump() for item in data_list])
+                    table.add([Content(**item).model_dump()
+                              for item in data_list])
                     data_list = []
         if data_list:
             table.add([Content(**item).model_dump() for item in data_list])
@@ -180,12 +195,13 @@ def extract_content(file_path, chunk_size=1000):
 def process_file():
     supported_file_types = [".pdf", ".docx", ".txt", ".xlsx", ".xls"]
     processed_files = load_processed_files()
-    files = [f for f in Path(FILE_SOURCE_DIRECTORY_PATH).rglob("*") if f.is_file() and f.suffix.lower() in supported_file_types and str(f) not in processed_files]
+    files = [f for f in Path(FILE_SOURCE_DIRECTORY_PATH).rglob(
+        "*") if f.is_file() and f.suffix.lower() in supported_file_types and str(f) not in processed_files]
 
     if not files:
         logger.info("No new files to process.")
         return
-    
+
     logger.info(f"Founds {len(files)} new files to process.")
 
     for file in files:
@@ -195,8 +211,25 @@ def process_file():
                 extract_pdf_content(str(file))
             else:
                 extract_content(str(file))
-            
+
             save_processed_file(str(file))
             return True
         except Exception as e:
             logger.error(f"Error processing file: {file}. \n {e}")
+
+
+def delete_document_from_db(document_name):
+    logger.info(f"Deleting document from database: {document_name}")
+    try:
+        count_query = table.query(f"Namedocument = '{document_name}'").count()
+        logger.info(
+            f"Found {count_query} records to delete for document: {document_name}")
+
+        table.delete(f"Namedocument = '{document_name}'")
+
+        logger.info(
+            f"Document '{document_name}' deleted successfully from database")
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting document from database: {e}")
+        return False

@@ -14,16 +14,35 @@ s3_client = boto3.client(
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
+
 def download_document_s3(bucket, key):
     logger.info(f"Downloading document from S3: {bucket}/{key}")
     local_filename = str(BASE_DIR / "data" / "files" / key)
     print(local_filename)
-    
+
     try:
         s3_client.download_file(bucket, key, local_filename)
         logger.info(f"Downloaded document from S3: {bucket}/{key}")
     except Exception as e:
-        logger.error(f"Error downloading document from S3: {bucket}/{key}. \n {e}")
+        logger.error(
+            f"Error downloading document from S3: {bucket}/{key}. \n {e}")
         raise
 
     return local_filename
+
+
+def delete_local_file(key):
+    """Delete a file from the local storage after processing"""
+    local_filename = str(BASE_DIR / "data" / "files" / key)
+    logger.info(f"Deleting local file: {local_filename}")
+    try:
+        if os.path.exists(local_filename):
+            os.remove(local_filename)
+            logger.info(f"Successfully deleted local file: {local_filename}")
+            return True
+        else:
+            logger.warning(f"File not found for deletion: {local_filename}")
+            return False
+    except Exception as e:
+        logger.error(f"Error deleting local file {local_filename}: {e}")
+        return False
