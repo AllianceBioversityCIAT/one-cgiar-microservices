@@ -49,7 +49,8 @@ generator = pipeline("text-generation", model=model,
 
 
 def generate_response(user_input=DEFAULT_PROMPT):
-    context = search_context(user_input)
+    query_for_embedding = "Extract relevant results and indicators from the document"
+    context = search_context(query_for_embedding) 
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
     streamer = TextIteratorStreamer(tokenizer)
