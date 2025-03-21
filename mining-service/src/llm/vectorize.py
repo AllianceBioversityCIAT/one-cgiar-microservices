@@ -225,16 +225,13 @@ def process_file():
 def delete_document_from_db(document_name):
     logger.info(f"Deleting document from database: {document_name}")
     try:
-        count_result = table.search().where(
+        df = table.search().where(
             f'"Namedocument" = \'{document_name}\'').to_pandas()
-        count_records = len(count_result)
-        logger.info(
-            f"Found {count_records} records to delete for document: {document_name}")
+        logger.info(f"Docs encontrados: {df.shape[0]}")
+        logger.debug(df["Namedocument"].unique())
 
-        table.delete(f'"Namedocument" = \'{document_name}\'')
-
-        logger.info(
-            f"Document '{document_name}' deleted successfully from database")
+        deleted = table.delete(f'"Namedocument" = \'{document_name}\'')
+        logger.info(f"Resultado de delete: {deleted}")
         return True
     except Exception as e:
         logger.error(f"Error deleting document from database: {e}")
