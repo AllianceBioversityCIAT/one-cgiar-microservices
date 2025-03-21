@@ -41,7 +41,7 @@ def search_context(query):
     return context
 
 
-gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+gen_model_name = "mistralai/Mixtral-8x7B-v0.1"
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 generator = pipeline("text-generation", model=model,
