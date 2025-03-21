@@ -41,7 +41,7 @@ def search_context(query):
     return context
 
 
-gen_model_name = "mistralai/Mistral-7B-v0.1"
+gen_model_name = "meta-llama/Llama-2-7b-chat-hf"
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 generator = pipeline("text-generation", model=model,
