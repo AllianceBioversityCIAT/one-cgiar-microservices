@@ -41,7 +41,7 @@ def search_context(query):
     return context
 
 
-gen_model_name = "meta-llama/Llama-2-7b-chat-hf"
+gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
 model = AutoModelForCausalLM.from_pretrained(gen_model_name)
 generator = pipeline("text-generation", model=model,
