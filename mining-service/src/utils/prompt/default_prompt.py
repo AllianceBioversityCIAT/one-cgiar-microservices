@@ -68,13 +68,15 @@ If "Group training", **validate and reinforce participant counting by ensuring:*
 2. Use explicit participant counts if stated in the document.
 3. If total_participants is present but gender-specific counts are missing, assume:
 {
-    "male_participants": 0,
-    "female_participants": 0,
-    "non_binary_participants": 0
+    "male_participants": "Not collected",
+    "female_participants": "Not collected",
+    "non_binary_participants": "Not collected"
 }
-4. If participant names are listed with gender annotations, count them directly from the list.
-5. Ensure that:
+4. If participant names are listed with gender annotations, count them directly from the list, and add them as "male_participants", 
+if they are male, "female_participants", if they are female, or non_binary_participants, if they do not identify as female or male.
+5. Ensure that: 
    total_participants == male_participants + female_participants + non_binary_participants
+   - Only if the genders of the participants are defined.
    - If this condition is **not met**, **adjust total_participants to reflect the correct sum**.
 6. All participant counts must be non-negative integers (≥ 0).
 
