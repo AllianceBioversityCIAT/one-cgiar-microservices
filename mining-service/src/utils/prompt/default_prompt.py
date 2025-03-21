@@ -63,22 +63,43 @@ Training Type
 - "Individual training"
 - "Group training"
 
-If "Group training", **validate and reinforce participant counting by ensuring:**
-1. Extract the full list of participants if available (e.g., from an appendix or table of attendees).
-2. Use explicit participant counts if stated in the document.
-3. If total_participants is present but gender-specific counts are missing, assume:
-{
-    "male_participants": "Not collected",
-    "female_participants": "Not collected",
-    "non_binary_participants": "Not collected"
-}
-4. If participant names are listed with gender annotations, count them directly from the list, and add them as "male_participants", 
-if they are male, "female_participants", if they are female, or non_binary_participants, if they do not identify as female or male.
-5. Ensure that: 
-   total_participants == male_participants + female_participants + non_binary_participants
-   - Only if the genders of the participants are defined.
-   - If this condition is **not met**, **adjust total_participants to reflect the correct sum**.
-6. All participant counts must be non-negative integers (≥ 0).
+- If “Group training”, validate and reinforce participant counting by ensuring:
+	1.	Extract participant lists:
+    If the document provides a full list of participants (e.g., in an appendix or table), use it to derive counts whenever possible.
+	
+    2.	Use explicit participant counts:
+    If the document states explicit participant numbers (total, male, female, non_binary), use those values directly—unless there are contradictions.
+	
+    3.	Partial gender counts:
+	•	If only some gender counts are specified (e.g., male participants but not female or non_binary):
+	•	Fill in the known count for each gender.
+	•	For any missing genders, use "Not collected".
+	•	If total_participants is provided:
+	•	Make sure the sum of known gender counts matches total_participants:
+        total_participants = (male_participants if known, else 0) + (female_participants if known, else 0) + (non_binary_participants if known, else 0)
+	•	If there is a discrepancy (e.g., total_participants is 15 but you can only account for 10 across known genders):
+        - Keep the known gender counts.
+        - Set any missing gender counts to "Not collected".
+        - Adjust total_participants to reflect the sum of the known counts (in this example, 10). Do not invent the additional 5 participants.
+	•	If total_participants is not provided:
+        - Record the known gender counts.
+        - Set total_participants to "Not collected".
+
+	4.	Completely missing gender counts:
+    If total_participants is present but no gender-specific counts are given, assume:
+    {
+        "male_participants": "Not collected",
+        "female_participants": "Not collected",
+        "non_binary_participants": "Not collected"
+    }
+
+    5.	Names with gender annotations:
+    If participant names are listed alongside gender details, count each individual accordingly:
+	•	Increase male_participants for males, female_participants for females, and non_binary_participants if someone does not identify as male or female.
+	
+    6.	Non-negative integer rule:
+    All participant counts must be non-negative integers (≥ 0). Use "Not collected" only when the document does not provide the necessary information.
+
 
 Training Duration Validation
 - "Start date" and "End date" should capture the training period as stated in the document.
@@ -93,7 +114,11 @@ For any fields (training_modality, start_date, end_date, length_of_training) not
 ---
 
 Output Format
-Your output must be valid JSON and must not include any additional text or explanations. Follow this structure exactly:
+Your output must be valid JSON and must not include any additional text or explanations. 
+Return dates in YYYY-MM-DD format or "Not collected".
+For partial or missing participant data, follow the partial participant rule above.
+
+Follow this structure exactly:
 
 {
     "results": [
