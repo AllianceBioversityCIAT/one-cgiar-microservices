@@ -221,9 +221,11 @@ def process_file():
 def delete_document_from_db(document_name):
     logger.info(f"Deleting document from database: {document_name}")
     try:
-        count_query = table.query(f"Namedocument = '{document_name}'").count()
+        count_result = table.search().where(
+            f"Namedocument = '{document_name}'").to_pandas()
+        count_records = len(count_result)
         logger.info(
-            f"Found {count_query} records to delete for document: {document_name}")
+            f"Found {count_records} records to delete for document: {document_name}")
 
         table.delete(f"Namedocument = '{document_name}'")
 
