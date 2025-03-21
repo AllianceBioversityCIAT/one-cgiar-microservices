@@ -6,7 +6,7 @@ from src.llm.mining import generate_response
 logger = get_logger()
 
 def start_consumer():
-    key = "FiBL Tech Report Jan to Jun 2024.pdf"
+    key = "ITR D314 Apr 20 2023.docx"
     logger.debug("Starting the mining service...")
     download_document_s3("microservice-mining", key)
     process_file()
