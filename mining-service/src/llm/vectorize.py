@@ -53,7 +53,8 @@ if table_name not in db.table_names():
 
 table = db.open_table(table_name)
 
-embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+# embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 
 
 def load_processed_files():
