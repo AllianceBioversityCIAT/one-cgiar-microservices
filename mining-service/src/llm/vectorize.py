@@ -104,7 +104,7 @@ def embed_text(text):
     return embedding_model.encode(text).tolist()
 
 
-def extract_pdf_content(file_path, chunk_size=300, chunk_overlap=50):
+def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
     try:
         doc = fitz.open(file_path)
         pdf_name = Path(file_path).name
