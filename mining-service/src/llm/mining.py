@@ -1,6 +1,7 @@
 import lancedb
 import torch
 import time
+import requests
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
