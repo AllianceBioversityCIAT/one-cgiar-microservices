@@ -42,7 +42,7 @@ def search_context(query):
 
 def clear_table_data():
     if table:
-        table.delete(where="true")
+        table.delete(where="is_reference != true")
         logger.info("All vectors deleted from the table.")
 
 gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"

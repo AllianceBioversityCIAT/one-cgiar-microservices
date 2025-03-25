@@ -44,7 +44,8 @@ if table_name not in db.table_names():
         pa.field("vector", pa.list_(pa.float32(), vector_dim)),
         pa.field("title", pa.string()),
         pa.field("Namedocument", pa.string()),
-        pa.field("modificationD", pa.string())
+        pa.field("modificationD", pa.string()),
+        pa.field("is_reference", pa.bool_())
     ])
     db.create_table(table_name, schema=schema)
     print(f"Table '{table_name}' created.")
@@ -52,6 +53,7 @@ if table_name not in db.table_names():
 table = db.open_table(table_name)
 
 embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
 
 def load_processed_files():
     try:
@@ -103,7 +105,7 @@ def embed_text(text):
     return embedding_model.encode(text).tolist()
 
 
-def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
+def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100, is_reference=False):
     try:
         doc = fitz.open(file_path)
         pdf_name = Path(file_path).name
@@ -136,7 +138,8 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
                             "vector": embedding_vector,
                             "title": cleaned_text,
                             "Namedocument": pdf_name,
-                            "modificationD": modification_date
+                            "modificationD": modification_date,
+                            "is_reference": is_reference
                         }
                         data_list.append(data)
                         if len(data_list) >= batch_size:
@@ -162,7 +165,7 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100):
             doc.close()
 
 
-def extract_content(file_path, chunk_size=1000):
+def extract_content(file_path, chunk_size=1000, is_reference=False):
     try:
         logger.debug(f"Processing document: {file_path}")
         text = extract_text(file_path)
@@ -188,7 +191,8 @@ def extract_content(file_path, chunk_size=1000):
                     "vector": embedding_vector,
                     "title": cleaned_text,
                     "Namedocument": doc_name,
-                    "modificationD": modification_date
+                    "modificationD": modification_date,
+                    "is_reference": is_reference
                 }
                 data_list.append(data)
                 if len(data_list) >= batch_size:
@@ -217,10 +221,11 @@ def process_file():
     for file in files:
         logger.info(f"Processing file: {file}")
         try:
+            is_reference = "clarisa" in file.name.lower()
             if file.suffix.lower() == ".pdf":
-                extract_pdf_content(str(file))
+                extract_pdf_content(str(file), is_reference=is_reference)
             else:
-                extract_content(str(file))
+                extract_content(str(file), is_reference=is_reference)
 
             save_processed_file(str(file))
             return True
