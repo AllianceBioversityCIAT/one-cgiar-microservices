@@ -114,6 +114,7 @@ def generate_response(user_input=DEFAULT_PROMPT):
         response = requests.post("http://localhost:11434/api/generate", json=payload)
         response.raise_for_status()
         result = response.json()["response"]
+        print("📦 Full Ollama response JSON:", response.json())
         clear_table_data()
         return result.strip()
     except Exception as e:
