@@ -106,57 +106,75 @@ def embed_text(text):
     return embedding_model.encode(text, device=0).tolist()
 
 
-def extract_pdf_content(file_path, chunk_size=500, chunk_overlap=50, is_reference=False):
+def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=50, is_reference=False):
     try:
+        # doc = fitz.open(file_path)
+        # pdf_name = Path(file_path).name
+        # modification_date = str(datetime.datetime.fromtimestamp(
+        #     Path(file_path).stat().st_mtime))
+        # text_splitter = RecursiveCharacterTextSplitter(
+        #     chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
+        # data_list = []
+        # batch_size = 100
+        # for page_num in range(len(doc)):
+        #     logger.info(
+        #         f"Processing page {page_num + 1}/{len(doc)} of {pdf_name}")
+        #     try:
+        #         page = doc.load_page(page_num)
+        #         page_text = page.get_text()
+
+        #         if not page_text.strip():
+        #             logger.info(
+        #                 f"Skipping empty page {page_num + 1} of {pdf_name}")
+        #             continue
+
+        #         chunks = text_splitter.split_text(page_text)
         doc = fitz.open(file_path)
         pdf_name = Path(file_path).name
         modification_date = str(datetime.datetime.fromtimestamp(
             Path(file_path).stat().st_mtime))
+        
+        full_text = ""
+        for page in doc:
+            full_text += page.get_text() + "\n"
+        doc.close()
+
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
-        data_list = []
-        batch_size = 100
-        for page_num in range(len(doc)):
-            logger.info(
-                f"Processing page {page_num + 1}/{len(doc)} of {pdf_name}")
-            try:
-                page = doc.load_page(page_num)
-                page_text = page.get_text()
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            separators=["\n\n", "\n", ".", " "]
+        )
 
-                if not page_text.strip():
-                    logger.info(
-                        f"Skipping empty page {page_num + 1} of {pdf_name}")
-                    continue
+        chunks = text_splitter.split_text(full_text)        
+        for chunk in chunks:
+            cleaned_text = re.sub(
+                r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
+            if cleaned_text:
+                embedding_vector = embed_text(cleaned_text)
+                data = {
+                    "pageId": str(page_num + 1),
+                    "vector": embedding_vector,
+                    "title": cleaned_text,
+                    "Namedocument": pdf_name,
+                    "modificationD": modification_date,
+                    "is_reference": is_reference
+                }
+                data_list.append(data)
+                if len(data_list) >= batch_size:
+                    table.add([Content(**item).model_dump()
+                                for item in data_list])
+                    data_list = []
 
-                chunks = text_splitter.split_text(page_text)
-                for chunk in chunks:
-                    cleaned_text = re.sub(
-                        r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
-                    if cleaned_text:
-                        embedding_vector = embed_text(cleaned_text)
-                        data = {
-                            "pageId": str(page_num + 1),
-                            "vector": embedding_vector,
-                            "title": cleaned_text,
-                            "Namedocument": pdf_name,
-                            "modificationD": modification_date,
-                            "is_reference": is_reference
-                        }
-                        data_list.append(data)
-                        if len(data_list) >= batch_size:
-                            table.add([Content(**item).model_dump()
-                                      for item in data_list])
-                            data_list = []
-
-            except Exception as e:
-                logger.error(
-                    f"Error processing page {page_num + 1} of {pdf_name}. \n {e}")
-                continue
+            # except Exception as e:
+            #     logger.error(
+            #         f"Error processing page {page_num + 1} of {pdf_name}. \n {e}")
+            #     continue
 
         if data_list:
             table.add([Content(**item).model_dump() for item in data_list])
 
-        doc.close()
+        #doc.close()
 
         logger.info(f"Finished processing {pdf_name}")
 
