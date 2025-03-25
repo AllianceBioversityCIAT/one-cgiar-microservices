@@ -116,7 +116,7 @@ def generate_response(user_input=DEFAULT_PROMPT):
         response.raise_for_status()
         raw_json_string = response.json()["response"]
         cleaned_json = json.loads(raw_json_string)
-        print("📦 Full Ollama response JSON:", cleaned_json)
+        print("📦 Full Ollama response JSON:\n" + json.dumps(cleaned_json, indent=4))
         clear_table_data()
         return json.dumps(cleaned_json, indent=4)
     except Exception as e:
