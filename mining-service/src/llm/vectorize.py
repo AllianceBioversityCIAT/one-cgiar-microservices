@@ -53,7 +53,6 @@ table = db.open_table(table_name)
 
 embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-
 def load_processed_files():
     try:
         with open(FILE_PROCESSED_LOG, 'r') as f:
@@ -204,7 +203,6 @@ def extract_content(file_path, chunk_size=1000):
 
 
 def process_file():
-    reset_vector_table()
     supported_file_types = [".pdf", ".docx", ".txt", ".xlsx", ".xls"]
     processed_files = load_processed_files()
     files = [f for f in Path(FILE_SOURCE_DIRECTORY_PATH).rglob(
@@ -228,19 +226,3 @@ def process_file():
             return True
         except Exception as e:
             logger.error(f"Error processing file: {file}. \n {e}")
-
-
-def reset_vector_table() -> None:
-    """Drop and recreate the vector table if it exists."""
-    logger.info("Resetting vector table...")
-    try:
-        if TABLE_NAME in db.table_names():
-            db.drop_table(TABLE_NAME)
-            logger.info(f"Table '{TABLE_NAME}' dropped successfully.")
-        else:
-            logger.info(
-                f"Table '{TABLE_NAME}' does not exist. No need to drop.")
-        db.create_table(TABLE_NAME, schema=get_table_schema())
-        logger.info(f"Table '{TABLE_NAME}' recreated successfully.")
-    except Exception as e:
-        logger.error(f"Error resetting vector table: {e}")

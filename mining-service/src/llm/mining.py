@@ -40,6 +40,10 @@ def search_context(query):
     context = " ".join(context_list)
     return context
 
+def clear_table_data():
+    if table:
+        table.delete(where="true")
+        logger.info("All vectors deleted from the table.")
 
 gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
@@ -87,4 +91,6 @@ def generate_response(user_input=DEFAULT_PROMPT):
     answer_parts = generated_text.split("Final Answer:")
     if len(answer_parts) > 1:
         return answer_parts[-1].strip()
+
+    clear_table_data()
     return generated_text.strip()
