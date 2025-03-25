@@ -103,8 +103,8 @@ def generate_response(user_input=DEFAULT_PROMPT):
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
     payload = {
-        "model": "llama3.1:8b-instruct-q4_0",
-        #"model": "llama3:8b-instruct-q8_0",
+        #"model": "llama3.1:8b-instruct-q4_0",
+        "model": "deepseek-r1:14b",
         "prompt": prompt,
         "stream": False,
         "num_predict": 2000,
