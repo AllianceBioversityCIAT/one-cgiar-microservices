@@ -37,7 +37,8 @@ def save_processed_file(file_path):
 
 db = lancedb.connect(DB_PATH)
 table_name = "files"
-vector_dim = 384
+# vector_dim = 384
+vector_dim = 768
 
 if table_name not in db.table_names():
     schema = pa.schema([
