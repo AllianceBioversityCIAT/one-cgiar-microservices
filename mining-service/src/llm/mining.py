@@ -45,52 +45,76 @@ def clear_table_data():
         table.delete(where="is_reference != true")
         logger.info("All vectors deleted from the table.")
 
-gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
-model = AutoModelForCausalLM.from_pretrained(gen_model_name)
-generator = pipeline("text-generation", model=model,
-                     tokenizer=tokenizer, device=0)
+# gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+# tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
+# model = AutoModelForCausalLM.from_pretrained(gen_model_name)
+# generator = pipeline("text-generation", model=model,
+#                      tokenizer=tokenizer, device=0)
+
+
+# def generate_response(user_input=DEFAULT_PROMPT):
+#     query_for_embedding = "Extract relevant results and indicators from the document"
+#     context = search_context(user_input) 
+#     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
+
+#     streamer = TextIteratorStreamer(tokenizer)
+#     generation_kwargs = dict(
+#         max_new_tokens=2000,
+#         do_sample=True,
+#         temperature=0.1,
+#         repetition_penalty=1.2,
+#         streamer=streamer,
+#     )
+
+#     thread = Thread(
+#         target=generator,
+#         kwargs={
+#             "text_inputs": prompt,
+#             **generation_kwargs
+#         }
+#     )
+
+#     thread.start()
+
+#     generated_text = ""
+#     print("Chatbot: ", end="", flush=True)
+#     for new_text in streamer:
+#         if "<|endoftext|>" in new_text:
+#             break
+#         print(new_text, end="", flush=True)
+#         generated_text += new_text
+#         time.sleep(0.01)
+#     print()
+
+#     generated_text = generated_text.replace(
+#         "<|begin▁of▁sentence|>", "").strip()
+#     answer_parts = generated_text.split("Final Answer:")
+#     if len(answer_parts) > 1:
+#         return answer_parts[-1].strip()
+
+#     clear_table_data()
+#     return generated_text.strip()
 
 
 def generate_response(user_input=DEFAULT_PROMPT):
-    query_for_embedding = "Extract relevant results and indicators from the document"
-    context = search_context(user_input) 
+    context = search_context(user_input)
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
-    streamer = TextIteratorStreamer(tokenizer)
-    generation_kwargs = dict(
-        max_new_tokens=2000,
-        do_sample=True,
-        temperature=0.1,
-        repetition_penalty=1.2,
-        streamer=streamer,
-    )
+    payload = {
+        "model": "llama3.1:8b-instruct-q4_0",
+        "prompt": prompt,
+        "stream": False,
+        "num_predict": 2000,
+        "temperature": 0.1,
+        "repeat_penalty": 1.2
+    }
 
-    thread = Thread(
-        target=generator,
-        kwargs={
-            "text_inputs": prompt,
-            **generation_kwargs
-        }
-    )
-
-    thread.start()
-
-    generated_text = ""
-    print("Chatbot: ", end="", flush=True)
-    for new_text in streamer:
-        if "<|endoftext|>" in new_text:
-            break
-        print(new_text, end="", flush=True)
-        generated_text += new_text
-        time.sleep(0.01)
-    print()
-
-    generated_text = generated_text.replace(
-        "<|begin▁of▁sentence|>", "").strip()
-    answer_parts = generated_text.split("Final Answer:")
-    if len(answer_parts) > 1:
-        return answer_parts[-1].strip()
-
-    clear_table_data()
-    return generated_text.strip()
+    try:
+        response = requests.post("http://localhost:11434/api/generate", json=payload)
+        response.raise_for_status()
+        result = response.json()["response"]
+        clear_table_data()
+        return result.strip()
+    except Exception as e:
+        logger.error(f"Error generating response: {e}")
+        return "Error generating report."
