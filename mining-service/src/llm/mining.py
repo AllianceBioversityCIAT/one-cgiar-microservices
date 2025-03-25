@@ -22,7 +22,8 @@ try:
 except Exception:
     table = db.create_table(TABLE_NAME, schema=schema)
 
-embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+# embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+embedding_model_name = "sentence-transformers/all-mpnet-base-v2"
 embedding_model = SentenceTransformer(embedding_model_name)
 
 
