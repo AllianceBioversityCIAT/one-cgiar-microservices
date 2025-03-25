@@ -147,13 +147,15 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100, is_refere
         )
 
         chunks = text_splitter.split_text(full_text)        
-        for chunk in chunks:
+        # for chunk in chunks:
+        for idx, chunk in chunks:
             cleaned_text = re.sub(
                 r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
             if cleaned_text:
                 embedding_vector = embed_text(cleaned_text)
                 data = {
-                    "pageId": str(page_num + 1),
+                    # "pageId": str(page_num + 1),
+                    "pageId": str(idx + 1),
                     "vector": embedding_vector,
                     "title": cleaned_text,
                     "Namedocument": pdf_name,
