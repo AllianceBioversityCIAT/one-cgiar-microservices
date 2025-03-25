@@ -21,6 +21,7 @@ class Content(LanceModel):
     title: str
     Namedocument: str
     modificationD: str
+    is_reference: bool
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
