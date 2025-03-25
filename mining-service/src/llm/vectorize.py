@@ -144,8 +144,7 @@ def extract_pdf_content(file_path, chunk_size=2000, chunk_overlap=100, is_refere
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            length_function=len,
-            separators=["\n\n", "\n", ".", " "]
+            length_function=len
         )
         data_list = []
         batch_size = 100
