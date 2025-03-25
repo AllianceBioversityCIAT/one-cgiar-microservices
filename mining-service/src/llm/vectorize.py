@@ -145,7 +145,9 @@ def extract_pdf_content(file_path, chunk_size=1000, chunk_overlap=100, is_refere
             length_function=len,
             separators=["\n\n", "\n", ".", " "]
         )
-
+        data_list = []
+        batch_size = 100
+        
         chunks = text_splitter.split_text(full_text)        
         # for chunk in chunks:
         for idx, chunk in enumerate(chunks):
