@@ -113,10 +113,11 @@ def generate_response(user_input=DEFAULT_PROMPT):
     try:
         response = requests.post("http://localhost:11434/api/generate", json=payload)
         response.raise_for_status()
-        result = response.json()["response"]
-        print("📦 Full Ollama response JSON:", result)
+        raw_json_string = response.json()["response"]
+        cleaned_json = json.loads(raw_json_string)
+        print("📦 Full Ollama response JSON:", cleaned_json)
         clear_table_data()
-        return result.strip()
+        return json.dumps(cleaned_json, indent=4)
     except Exception as e:
         logger.error(f"Error generating response: {e}")
         return "Error generating report."
