@@ -103,12 +103,12 @@ def generate_response(user_input=DEFAULT_PROMPT):
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
     payload = {
-        #"model": "llama3.1:8b-instruct-q4_0",
-        "model": "llama3:8b-instruct-q8_0",
+        "model": "llama3.1:8b-instruct-q4_0",
+        #"model": "llama3:8b-instruct-q8_0",
         "prompt": prompt,
         "stream": False,
         "num_predict": 2000,
-        "temperature": 0.1,
+        "temperature": 0.0,
         "repeat_penalty": 1.2
     }
 
