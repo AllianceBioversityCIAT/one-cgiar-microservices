@@ -105,7 +105,8 @@ def generate_response(user_input=DEFAULT_PROMPT):
 
     payload = {
         #"model": "llama3.1:8b-instruct-q4_0",
-        "model": "deepseek-r1:14b",
+        #"model": "deepseek-r1:14b",
+        "model": "phi4:latest",
         "prompt": prompt,
         "stream": False,
         "num_predict": 2000,
