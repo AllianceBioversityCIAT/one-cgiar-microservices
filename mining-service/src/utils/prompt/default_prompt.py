@@ -8,7 +8,7 @@ If no relevant information for either indicator is found, do not assume or inven
     "results": []
 }
 
----
+---------
 
 Instructions for Each Identified Result
 
@@ -23,9 +23,9 @@ Determine whether the result is:
 
 2. Policy Change
 - Refers to introductions or modifications of policies, strategies, or regulations addressing specific issues.
-- Must show measurable impacts or outcomes aligned with the project/organization’s goals.
+- Must show measurable impacts or outcomes aligned with the project/organization's goals.
 
----
+----------
 
 General Information Fields
 
@@ -55,7 +55,7 @@ For each result, specify:
 Additional Field for All Results:
 - alliance_main_contact_person
 
----
+----------
 
 Additional Requirements for "Capacity Sharing for Development"
 
@@ -71,17 +71,17 @@ Training Type
     If the document states explicit participant numbers (total, male, female, non_binary), use those values directly—unless there are contradictions.
 	
     3.	Partial gender counts:
-	•	If only some gender counts are specified (e.g., male participants but not female or non_binary):
-	•	Fill in the known count for each gender.
-	•	For any missing genders, use "Not collected".
-	•	If total_participants is provided:
-	•	Make sure the sum of known gender counts matches total_participants:
+	* If only some gender counts are specified (e.g., male participants but not female or non_binary):
+	    - Fill in the known count for each gender.
+	    - For any missing genders, use "Not collected".
+	* If total_participants is provided:
+	    - Make sure the sum of known gender counts matches total_participants:
         total_participants = (male_participants if known, else 0) + (female_participants if known, else 0) + (non_binary_participants if known, else 0)
-	•	If there is a discrepancy (e.g., total_participants is 15 but you can only account for 10 across known genders):
+	* If there is a discrepancy (e.g., total_participants is 15 but you can only account for 10 across known genders):
         - Keep the known gender counts.
         - Set any missing gender counts to "Not collected".
         - Adjust total_participants to reflect the sum of the known counts (in this example, 10). Do not invent the additional 5 participants.
-	•	If total_participants is not provided:
+	* If total_participants is not provided:
         - Record the known gender counts.
         - Set total_participants to "Not collected".
 
@@ -146,11 +146,5 @@ Follow this structure exactly:
             "alliance_main_contact_person": "<value or 'Not collected'>"
         }
     ]
-}
-
-If no results match the indicators, return exactly:
-
-{
-    "results": []
 }
 """
