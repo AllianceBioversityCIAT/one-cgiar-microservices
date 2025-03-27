@@ -64,7 +64,7 @@ Training Type
 - "Group training"
 
 - If “Group training”, validate and reinforce participant counting by ensuring:
-	1.	Extract participant lists:
+    1. Extract participant lists:
     If the document provides a full list of participants (e.g., in an appendix or table), use it to derive counts whenever possible.
 	
     2.	Use explicit participant counts:
