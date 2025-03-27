@@ -64,7 +64,7 @@ def generate_response(user_input=DEFAULT_PROMPT):
     generation_kwargs = dict(
         max_new_tokens=2000,
         do_sample=True,
-        temperature=0.0,
+        temperature=0.1,
         repetition_penalty=1.2,
         streamer=streamer,
     )
