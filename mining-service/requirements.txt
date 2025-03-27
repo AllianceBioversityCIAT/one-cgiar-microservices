@@ -5,6 +5,7 @@ pandas
 fitz
 PyMuPDF
 langchain
+langchain-community
 boto3
 python-dotenv
 python-docx
