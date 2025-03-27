@@ -35,8 +35,7 @@ def search_context(query):
     query_embedding = get_embedding(query)
     results = table.search(
         query_embedding.tolist(),
-        vector_column_name="vector",
-        distance_type="cosine"
+        vector_column_name="vector"
     ).to_list()
 
     context_list = [res["title"] for res in results if "title" in res]
