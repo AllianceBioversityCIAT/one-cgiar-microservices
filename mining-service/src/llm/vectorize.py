@@ -10,6 +10,7 @@ from pathlib import Path
 from src.utils.logger.logger_util import get_logger
 from lancedb.pydantic import Vector, LanceModel
 from sentence_transformers import SentenceTransformer
+from langchain_community.document_loaders import Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 logger = get_logger()
@@ -70,23 +71,27 @@ def extract_text(file_path):
     ext = Path(file_path).suffix.lower()
     text = ""
     try:
-        if ext == ".pdf":
-            logger.info("Extracting a pdf file")
-            doc = fitz.open(file_path)
-            for page in doc:
-                page_text = page.get_text()
-                if page_text:
-                    text += page_text + "\n"
-            doc.close()
-        elif ext == ".docx":
+        # if ext == ".pdf":
+        #     logger.info("Extracting a pdf file")
+        #     doc = fitz.open(file_path)
+        #     for page in doc:
+        #         page_text = page.get_text()
+        #         if page_text:
+        #             text += page_text + "\n"
+        #     doc.close()
+        if ext == ".docx":
             logger.info("Extracting a docx file")
-            doc = docx.Document(file_path)
-            paragraphs = [para.text for para in doc.paragraphs]
-            tables = []
-            for table in doc.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        tables.append(cell.text)
+            loader = Docx2txtLoader(file_path)
+            text = loader.load()
+
+
+            # doc = docx.Document(file_path)
+            # paragraphs = [para.text for para in doc.paragraphs]
+            # tables = []
+            # for table in doc.tables:
+            #     for row in table.rows:
+            #         for cell in row.cells:
+            #             tables.append(cell.text)
 
             text = "\n".join(paragraphs + tables)
         elif ext in [".xlsx", ".xls"]:
@@ -110,71 +115,71 @@ def embed_text(text):
 
 def extract_pdf_content(file_path, chunk_size=2000, chunk_overlap=100, is_reference=False):
     try:
-        doc = fitz.open(file_path)
-        pdf_name = Path(file_path).name
-        modification_date = str(datetime.datetime.fromtimestamp(
-            Path(file_path).stat().st_mtime))
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
-        data_list = []
-        batch_size = 100
-        for page_num in range(len(doc)):
-            logger.info(
-                f"Processing page {page_num + 1}/{len(doc)} of {pdf_name}")
-            try:
-                page = doc.load_page(page_num)
-                page_text = page.get_text()
-
-                if not page_text.strip():
-                    logger.info(
-                        f"Skipping empty page {page_num + 1} of {pdf_name}")
-                    continue
-
-                chunks = text_splitter.split_text(page_text)
         # doc = fitz.open(file_path)
         # pdf_name = Path(file_path).name
         # modification_date = str(datetime.datetime.fromtimestamp(
         #     Path(file_path).stat().st_mtime))
-        
-        # full_text = ""
-        # for page in doc:
-        #     full_text += page.get_text() + "\n"
-        # doc.close()
-
         # text_splitter = RecursiveCharacterTextSplitter(
-        #     chunk_size=chunk_size,
-        #     chunk_overlap=chunk_overlap,
-        #     length_function=len
-        # )
+        #     chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
         # data_list = []
         # batch_size = 100
+        # for page_num in range(len(doc)):
+        #     logger.info(
+        #         f"Processing page {page_num + 1}/{len(doc)} of {pdf_name}")
+        #     try:
+        #         page = doc.load_page(page_num)
+        #         page_text = page.get_text()
 
-        # chunks = text_splitter.split_text(full_text)        
-                for chunk in chunks:
-                #for idx, chunk in enumerate(chunks):
-                    cleaned_text = re.sub(
-                        r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
-                    if cleaned_text:
-                        embedding_vector = embed_text(cleaned_text)
-                        data = {
-                            "pageId": str(page_num + 1),
-                            #"pageId": str(idx + 1),
-                            "vector": embedding_vector,
-                            "title": cleaned_text,
-                            "Namedocument": pdf_name,
-                            "modificationD": modification_date,
-                            "is_reference": is_reference
-                        }
-                        data_list.append(data)
-                        if len(data_list) >= batch_size:
-                            table.add([Content(**item).model_dump()
-                                        for item in data_list])
-                            data_list = []
+        #         if not page_text.strip():
+        #             logger.info(
+        #                 f"Skipping empty page {page_num + 1} of {pdf_name}")
+        #             continue
 
-            except Exception as e:
-                logger.error(
-                    f"Error processing page {page_num + 1} of {pdf_name}. \n {e}")
-                continue
+        #         chunks = text_splitter.split_text(page_text)
+        doc = fitz.open(file_path)
+        pdf_name = Path(file_path).name
+        modification_date = str(datetime.datetime.fromtimestamp(
+            Path(file_path).stat().st_mtime))
+        
+        full_text = ""
+        for page in doc:
+            full_text += page.get_text() + "\n"
+        doc.close()
+
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len
+        )
+        data_list = []
+        batch_size = 100
+
+        chunks = text_splitter.split_text(full_text)        
+        # for chunk in chunks:
+        for idx, chunk in enumerate(chunks):
+            cleaned_text = re.sub(
+                r"[&\[\]\-\)\(\-]", "", chunk).lower().strip()
+            if cleaned_text:
+                embedding_vector = embed_text(cleaned_text)
+                data = {
+                    # "pageId": str(page_num + 1),
+                    "pageId": str(idx + 1),
+                    "vector": embedding_vector,
+                    "title": cleaned_text,
+                    "Namedocument": pdf_name,
+                    "modificationD": modification_date,
+                    "is_reference": is_reference
+                }
+                data_list.append(data)
+                if len(data_list) >= batch_size:
+                    table.add([Content(**item).model_dump()
+                                for item in data_list])
+                    data_list = []
+
+            # except Exception as e:
+            #     logger.error(
+            #         f"Error processing page {page_num + 1} of {pdf_name}. \n {e}")
+            #     continue
 
         if data_list:
             table.add([Content(**item).model_dump() for item in data_list])
