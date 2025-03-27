@@ -198,9 +198,9 @@ def extract_content(file_path, chunk_size=1000, is_reference=False):
     try:
         logger.debug(f"Processing document: {file_path}")
         text = extract_text(file_path)
-        if not text.strip():
-            logger.info(f"No text extracted from {file_path}. Skipping.")
-            return
+        # if not text.strip():
+        #     logger.info(f"No text extracted from {file_path}. Skipping.")
+        #     return
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=0, length_function=len)
         chunks = text_splitter.split_text(text)
