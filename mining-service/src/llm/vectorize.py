@@ -93,7 +93,7 @@ def extract_text(file_path):
             #         for cell in row.cells:
             #             tables.append(cell.text)
 
-            text = "\n".join(paragraphs + tables)
+            #text = "\n".join(paragraphs + tables)
         elif ext in [".xlsx", ".xls"]:
             logger.info("Extracting an excel file")
             df = pd.read_excel(file_path)
