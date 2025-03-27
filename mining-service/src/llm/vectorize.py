@@ -81,19 +81,17 @@ def extract_text(file_path):
         #             text += page_text + "\n"
         #     doc.close()
         if ext == ".docx":
-            # logger.info("Extracting a docx file")
-            # loader = Docx2txtLoader(file_path)
-            # text = loader.load()
-            # print(text)
-
-
-            doc = docx2txt(file_path)
-            paragraphs = [para.text for para in doc.paragraphs]
-            tables = []
-            for table in doc.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        tables.append(cell.text)
+            logger.info("Extracting a docx file")
+            loader = Docx2txtLoader(file_path)
+            text = loader.load()
+            #print(text)
+            # doc = docx2txt(file_path)
+            # paragraphs = [para.text for para in doc.paragraphs]
+            # tables = []
+            # for table in doc.tables:
+            #     for row in table.rows:
+            #         for cell in row.cells:
+            #             tables.append(cell.text)
 
             text = "\n".join(paragraphs + tables)
         elif ext in [".xlsx", ".xls"]:
