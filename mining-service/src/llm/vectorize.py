@@ -83,7 +83,10 @@ def extract_text(file_path):
         if ext == ".docx":
             logger.info("Extracting a docx file")
             loader = Docx2txtLoader(file_path)
-            text = loader.load()
+            documents = loader.load()
+            full_text = "\n".join([doc.page_content for doc in documents])
+            lines = [line.strip() for line in full_text.splitlines() if line.strip()]
+            text = "\n\n".join(lines)
             #print(text)
             # doc = docx2txt(file_path)
             # paragraphs = [para.text for para in doc.paragraphs]
@@ -198,9 +201,9 @@ def extract_content(file_path, chunk_size=1000, is_reference=False):
     try:
         logger.debug(f"Processing document: {file_path}")
         text = extract_text(file_path)
-        # if not text.strip():
-        #     logger.info(f"No text extracted from {file_path}. Skipping.")
-        #     return
+        if not text.strip():
+            logger.info(f"No text extracted from {file_path}. Skipping.")
+            return
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=0, length_function=len)
         chunks = text_splitter.split_text(text)
