@@ -87,7 +87,7 @@ def extract_text(file_path):
             # print(text)
 
 
-            doc = docx2txt.Document(file_path)
+            doc = docx2txt(file_path)
             paragraphs = [para.text for para in doc.paragraphs]
             tables = []
             for table in doc.tables:
