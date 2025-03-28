@@ -29,7 +29,7 @@ embedding_model = SentenceTransformer(embedding_model_name)
 
 
 def get_embedding(text):
-    return embedding_model.encode(text)
+    return embedding_model.encode(text, normalize_embeddings=True)
 
 
 def search_context(query):
