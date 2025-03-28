@@ -211,7 +211,7 @@ def extract_pdf_content(file_path, chunk_size=2000, chunk_overlap=100, is_refere
             doc.close()
 
 
-def extract_content(file_path, chunk_size=1000, is_reference=False):
+def extract_content(file_path, chunk_size=500, is_reference=False):
     try:
         logger.debug(f"Processing document: {file_path}")
         text = extract_text(file_path)
@@ -219,7 +219,7 @@ def extract_content(file_path, chunk_size=1000, is_reference=False):
             logger.info(f"No text extracted from {file_path}. Skipping.")
             return
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size, chunk_overlap=0, length_function=len)
+            chunk_size=chunk_size, chunk_overlap=50, length_function=len)
         chunks = text_splitter.split_text(text)
         doc_name = Path(file_path).name
         modification_date = str(datetime.datetime.fromtimestamp(
