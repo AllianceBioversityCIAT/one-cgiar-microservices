@@ -141,7 +141,7 @@ def extract_text_from_txt(file_path):
 
 
 def embed_text(text):
-    return embedding_model.encode(text, device=0).tolist()
+    return embedding_model.encode(text, normalize_embeddings=True, device=0).tolist()
 
 
 def extract_pdf_content(file_path, chunk_size=2000, chunk_overlap=100, is_reference=False):
