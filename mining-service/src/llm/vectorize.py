@@ -99,22 +99,22 @@ def extract_text(file_path):
             #text = "\n".join(paragraphs + tables)
         elif ext in [".xlsx", ".xls"]:
             logger.info("Extracting an excel file")
-            # df = pd.read_excel(file_path)
-            # text = " ".join(df.astype(str).values.flatten().tolist())
-            excel_data = pd.read_excel(file_path, sheet_name=None)  # Carga todas las hojas
-            text = ""
+            df = pd.read_excel(file_path)
+            text = " ".join(df.astype(str).values.flatten().tolist())
+            # excel_data = pd.read_excel(file_path, sheet_name=None)  # Carga todas las hojas
+            # text = ""
 
-            for sheet_name, df in excel_data.items():
-                text += f"\n### Sheet: {sheet_name}\n\n"
+            # for sheet_name, df in excel_data.items():
+            #     text += f"\n### Sheet: {sheet_name}\n\n"
 
-                if not df.empty:
-                    text += "\t".join(df.columns.astype(str)) + "\n"
+            #     if not df.empty:
+            #         text += "\t".join(df.columns.astype(str)) + "\n"
 
-                    for _, row in df.iterrows():
-                        row_text = "\t".join(row.astype(str))
-                        text += row_text + "\n"
-                else:
-                    text += "Empty sheet.\n"
+            #         for _, row in df.iterrows():
+            #             row_text = "\t".join(row.astype(str))
+            #             text += row_text + "\n"
+            #     else:
+            #         text += "Empty sheet.\n"
         elif ext == ".txt":
             logger.info("Extracting a text file")
             with open(file_path, "r", encoding="utf-8") as f:
