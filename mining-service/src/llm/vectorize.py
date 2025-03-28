@@ -99,8 +99,23 @@ def extract_text(file_path):
             #text = "\n".join(paragraphs + tables)
         elif ext in [".xlsx", ".xls"]:
             logger.info("Extracting an excel file")
-            df = pd.read_excel(file_path)
-            text = " ".join(df.astype(str).values.flatten().tolist())
+            excel_data = pd.read_excel(file_path, sheet_name=None)
+            structured_text = []
+            
+            for sheet_name, df in excel_data.items():
+                structured_text.append(f"SHEET: {sheet_name}")
+                
+                if not df.empty:
+                    headers = [str(col) for col in df.columns]
+                    structured_text.append("HEADERS: " + " | ".join(headers))
+                    
+                    for idx, row in df.iterrows():
+                        row_values = [str(val) for val in row.values]
+                        structured_text.append(f"ROW {idx}: " + " | ".join(row_values))
+                        
+                    structured_text.append("--END OF SHEET--")
+                    text = "\n".join(structured_text)
+                    
             # excel_data = pd.read_excel(file_path, sheet_name=None)  # Carga todas las hojas
             # text = ""
 
