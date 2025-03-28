@@ -12,6 +12,6 @@ def start_consumer():
     process_file()
     if process_file:
         logger.info("File processed successfully.")
-        generate_response("Which countries are part of region 14? The code is the first number and the region is the last number")
+        generate_response("Which countries are part of region 14? Each entry in the list has a four-part structure: the first number represents the country code, followed by ISO code, the country name, and ending with the region number.")
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")
