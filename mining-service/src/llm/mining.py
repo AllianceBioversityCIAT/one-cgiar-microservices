@@ -55,8 +55,10 @@ generator = pipeline("text-generation", model=model,
                      tokenizer=tokenizer, device=0)
 
 
-def generate_response(user_input=DEFAULT_PROMPT):
-    query_for_embedding = "Extract relevant results and indicators from the document"
+def generate_response(user_input):
+    #query_for_embedding = "Extract relevant results and indicators from the document"
+    ## Testing with a sample query
+    user_input = "Which region is Uganda?"
     context = search_context(user_input) 
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
