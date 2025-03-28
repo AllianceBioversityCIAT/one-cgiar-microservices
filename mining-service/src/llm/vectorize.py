@@ -68,74 +68,73 @@ def load_processed_files():
         return set()
 
 
-def extract_text(file_path):
-    ext = Path(file_path).suffix.lower()
+def extract_text_from_excel(file_path):
     text = ""
     try:
-        # if ext == ".pdf":
-        #     logger.info("Extracting a pdf file")
-        #     doc = fitz.open(file_path)
-        #     for page in doc:
-        #         page_text = page.get_text()
-        #         if page_text:
-        #             text += page_text + "\n"
-        #     doc.close()
-        if ext == ".docx":
-            logger.info("Extracting a docx file")
-            loader = Docx2txtLoader(file_path)
-            documents = loader.load()
-            full_text = "\n".join([doc.page_content for doc in documents])
-            lines = [line.strip() for line in full_text.splitlines() if line.strip()]
-            text = "\n\n".join(lines)
-            #print(text)
-            # doc = docx2txt(file_path)
-            # paragraphs = [para.text for para in doc.paragraphs]
-            # tables = []
-            # for table in doc.tables:
-            #     for row in table.rows:
-            #         for cell in row.cells:
-            #             tables.append(cell.text)
+        logger.info("Extracting an excel file")
+        excel_data = pd.read_excel(file_path, sheet_name=None)  # Carga todas las hojas
+        structured_text = []
 
-            #text = "\n".join(paragraphs + tables)
-        elif ext in [".xlsx", ".xls"]:
-            logger.info("Extracting an excel file")
-            excel_data = pd.read_excel(file_path, sheet_name=None)
-            structured_text = []
-            
-            for sheet_name, df in excel_data.items():
-                structured_text.append(f"SHEET: {sheet_name}")
-                
-                if not df.empty:
-                    headers = [str(col) for col in df.columns]
-                    structured_text.append("HEADERS: " + " | ".join(headers))
-                    
-                    for idx, row in df.iterrows():
-                        row_values = [str(val) for val in row.values]
-                        structured_text.append(f"ROW {idx}: " + " | ".join(row_values))
-                        
-                    structured_text.append("--END OF SHEET--")
-                    text = "\n".join(structured_text)
-                    
-            # excel_data = pd.read_excel(file_path, sheet_name=None)  # Carga todas las hojas
-            # text = ""
+        for sheet_name, df in excel_data.items():
+            structured_text.append(f"SHEET: {sheet_name}")
 
-            # for sheet_name, df in excel_data.items():
-            #     text += f"\n### Sheet: {sheet_name}\n\n"
+            if not df.empty:
+                headers = [str(col) for col in df.columns]
+                structured_text.append("HEADERS:\t" + "\t".join(headers))
 
-            #     if not df.empty:
-            #         text += "\t".join(df.columns.astype(str)) + "\n"
+                for idx, row in df.iterrows():
+                    row_values = [str(val) for val in row.values]
+                    structured_text.append(f"ROW {idx}:\t" + "\t".join(row_values))
+            else:
+                structured_text.append("Empty sheet.")
 
-            #         for _, row in df.iterrows():
-            #             row_text = "\t".join(row.astype(str))
-            #             text += row_text + "\n"
-            #     else:
-            #         text += "Empty sheet.\n"
-        elif ext == ".txt":
-            logger.info("Extracting a text file")
-            with open(file_path, "r", encoding="utf-8") as f:
-                text = f.read()
-        else:
-            print(f"Unsupported format: {ext}")
+            structured_text.append("--END OF SHEET--")
+
+        text = "\n".join(structured_text)
+    except Exception as e:
+        print(f"Error extracting text from {file_path}: {e}")
+    return text
+
+
+def extract_text_from_docx(file_path):
+    text = ""
+    try:
+        logger.info("Extracting a docx file")
+        loader = Docx2txtLoader(file_path)
+        documents = loader.load()
+        full_text = "\n".join([doc.page_content for doc in documents])
+
+        doc = docx.Document(file_path)
+        table_text = []
+
+        for i, table in enumerate(doc.tables):
+            table_text.append(f"\n--- TABLE {i+1} ---")
+
+            if len(table.rows) > 0:
+                headers = [cell.text.strip() for cell in table.rows[0].cells]
+                table_text.append("HEADERS:\t" + "\t".join(headers))
+
+            for j, row in enumerate(table.rows[1:], 1):
+                row_data = [cell.text.strip() for cell in row.cells]
+                table_text.append(f"ROW {j}:\t" + "\t".join(row_data))
+
+            table_text.append("--- END TABLE ---\n")
+
+        combined_text = full_text + "\n" + "\n".join(table_text)
+        lines = [line.strip() for line in combined_text.splitlines() if line.strip()]
+        text = "\n\n".join(lines)
+
+    except Exception as e:
+        print(f"Error extracting text from {file_path}: {e}")
+    return text
+
+
+def extract_text_from_txt(file_path):
+    text = ""
+    try:
+        logger.info("Extracting a text file")
+        with open(file_path, "r", encoding="utf-8") as f:
+            text = f.read()
     except Exception as e:
         print(f"Error extracting text from {file_path}: {e}")
     return text
@@ -226,15 +225,26 @@ def extract_pdf_content(file_path, chunk_size=2000, chunk_overlap=100, is_refere
             doc.close()
 
 
-def extract_content(file_path, chunk_size=500, is_reference=False):
+def extract_content(file_path, chunk_size=500, chunk_overlap=50, is_reference=False):
     try:
         logger.debug(f"Processing document: {file_path}")
-        text = extract_text(file_path)
+        ext = Path(file_path).suffix.lower()
+        if ext in [".xlsx", ".xls"]:
+            text = extract_text_from_excel(file_path)
+        elif ext == ".docx":
+            text = extract_text_from_docx(file_path)
+        elif ext == ".txt":
+            text = extract_text_from_txt(file_path)
+        else:
+            print(f"Unsupported format: {ext}")
+        
         if not text.strip():
             logger.info(f"No text extracted from {file_path}. Skipping.")
             return
+        
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size, chunk_overlap=50, length_function=len)
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
+        
         chunks = text_splitter.split_text(text)
         doc_name = Path(file_path).name
         modification_date = str(datetime.datetime.fromtimestamp(
@@ -290,5 +300,6 @@ def process_file():
 
             save_processed_file(str(file))
             return True
+
         except Exception as e:
             logger.error(f"Error processing file: {file}. \n {e}")

@@ -6,12 +6,12 @@ from src.utils.s3.s3_util import download_document_s3, delete_local_file
 logger = get_logger()
 
 def start_consumer():
-    key = "clarisa_countries.xlsx"
+    key = "ITR D314 Apr 20 2023.docx"
     logger.debug("Starting the mining service...")
     download_document_s3("microservice-mining", key)
     process_file()
     if process_file:
         logger.info("File processed successfully.")
-        generate_response("Which countries are part of region 14? Each entry in the list has a four-part structure: the first number represents the country code, followed by ISO code, the country name, and ending with the region number.")
+        generate_response()
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")

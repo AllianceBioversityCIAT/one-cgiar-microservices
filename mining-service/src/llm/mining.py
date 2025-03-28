@@ -38,12 +38,12 @@ def search_context(query):
         vector_column_name="vector"
     ).to_list()
 
-    # context_list = [res["title"] for res in results if "title" in res]
     context_list = list(set(res["title"] for res in results if "title" in res))
     logger.debug(f"Context list: {context_list}")
     context = " ".join(context_list)
     
     return context
+
 
 def clear_table_data():
     if table:
@@ -57,8 +57,7 @@ generator = pipeline("text-generation", model=model,
                      tokenizer=tokenizer, device=0)
 
 
-def generate_response(user_input):
-    #query_for_embedding = "Extract relevant results and indicators from the document"
+def generate_response(user_input=DEFAULT_PROMPT):
     context = search_context(user_input) 
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 
