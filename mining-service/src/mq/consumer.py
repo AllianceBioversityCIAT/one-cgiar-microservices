@@ -1,12 +1,12 @@
-from src.utils.s3.s3_util import download_document_s3, delete_local_file
 from src.llm.vectorize import process_file
-from src.utils.logger.logger_util import get_logger
 from src.llm.mining import generate_response
+from src.utils.logger.logger_util import get_logger
+from src.utils.s3.s3_util import download_document_s3, delete_local_file
 
 logger = get_logger()
 
 def start_consumer():
-    key = "ITR D314 Apr 20 2023.docx"
+    key = "clarisa_countries.xlsx"
     logger.debug("Starting the mining service...")
     download_document_s3("microservice-mining", key)
     process_file()

@@ -1,14 +1,14 @@
 import json
-import lancedb
 import torch
 import time
+import lancedb
 import requests
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
 from threading import Thread
-from src.utils.prompt.default_prompt import DEFAULT_PROMPT
 from src.utils.logger.logger_util import get_logger
+from sentence_transformers import SentenceTransformer
+from src.utils.prompt.default_prompt import DEFAULT_PROMPT
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
 
 logger = get_logger()
 
@@ -97,31 +97,3 @@ def generate_response(user_input=DEFAULT_PROMPT):
 
     clear_table_data()
     return generated_text.strip()
-
-
-# def generate_response(user_input=DEFAULT_PROMPT):
-#     context = search_context(user_input)
-#     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
-
-#     payload = {
-#         "model": "llama3.1:8b-instruct-q4_0",
-#         #"model": "deepseek-r1:14b",
-#         #"model": "phi4:latest",
-#         "prompt": prompt,
-#         "stream": False,
-#         "num_predict": 2000,
-#         "temperature": 0.0,
-#         "repeat_penalty": 1.2
-#     }
-
-#     try:
-#         response = requests.post("http://localhost:11434/api/generate", json=payload)
-#         response.raise_for_status()
-#         raw_json_string = response.json()["response"]
-#         cleaned_json = json.loads(raw_json_string)
-#         print("📦 Full Ollama response JSON:\n" + json.dumps(cleaned_json, indent=4))
-#         clear_table_data()
-#         return json.dumps(cleaned_json, indent=4)
-#     except Exception as e:
-#         logger.error(f"Error generating response: {e}")
-#         return "Error generating report."
