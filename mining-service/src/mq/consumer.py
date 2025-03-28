@@ -12,6 +12,6 @@ def start_consumer():
     process_file()
     if process_file:
         logger.info("File processed successfully.")
-        generate_response()
+        generate_response("Which region is Uganda?")
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")
