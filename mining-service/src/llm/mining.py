@@ -38,7 +38,8 @@ def search_context(query):
         vector_column_name="vector"
     ).to_list()
 
-    context_list = list(set(res["title"] for res in results if "title" in res))
+    #context_list = list(set(res["title"] for res in results if "title" in res))
+    context_list = [res["title"] for res in results if "title" in res]
     logger.debug(f"Context list: {context_list}")
     context = " ".join(context_list)
     
