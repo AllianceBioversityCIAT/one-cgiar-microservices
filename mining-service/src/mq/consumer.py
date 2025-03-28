@@ -12,6 +12,6 @@ def start_consumer():
     process_file()
     if process_file:
         logger.info("File processed successfully.")
-        generate_response("Which is the code and region number of Latvia? The code is the first number and the region is the last number")
+        generate_response("Which is the code and region number of State of Palestine? The code is the first number and the region is the last number")
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")
