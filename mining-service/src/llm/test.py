@@ -19,18 +19,7 @@ vector_dim = 768
 
 
 db = lancedb.connect(DB_PATH)
-try:
-    table = db.open_table(TABLE_NAME)
-except Exception:
-    schema = pa.schema([
-        pa.field("pageId", pa.string()),
-        pa.field("vector", pa.list_(pa.float32(), vector_dim)),
-        pa.field("title", pa.string()),
-        pa.field("Namedocument", pa.string()),
-        pa.field("modificationD", pa.string()),
-        pa.field("is_reference", pa.bool_())
-    ])
-    table = db.create_table(TABLE_NAME, schema=schema)
+table = db.open_table(TABLE_NAME)
 
 
 gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
@@ -57,8 +46,7 @@ def clear_table_data():
 
 
 def classify_node(state):
-    file_name = Path(state["file_path"]).name
-    # prompt_query = "Capacity Sharing for Development or Policy Change"
+    #file_name = Path(state["file_path"]).name
 
     prompt_query = f"""
     You are an assistant analyzing the following context and classifying it according to the following indicators:
@@ -81,20 +69,15 @@ def classify_node(state):
     }}
     ---
     """
-    context = search_context_from_db(prompt_query, Namedocument=file_name)
-    prompt = f"Context: {context}\nQuestion: {prompt_query}\nFinal Answer:"
+    context = search_context_from_db(prompt_query)
+    prompt = f"Context: {context}\nQuestion: {prompt_query}"
 
     #streamer = TextIteratorStreamer(tokenizer)
-    response = generator(prompt, max_new_tokens=2000, do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
-    # 🔍 Limpieza de tokens y extracción del JSON
-    cleaned = response.replace("<|begin▁of▁sentence|>", "").strip()
-
-    if "Final Answer:" in cleaned:
-        cleaned = cleaned.split("Final Answer:")[-1].strip()
-
+    response = generator(prompt, max_new_tokens=100, do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
+    
     try:
-        json_start = cleaned.find("{")
-        result = json.loads(cleaned[json_start:])
+        json_start = response.find("{")
+        result = json.loads(response[json_start:])
     except Exception:
         result = {
             "indicator": "None",
@@ -109,15 +92,12 @@ def classify_node(state):
 
 
 def participants_node(state):
-    file_name = Path(state["file_path"]).name
+    #file_name = Path(state["file_path"]).name
     if state["classified_data"]["indicator"] != "Capacity Sharing for Development":
         return state  # no hace nada
 
-    prompt_query = "participant list, number of people trained, gender distribution"
-    context = search_context_from_db(prompt_query, Namedocument=file_name)
-
-    prompt = f"""
-    Based on the following context, extract participant-related training info.
+    prompt_query = f"""
+    Based on the following context, extract participant-related training info (people trained).
 
     Return:
     {{
@@ -131,13 +111,10 @@ def participants_node(state):
         "end_date": "...",
         "length_of_training": "..."
     }}
-
-    Context:
-    ---
-    {context}
-    ---
     """
-    response = generator(prompt, max_new_tokens=512, temperature=0.2)[0]["generated_text"]
+    context = search_context_from_db(prompt_query)
+    prompt = f"Context: {context}\nQuestion: {prompt_query}"
+    response = generator(prompt, max_new_tokens=1000, do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
 
     try:
         json_start = response.find("{")
@@ -160,12 +137,10 @@ def participants_node(state):
 
 
 def geoscope_node(state):
-    file_name = Path(state["file_path"]).name
-    prompt_query = "locations, countries, regions where the training or policy was applied"
-    context = search_context_from_db(prompt_query, Namedocument=file_name)
+    #file_name = Path(state["file_path"]).name
 
-    prompt = f"""
-    Based on the context, determine the geographical scope of the project.
+    prompt_query = f"""
+    Based on the context, determine the geographical scope of the project (locations, countries, regions where the training or policy was applied).
 
     Return:
     {{
@@ -178,7 +153,9 @@ def geoscope_node(state):
     {context}
     ---
     """
-    response = generator(prompt, max_new_tokens=512, temperature=0.2)[0]["generated_text"]
+    context = search_context_from_db(prompt_query)
+    prompt = f"Context: {context}\nQuestion: {prompt_query}"
+    response = generator(prompt, max_new_tokens=1000,  do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
 
     try:
         json_start = response.find("{")
@@ -223,20 +200,21 @@ def assemble_node(state):
     return {"final_output": {"results": [result]}}
 
 
-workflow = StateGraph()
+def generate():
+    workflow = StateGraph()
 
-workflow.add_node("classify", classify_node)
-workflow.add_node("participants", participants_node)
-workflow.add_node("geoscope", geoscope_node)
-workflow.add_node("assemble", assemble_node)
+    workflow.add_node("classify", classify_node)
+    workflow.add_node("participants", participants_node)
+    workflow.add_node("geoscope", geoscope_node)
+    workflow.add_node("assemble", assemble_node)
 
-workflow.set_entry_point("classify")
-workflow.add_edge("classify", "participants")
-workflow.add_edge("participants", "geoscope")
-workflow.add_edge("geoscope", "assemble")
-workflow.set_finish_point("assemble")
+    workflow.set_entry_point("classify")
+    workflow.add_edge("classify", "participants")
+    workflow.add_edge("participants", "geoscope")
+    workflow.add_edge("geoscope", "assemble")
+    workflow.set_finish_point("assemble")
 
-app = workflow.compile()
+    app = workflow.compile()
 
-result = app.invoke({"file_path": "/ruta/a/documento.docx"})
-print(json.dumps(result["final_output"], indent=2))
+#result = app.invoke({"file_path": "/ruta/a/documento.docx"})
+#print(json.dumps(result["final_output"], indent=2))
