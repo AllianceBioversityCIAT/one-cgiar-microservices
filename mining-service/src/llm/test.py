@@ -202,7 +202,6 @@ def assemble_node(state):
         "alliance_main_contact_person": "Not collected"
     }
 
-
     clear_table_data()
     return {"final_output": {"results": [result]}}
 
@@ -240,6 +239,9 @@ def generate():
     workflow.set_finish_point("assemble")
 
     app = workflow.compile()
+
+    result = app.invoke({"file_path": "dummy.docx"})
+    print(json.dumps(result["final_output"], indent=2))
 
     del generator
     generator = None
