@@ -1,0 +1,13 @@
+torch
+transformers
+lancedb
+fitz
+PyMuPDF
+PyPDF2
+python-docx
+pandas
+sentence_transformers
+pyarrow
+pathlib
+langchain
+accelerate
