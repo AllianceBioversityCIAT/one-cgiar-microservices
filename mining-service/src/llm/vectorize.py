@@ -196,7 +196,7 @@ def extract_pdf_content(file_path, chunk_size=2000, chunk_overlap=100, is_refere
             doc.close()
 
 
-def extract_content(file_path, chunk_size=1000, chunk_overlap=50, is_reference=False):
+def extract_content(file_path, chunk_size=1000, chunk_overlap=100, is_reference=False):
     try:
         logger.debug(f"Processing document: {file_path}")
         ext = Path(file_path).suffix.lower()
