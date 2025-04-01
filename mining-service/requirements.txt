@@ -11,3 +11,4 @@ python-dotenv
 python-docx
 docx2txt
 openpyxl
+langgraph

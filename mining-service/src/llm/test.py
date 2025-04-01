@@ -22,12 +22,6 @@ db = lancedb.connect(DB_PATH)
 table = db.open_table(TABLE_NAME)
 
 
-gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
-model = AutoModelForCausalLM.from_pretrained(gen_model_name)
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer, device=0)
-
-
 def search_context_from_db(prompt):
     vector = embedding_model.encode(prompt, normalize_embeddings=True).tolist()
     search = table.search(vector, vector_column_name="vector")
@@ -45,7 +39,7 @@ def clear_table_data():
         logger.info("All vectors deleted from the table.")
 
 
-def classify_node(state):
+def classify_node(state, generator):
     #file_name = Path(state["file_path"]).name
 
     prompt_query = f"""
@@ -91,7 +85,7 @@ def classify_node(state):
     }
 
 
-def participants_node(state):
+def participants_node(state, generator):
     #file_name = Path(state["file_path"]).name
     if state["classified_data"]["indicator"] != "Capacity Sharing for Development":
         return state  # no hace nada
@@ -136,7 +130,7 @@ def participants_node(state):
     return state
 
 
-def geoscope_node(state):
+def geoscope_node(state, generator):
     #file_name = Path(state["file_path"]).name
 
     prompt_query = f"""
@@ -201,11 +195,16 @@ def assemble_node(state):
 
 
 def generate():
+    gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+    tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
+    model = AutoModelForCausalLM.from_pretrained(gen_model_name)
+    generator = pipeline("text-generation", model=model, tokenizer=tokenizer, device=0)
+
     workflow = StateGraph()
 
-    workflow.add_node("classify", classify_node)
-    workflow.add_node("participants", participants_node)
-    workflow.add_node("geoscope", geoscope_node)
+    workflow.add_node("classify", lambda state: classify_node(state, generator))
+    workflow.add_node("participants", lambda state: participants_node(state, generator))
+    workflow.add_node("geoscope", lambda state: geoscope_node(state, generator))
     workflow.add_node("assemble", assemble_node)
 
     workflow.set_entry_point("classify")
