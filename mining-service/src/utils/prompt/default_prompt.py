@@ -198,10 +198,4 @@ Follow this exact structure:
         }
     ]
 }
-
-If no results match the indicators, return exactly:
-
-{
-    "results": []
-}
 """
