@@ -121,7 +121,7 @@ def participants_node(state, generator):
     """
     context = search_context_from_db(prompt_query)
     prompt = f"Context: {context}\nQuestion: {prompt_query}"
-    response = generator(prompt, max_new_tokens=1000, do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
+    response = generator(prompt, max_new_tokens=500, do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
 
     try:
         json_start = response.find("{")
@@ -157,7 +157,7 @@ def geoscope_node(state, generator):
     """
     context = search_context_from_db(prompt_query)
     prompt = f"Context: {context}\nQuestion: {prompt_query}"
-    response = generator(prompt, max_new_tokens=1000,  do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
+    response = generator(prompt, max_new_tokens=500,  do_sample=True, temperature=0.1, repetition_penalty=1.2)[0]["generated_text"]
 
     try:
         json_start = response.find("{")
