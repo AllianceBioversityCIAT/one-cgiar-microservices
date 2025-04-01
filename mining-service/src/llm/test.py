@@ -1,11 +1,23 @@
 import json
 import lancedb
+import torch, gc
 import pyarrow as pa
 from pathlib import Path
 from langgraph.graph import StateGraph, END
 from src.utils.logger.logger_util import get_logger
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, TextIteratorStreamer
+
+generator = None
+def get_generator():
+    global generator
+    if generator is None:
+        gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+        tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
+        model = AutoModelForCausalLM.from_pretrained(gen_model_name)
+        generator = pipeline("text-generation", model=model, tokenizer=tokenizer, device=0)
+    return generator
+
 
 logger = get_logger()
 
@@ -195,10 +207,8 @@ def assemble_node(state):
 
 
 def generate():
-    gen_model_name = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-    tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
-    model = AutoModelForCausalLM.from_pretrained(gen_model_name)
-    generator = pipeline("text-generation", model=model, tokenizer=tokenizer, device=0)
+    global generator
+    generator = get_generator()
 
     workflow = StateGraph()
 
@@ -214,6 +224,12 @@ def generate():
     workflow.set_finish_point("assemble")
 
     app = workflow.compile()
+
+    del generator
+    generator = None
+    torch.cuda.empty_cache()
+    gc.collect()
+
 
 #result = app.invoke({"file_path": "/ruta/a/documento.docx"})
 #print(json.dumps(result["final_output"], indent=2))

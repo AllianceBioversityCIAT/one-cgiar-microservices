@@ -1,5 +1,5 @@
 from src.llm.vectorize import process_file
-from src.llm.mining import generate_response
+#from src.llm.mining import generate_response
 from src.llm.test import generate
 from src.utils.logger.logger_util import get_logger
 from src.utils.s3.s3_util import download_document_s3, delete_local_file
