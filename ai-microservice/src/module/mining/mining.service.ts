@@ -31,7 +31,7 @@ export class MiningService {
       const { role, tool } = createMiningDto;
       const assistantId = this.configService.get<string>('ASSISTANT_ID');
 
-      const content = `Analyze the attached document to extract results.`;
+      const content = `Analyze the attached document to extract results. You are a strict data extraction API. Only return pure JSON. Never include markdown blocks or any explanation.`;
 
       await this._assistantService.findOne(assistantId);
       const newThread = await this._threadsService.create();
@@ -48,16 +48,17 @@ export class MiningService {
 
       let parsedData;
       if (typeof newMessage.data === 'string') {
+        const raw = newMessage.data.trim();
+        const cleaned = raw.replace(/```(?:json)?/g, '').trim();
+
         try {
-          parsedData = JSON.parse(newMessage.data);
+          parsedData = JSON.parse(cleaned);
         } catch (parseError) {
           throw new Error(
             'Failed to parse AI Model Data Response to JSON: ' +
               parseError.message,
           );
         }
-      } else {
-        parsedData = newMessage.data;
       }
 
       this._logger.log(`Mining complete successfully: ${parsedData}`);
