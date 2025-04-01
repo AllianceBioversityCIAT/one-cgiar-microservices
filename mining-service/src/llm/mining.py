@@ -3,6 +3,7 @@ import torch
 import time
 import lancedb
 import requests
+import pyarrow as pa
 from pathlib import Path
 from threading import Thread
 from src.utils.logger.logger_util import get_logger
@@ -10,17 +11,30 @@ from sentence_transformers import SentenceTransformer
 from src.utils.prompt.default_prompt import DEFAULT_PROMPT
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
 
+
 logger = get_logger()
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = str(BASE_DIR / "src" / "db" / "miningdb")
 TABLE_NAME = "files"
+vector_dim = 768
+
 
 db = lancedb.connect(DB_PATH)
 try:
     table = db.open_table(TABLE_NAME)
 except Exception:
+    schema = pa.schema([
+        pa.field("pageId", pa.string()),
+        pa.field("vector", pa.list_(pa.float32(), vector_dim)),
+        pa.field("title", pa.string()),
+        pa.field("Namedocument", pa.string()),
+        pa.field("modificationD", pa.string()),
+        pa.field("is_reference", pa.bool_())
+    ])
     table = db.create_table(TABLE_NAME, schema=schema)
+
 
 # embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embedding_model_name = "sentence-transformers/all-mpnet-base-v2"
