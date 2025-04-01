@@ -2,7 +2,7 @@ import re
 import docx
 import fitz
 import lancedb
-import docx2txt
+#import docx2txt
 import datetime
 import pandas as pd
 import pyarrow as pa
