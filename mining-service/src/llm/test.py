@@ -154,11 +154,6 @@ def geoscope_node(state, generator):
     "level": "<Global | Regional | National | Sub-national | This is yet to be determined>",
     "sub_list": <[codes or region names] or null>
     }}
-
-    Context:
-    ---
-    {context}
-    ---
     """
     context = search_context_from_db(prompt_query)
     prompt = f"Context: {context}\nQuestion: {prompt_query}"
