@@ -3,6 +3,7 @@ import lancedb
 import torch, gc
 import pyarrow as pa
 from pathlib import Path
+from typing import TypedDict, Optional, List
 from langgraph.graph import StateGraph, END
 from src.utils.logger.logger_util import get_logger
 from sentence_transformers import SentenceTransformer
@@ -206,11 +207,26 @@ def assemble_node(state):
     return {"final_output": {"results": [result]}}
 
 
+class GraphState(TypedDict):
+    file_path: str
+    classified_data: Optional[dict]
+    training_type: Optional[str]
+    total_participants: Optional[str]
+    male_participants: Optional[str]
+    female_participants: Optional[str]
+    non_binary_participants: Optional[str]
+    training_modality: Optional[str]
+    start_date: Optional[str]
+    end_date: Optional[str]
+    length_of_training: Optional[str]
+    geoscope: Optional[dict]
+
+
 def generate():
     global generator
     generator = get_generator()
 
-    workflow = StateGraph()
+    workflow = StateGraph(GraphState)
 
     workflow.add_node("classify", lambda state: classify_node(state, generator))
     workflow.add_node("participants", lambda state: participants_node(state, generator))
