@@ -1,5 +1,6 @@
 import json
 import lancedb
+import pyarrow as pa
 from pathlib import Path
 from langgraph.graph import StateGraph, END
 from src.utils.logger.logger_util import get_logger
@@ -13,12 +14,22 @@ embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 
 # LanceDB ya conectado en tu archivo mining.py
 DB_PATH = str(Path(__file__).resolve().parent.parent.parent / "src" / "db" / "miningdb")
-db = lancedb.connect(DB_PATH)
 TABLE_NAME = "files"
+vector_dim = 768
 
+
+db = lancedb.connect(DB_PATH)
 try:
     table = db.open_table(TABLE_NAME)
 except Exception:
+    schema = pa.schema([
+        pa.field("pageId", pa.string()),
+        pa.field("vector", pa.list_(pa.float32(), vector_dim)),
+        pa.field("title", pa.string()),
+        pa.field("Namedocument", pa.string()),
+        pa.field("modificationD", pa.string()),
+        pa.field("is_reference", pa.bool_())
+    ])
     table = db.create_table(TABLE_NAME, schema=schema)
 
 
