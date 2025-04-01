@@ -230,13 +230,13 @@ def generate():
 
     workflow.add_node("classify", lambda state: classify_node(state, generator))
     workflow.add_node("participants", lambda state: participants_node(state, generator))
-    workflow.add_node("geoscope", lambda state: geoscope_node(state, generator))
+    workflow.add_node("geoscope_node", lambda state: geoscope_node(state, generator))
     workflow.add_node("assemble", assemble_node)
 
     workflow.set_entry_point("classify")
     workflow.add_edge("classify", "participants")
-    workflow.add_edge("participants", "geoscope")
-    workflow.add_edge("geoscope", "assemble")
+    workflow.add_edge("participants", "geoscope_node")
+    workflow.add_edge("geoscope_node", "assemble")
     workflow.set_finish_point("assemble")
 
     app = workflow.compile()
