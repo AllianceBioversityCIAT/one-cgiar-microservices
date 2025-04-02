@@ -73,7 +73,7 @@ generator = pipeline("text-generation", model=model,
                      tokenizer=tokenizer, device=0)
 
 
-def generate_response(user_input=DEFAULT_PROMPT):
+def generate_response(user_input):
     context = search_context(user_input) 
     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
 

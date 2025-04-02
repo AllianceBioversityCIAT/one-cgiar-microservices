@@ -8,14 +8,14 @@ from src.utils.s3.s3_util import download_document_s3, delete_local_file
 logger = get_logger()
 
 def start_consumer():
-    key = "ITR D314 Apr 20 2023.pdf"
+    key = "clarisa_countries.xlsx"
     logger.debug("Starting the mining service...")
     download_document_s3("microservice-mining", key)
     was_processed = process_file()
     if was_processed:
         logger.info("File processed successfully.")
         time.sleep(1)
-        generate_response()
+        generate_response("Which countries are in the document?")
         #generate()
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")
