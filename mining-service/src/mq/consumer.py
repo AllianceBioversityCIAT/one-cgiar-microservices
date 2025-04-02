@@ -7,6 +7,16 @@ from src.utils.s3.s3_util import download_document_s3, delete_local_file
 
 logger = get_logger()
 
+def wait_for_index(document_name, max_wait=10):
+    import time
+    start = time.time()
+    while time.time() - start < max_wait:
+        matches = table.search("dummy", vector_column_name="vector", where=f"Namedocument = '{document_name}'").to_list()
+        if matches:
+            return True
+        time.sleep(0.5)
+    return False
+
 def start_consumer():
     key = "FiBL Tech Report Jan to Jun 2024.pdf"
     logger.debug("Starting the mining service...")
@@ -14,8 +24,11 @@ def start_consumer():
     was_processed = process_file()
     if was_processed:
         logger.info("File processed successfully.")
-        time.sleep(1)
-        generate_response(document_name=key)
+        if wait_for_index(key):
+            generate_response(document_name=key)
+        else:
+            logger.warning("Timeout: vectors not ready yet for search.")
+        #generate_response(document_name=key)
         #generate()
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")
