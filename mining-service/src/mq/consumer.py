@@ -14,7 +14,6 @@ def start_consumer():
     was_processed = process_file()
     if was_processed:
         logger.info("File processed successfully.")
-        time.sleep(5)
         generate_response(document_name=key)
         #generate()
         delete_local_file(key)
