@@ -15,7 +15,7 @@ def start_consumer():
     if was_processed:
         logger.info("File processed successfully.")
         time.sleep(1)
-        generate_response("Which countries are in the document?")
+        generate_response("Which countries are in the document?", document_name=key)
         #generate()
         delete_local_file(key)
         logger.info("Cleanup complete - document removed from database and local storage")
