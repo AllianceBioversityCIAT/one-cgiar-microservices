@@ -10,11 +10,17 @@ def wait_for_index(document_name, max_wait=10):
     import time
     start = time.time()
     while time.time() - start < max_wait:
-        matches = table.search("dummy", vector_column_name="vector", where=f"Namedocument = '{document_name}'").to_list()
+        matches = (
+            table
+            .filter(f"Namedocument = '{document_name}'")
+            .search("dummy", vector_column_name="vector")
+            .to_list()
+        )
         if matches:
             return True
         time.sleep(0.5)
     return False
+
 
 def start_consumer():
     key = "ITR D314 Apr 20 2023.pdf"
