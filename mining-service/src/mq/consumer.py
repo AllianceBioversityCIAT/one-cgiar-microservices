@@ -7,7 +7,7 @@ from src.utils.s3.s3_util import download_document_s3, delete_local_file
 logger = get_logger()
 
 def start_consumer():
-    key = "FiBL Tech Report Jan to Jun 2024.pdf"
+    key = "ITR D314 Apr 20 2023.pdf"
     logger.debug("Starting the mining service...")
     download_document_s3("microservice-mining", key)
     process_file()
