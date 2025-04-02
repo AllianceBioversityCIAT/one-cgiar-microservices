@@ -10,14 +10,13 @@ def wait_for_index(document_name, max_wait=10):
     import time
     start = time.time()
     while time.time() - start < max_wait:
-        matches = (
-            table
-            .filter(f"Namedocument = '{document_name}'")
-            .search("dummy", vector_column_name="vector")
-            .to_list()
-        )
-        if matches:
-            return True
+        try:
+            rows = table.to_list()
+            matches = [row for row in rows if row.get("Namedocument") == document_name]
+            if matches:
+                return True
+        except Exception as e:
+            logger.warning(f"Error while checking index: {e}")
         time.sleep(0.5)
     return False
 
