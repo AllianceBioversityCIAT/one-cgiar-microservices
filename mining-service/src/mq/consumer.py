@@ -18,7 +18,7 @@ def wait_for_index(document_name, max_wait=10):
     return False
 
 def start_consumer():
-    key = "FiBL Tech Report Jan to Jun 2024.pdf"
+    key = "ITR D314 Apr 20 2023.pdf"
     logger.debug("Starting the mining service...")
     download_document_s3("microservice-mining", key)
     was_processed = process_file()
