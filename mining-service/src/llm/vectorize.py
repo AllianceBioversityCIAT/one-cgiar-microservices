@@ -259,6 +259,7 @@ def process_file():
         return
 
     logger.info(f"Founds {len(files)} new files to process.")
+    any_processed = False
 
     for file in files:
         logger.info(f"Processing file: {file}")
@@ -270,7 +271,8 @@ def process_file():
                 extract_content(str(file), is_reference=is_reference)
 
             save_processed_file(str(file))
-            return True
+            any_processed = True
+            return any_processed
 
         except Exception as e:
             logger.error(f"Error processing file: {file}. \n {e}")
