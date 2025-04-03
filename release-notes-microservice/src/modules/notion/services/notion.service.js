@@ -1,0 +1,40 @@
+const axios = require('axios');
+const notionConfig = require('../../../config/notion.config');
+
+class NotionService {
+    constructor() {
+        this.axiosInstance = axios.create({
+            baseURL: notionConfig.baseUrl,
+            headers: notionConfig.headers
+        });
+    }
+
+    async queryDatabase(databaseId) {
+        try {
+            const response = await this.axiosInstance.post(`/databases/${databaseId}/query`);
+            return response.data;
+        } catch (error) {
+            throw new Error(`Error querying database: ${error.message}`);
+        }
+    }
+
+    async getPage(pageId) {
+        try {
+            const response = await this.axiosInstance.get(`/pages/${pageId}`);
+            return response.data;
+        } catch (error) {
+            throw new Error(`Error getting page: ${error.message}`);
+        }
+    }
+
+    async getBlockChildren(blockId) {
+        try {
+            const response = await this.axiosInstance.get(`/blocks/${blockId}/children`);
+            return response.data;
+        } catch (error) {
+            throw new Error(`Error getting block children: ${error.message}`);
+        }
+    }
+}
+
+module.exports = new NotionService(); 
