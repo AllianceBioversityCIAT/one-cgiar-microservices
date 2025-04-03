@@ -116,7 +116,7 @@ generator = pipeline("text-generation", model=model,
 #     return generated_text.strip()
 
 
-def generate_stepwise_response(prompt_parts=prompt_parts):
+def generate_stepwise_response(prompt_parts=PROMPT_PARTS):
     all_responses = []
 
     for i, prompt in enumerate(prompt_parts):
