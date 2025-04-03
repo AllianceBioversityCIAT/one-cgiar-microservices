@@ -8,7 +8,7 @@ from pathlib import Path
 from threading import Thread
 from src.utils.logger.logger_util import get_logger
 from sentence_transformers import SentenceTransformer
-from src.utils.prompt.default_prompt import DEFAULT_PROMPT, prompt_parts
+from src.utils.prompt.default_prompt import prompt_parts
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
 
 
