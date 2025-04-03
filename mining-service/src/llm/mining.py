@@ -8,7 +8,7 @@ from pathlib import Path
 from threading import Thread
 from src.utils.logger.logger_util import get_logger
 from sentence_transformers import SentenceTransformer
-from src.utils.prompt.default_prompt import DEFAULT_PROMPT
+from src.utils.prompt.default_prompt import DEFAULT_PROMPT, prompt_parts
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, pipeline
 
 
@@ -73,44 +73,107 @@ generator = pipeline("text-generation", model=model,
                      tokenizer=tokenizer, device=0)
 
 
-def generate_response(user_input=DEFAULT_PROMPT):
-    context = search_context(user_input) 
-    prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
+# def generate_response(user_input=DEFAULT_PROMPT):
+#     context = search_context(user_input) 
+#     prompt = f"Context: {context}\nQuestion: {user_input}\nFinal Answer:"
+
+#     streamer = TextIteratorStreamer(tokenizer)
+#     generation_kwargs = dict(
+#         max_new_tokens=3000,
+#         do_sample=True,
+#         temperature=0.1,
+#         repetition_penalty=1.2,
+#         streamer=streamer,
+#     )
+
+#     thread = Thread(
+#         target=generator,
+#         kwargs={
+#             "text_inputs": prompt,
+#             **generation_kwargs
+#         }
+#     )
+
+#     thread.start()
+
+#     generated_text = ""
+#     print("Chatbot: ", end="", flush=True)
+#     for new_text in streamer:
+#         if "<|endoftext|>" in new_text:
+#             break
+#         print(new_text, end="", flush=True)
+#         generated_text += new_text
+#         time.sleep(0.01)
+#     print()
+
+#     generated_text = generated_text.replace(
+#         "<|begin▁of▁sentence|>", "").strip()
+#     answer_parts = generated_text.split("Final Answer:")
+#     if len(answer_parts) > 1:
+#         return answer_parts[-1].strip()
+
+#     clear_table_data()
+#     return generated_text.strip()
+
+
+def generate_stepwise_response(prompt_parts=prompt_parts):
+    all_responses = []
+
+    for i, prompt in enumerate(prompt_parts):
+        context = search_context(prompt)
+        composed_prompt = f"Context: {context}\nParte {i+1}: {prompt}\nRespuesta:"
+        
+        streamer = TextIteratorStreamer(tokenizer)
+        generation_kwargs = dict(
+            max_new_tokens=1000,
+            do_sample=True,
+            temperature=0.1,
+            repetition_penalty=1.2,
+            streamer=streamer,
+        )
+
+        thread = Thread(
+            target=generator,
+            kwargs={
+                "text_inputs": composed_prompt,
+                **generation_kwargs
+            }
+        )
+
+        thread.start()
+
+        partial_response = ""
+        for new_text in streamer:
+            if "<|endoftext|>" in new_text:
+                break
+            print(new_text, end="", flush=True)
+            partial_response += new_text
+            time.sleep(0.01)
+
+        partial_response = partial_response.replace("<|begin▁of▁sentence|>", "").strip()
+        all_responses.append(f"Respuesta Parte {i+1}:\n{partial_response.strip()}")
+
+    resumen_prompt = "\n\n".join(all_responses) + "\n\nBasado en lo anterior, proporciona una conclusión general:"
+    print("\n\n--- Generando respuesta final basada en todas las partes ---\n")
 
     streamer = TextIteratorStreamer(tokenizer)
-    generation_kwargs = dict(
-        max_new_tokens=3000,
-        do_sample=True,
-        temperature=0.1,
-        repetition_penalty=1.2,
-        streamer=streamer,
-    )
-
     thread = Thread(
         target=generator,
         kwargs={
-            "text_inputs": prompt,
+            "text_inputs": resumen_prompt,
             **generation_kwargs
         }
     )
 
     thread.start()
 
-    generated_text = ""
-    print("Chatbot: ", end="", flush=True)
+    final_text = ""
     for new_text in streamer:
         if "<|endoftext|>" in new_text:
             break
         print(new_text, end="", flush=True)
-        generated_text += new_text
+        final_text += new_text
         time.sleep(0.01)
-    print()
-
-    generated_text = generated_text.replace(
-        "<|begin▁of▁sentence|>", "").strip()
-    answer_parts = generated_text.split("Final Answer:")
-    if len(answer_parts) > 1:
-        return answer_parts[-1].strip()
 
     clear_table_data()
-    return generated_text.strip()
+    return final_text.strip()
