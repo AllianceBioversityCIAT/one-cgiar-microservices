@@ -11,4 +11,5 @@ router.get('/pages/:pageId', notionController.getPage);
 // Block routes
 router.get('/blocks/:blockId/children', notionController.getBlockChildren);
 
+// Export the router
 module.exports = router; 
