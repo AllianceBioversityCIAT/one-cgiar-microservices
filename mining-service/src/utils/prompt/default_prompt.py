@@ -201,9 +201,7 @@
 # """
 
 
-
-
-prompt_parts = [
+PROMPT_PARTS = [
     """Analyze the provided document(s) and extract all results related only to these indicators:
         • "Capacity Sharing for Development"
         • "Policy Change"
