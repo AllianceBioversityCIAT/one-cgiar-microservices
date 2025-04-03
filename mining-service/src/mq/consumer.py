@@ -14,7 +14,7 @@ def start_consumer():
     if process_file():
         logger.info("File processed successfully.")
         #generate_response()
-        respuesta_final = generate_stepwise_response(prompt_parts)
+        respuesta_final = generate_stepwise_response()
         print(respuesta_final)
         #generate()
         delete_local_file(key)
