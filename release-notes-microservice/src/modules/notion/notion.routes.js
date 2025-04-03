@@ -3,7 +3,7 @@ const router = express.Router();
 const notionController = require('./controllers/notion.controller');
 
 // Database routes
-router.post('/databases/:databaseId/query', notionController.queryDatabase);
+router.get('/databases/:databaseId/query', notionController.queryDatabase);
 
 // Page routes
 router.get('/pages/:pageId', notionController.getPage);

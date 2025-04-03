@@ -9,9 +9,22 @@ class NotionService {
         });
     }
 
-    async queryDatabase(databaseId) {
+    async queryDatabase(databaseId, projects) {
         try {
-            const response = await this.axiosInstance.post(`/databases/${databaseId}/query`);
+            const projectFilters = projects.split(',').map(project => ({
+                property: "Projects",
+                multi_select: {
+                    contains: project.trim()
+                }
+            }));
+
+            const filterBody = {
+                filter: {
+                    or: projectFilters
+                }
+            };
+
+            const response = await this.axiosInstance.post(`/databases/${databaseId}/query`, filterBody);
             return response.data;
         } catch (error) {
             throw new Error(`Error querying database: ${error.message}`);
