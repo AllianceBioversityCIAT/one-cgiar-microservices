@@ -36,7 +36,32 @@ class NotionService {
             const response = await this.axiosInstance.get(`/pages/${pageId}`);
             return response.data;
         } catch (error) {
-            throw new Error(`Error getting page: ${error.message}`);
+            switch (error.response.status) {
+                case 400:
+                    return {
+                        error: true,
+                        status: 400,
+                        message: "Bad request while getting page"
+                    }
+                case 404:
+                    return {
+                        error: true,
+                        status: 404,
+                        message: "Page not found"
+                    }
+                case 500:
+                    return {
+                        error: true,
+                        status: 500,
+                        message: "Internal server error while getting page"
+                    }
+                default:
+                    return {
+                        error: true,
+                        status: error.response.status,
+                        message: error.message
+                    }
+            }
         }
     }
 
