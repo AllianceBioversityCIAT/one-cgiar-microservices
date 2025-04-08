@@ -28,7 +28,6 @@ def invoke_model(prompt, relevant_chunk):
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 3000,
-        "temperature": 0.2,
         "temperature": 0.1,
         "top_k": 250,
         "top_p": 0.999,
@@ -52,12 +51,17 @@ def invoke_model(prompt, relevant_chunk):
 
 
 def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
+    db = None
     start_time = time.time()
 
     try:
         document_content = read_document_from_s3(bucket_name, file_key)
         chunks = split_text(document_content)
-        embeddings = [get_embedding(chunk) for chunk in chunks]
+        embeddings = []
+        for i, chunk in enumerate(chunks):
+            print(f"Processing chunk {i+1}/{len(chunks)}...")
+            embeddings.append(get_embedding(chunk))
+            time.sleep(0.5)
 
         db, table_name = store_embeddings_in_lancedb(chunks, embeddings)
 
