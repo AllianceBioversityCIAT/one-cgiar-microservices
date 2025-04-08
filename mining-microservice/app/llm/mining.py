@@ -5,7 +5,7 @@ from app.utils.config.config_util import BR
 from app.utils.prompt.default_prompt import DEFAULT_PROMPT
 from app.utils.s3.s3_util import read_document_from_s3
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from app.llm.vectorize import get_embedding, store_embeddings_in_lancedb, get_relevant_chunk, clear_lancedb
+#from app.llm.vectorize import get_embedding, store_embeddings_in_lancedb, get_relevant_chunk, clear_lancedb
 
 
 bedrock_runtime = boto3.client(
@@ -23,7 +23,7 @@ def split_text(text):
     return text_splitter.split_text(text)
 
 
-def invoke_model(prompt, relevant_chunk):
+def invoke_model(prompt):
     print("🚀 Invocando el modelo...")
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
@@ -36,7 +36,7 @@ def invoke_model(prompt, relevant_chunk):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": f"{prompt}\n\nContenido del documento:\n{relevant_chunk}"}
+                    {"type": "text", "text": f"{prompt}"}
                 ]
             }
         ]
@@ -51,28 +51,23 @@ def invoke_model(prompt, relevant_chunk):
 
 
 def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
-    db = None
     start_time = time.time()
 
     try:
         document_content = read_document_from_s3(bucket_name, file_key)
-        chunks = split_text(document_content)
-        embeddings = []
-        for i, chunk in enumerate(chunks):
-            print(f"Processing chunk {i+1}/{len(chunks)}...")
-            embeddings.append(get_embedding(chunk))
-            time.sleep(0.5)
+        # chunks = split_text(document_content)
+        # embeddings = [get_embedding(chunk) for chunk in chunks]
 
-        db, table_name = store_embeddings_in_lancedb(chunks, embeddings)
+        # db, table_name = store_embeddings_in_lancedb(chunks, embeddings)
 
-        relevant_chunks = get_relevant_chunk(prompt, db, table_name)
+        # relevant_chunks = get_relevant_chunk(prompt, db, table_name)
 
         query = f"""
-        Based on this context: {relevant_chunks}
-        Answer the question: {prompt}
+        Based on this context:\n{document_content}\n\n
+        Answer the question:\n{prompt}
         """
 
-        response_text = invoke_model(query, relevant_chunks)
+        response_text = invoke_model(query)
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -84,5 +79,5 @@ def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
         print(f"Error: {str(e)}")
         raise
 
-    finally:
-        clear_lancedb(db, table_name)
+    # finally:
+    #     clear_lancedb(db, table_name)

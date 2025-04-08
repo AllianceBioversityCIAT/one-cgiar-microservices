@@ -18,20 +18,13 @@ bedrock_runtime = boto3.client(
 
 def get_embedding(text):
     body = json.dumps({"inputText": text})
-    try:
-        response = bedrock_runtime.invoke_model(
-            modelId="amazon.titan-embed-text-v2:0",
-            body=body,
-            contentType="application/json",
-            accept="application/json"
-        )
-        return json.loads(response['body'].read())['embedding']
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'ServiceUnavailableException':
-            print(f"Too many connections, waiting before retrying: {str(e)}")
-            time.sleep(2)  
-            raise
-        raise
+    response = bedrock_runtime.invoke_model(
+        modelId="amazon.titan-embed-text-v2:0",
+        body=body,
+        contentType="application/json",
+        accept="application/json"
+    )
+    return json.loads(response['body'].read())['embedding']
 
 
 def store_embeddings_in_lancedb(chunks, embeddings, db_path=DB_PATH, table_name="files"):
