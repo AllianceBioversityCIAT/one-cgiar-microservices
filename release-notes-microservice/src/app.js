@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 app.use('/api/notion', notionRoutes);
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
     console.error(err.stack);
     res.status(500).json({
         error: 'Something went wrong!',

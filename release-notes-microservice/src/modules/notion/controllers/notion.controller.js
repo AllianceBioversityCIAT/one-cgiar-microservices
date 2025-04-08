@@ -1,6 +1,10 @@
-const notionService = require('../services/notion.service');
+const NotionService = require('../services/notion.service');
 
 class NotionController {
+    constructor() {
+        this.notionService = new NotionService();
+    }
+
     async queryDatabase(req, res) {
         try {
             const { databaseId } = req.params;
@@ -10,7 +14,7 @@ class NotionController {
                 return res.status(400).json({ error: 'Projects query parameter is required' });
             }
 
-            const data = await notionService.queryDatabase(databaseId, projects);
+            const data = await this.notionService.queryDatabase(databaseId, projects);
             res.json(data);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -20,7 +24,7 @@ class NotionController {
     async getPage(req, res) {
         try {
             const { pageId } = req.params;
-            const data = await notionService.getPage(pageId);
+            const data = await this.notionService.getPage(pageId);
             res.json(data);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -30,7 +34,7 @@ class NotionController {
     async getBlockChildren(req, res) {
         try {
             const { blockId } = req.params;
-            const data = await notionService.getBlockChildren(blockId);
+            const data = await this.notionService.getBlockChildren(blockId);
             res.json(data);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -38,4 +42,4 @@ class NotionController {
     }
 }
 
-module.exports = new NotionController(); 
+module.exports = NotionController; 

@@ -12,7 +12,7 @@ class NotionService {
     async queryDatabase(databaseId, projects) {
         try {
             const projectFilters = projects.split(',').map(project => ({
-                property: "Projects",
+                property: 'Projects',
                 multi_select: {
                     contains: project.trim()
                 }
@@ -37,30 +37,30 @@ class NotionService {
             return response.data;
         } catch (error) {
             switch (error.response.status) {
-                case 400:
-                    return {
-                        error: true,
-                        status: 400,
-                        message: "Bad request while getting page"
-                    }
-                case 404:
-                    return {
-                        error: true,
-                        status: 404,
-                        message: "Page not found"
-                    }
-                case 500:
-                    return {
-                        error: true,
-                        status: 500,
-                        message: "Internal server error while getting page"
-                    }
-                default:
-                    return {
-                        error: true,
-                        status: error.response.status,
-                        message: error.message
-                    }
+            case 400:
+                return {
+                    error: true,
+                    status: 400,
+                    message: 'Bad request while getting page'
+                };
+            case 404:
+                return {
+                    error: true,
+                    status: 404,
+                    message: 'Page not found'
+                };
+            case 500:
+                return {
+                    error: true,
+                    status: 500,
+                    message: 'Internal server error while getting page'
+                };
+            default:
+                return {
+                    error: true,
+                    status: error.response.status,
+                    message: error.response.message || error.message
+                };
             }
         }
     }
@@ -75,4 +75,4 @@ class NotionService {
     }
 }
 
-module.exports = new NotionService(); 
+module.exports = NotionService; 
