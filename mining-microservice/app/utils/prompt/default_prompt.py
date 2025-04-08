@@ -186,27 +186,21 @@ DEFAULT_PROMPT = """
                     "level": "<Global | Regional | National | Sub-national | This is yet to be determined>",
                     "sub_list": <[array of codes or region names] or null>
                 },
-                "training_type": "<Individual training or Group training (only if applicable)>",
-                "total_participants": <number or 'Not collected' (only if group training)>,
-                "male_participants": <number or 'Not collected' (only if group training)>,
-                "female_participants": <number or 'Not collected' (only if group training)>,
-                "non_binary_participants": <number or 'Not collected' (only if group training)>,
-                "training_modality": "<value or 'Not collected'>",
-                "start_date": "<value or 'Not collected'>",
-                "end_date": "<value or 'Not collected'>",
-                "length_of_training": "<Short-term or Long-term or 'Not collected'>",
+                "training_type": "<Individual training or Group training (only if applicable and indicator is 'Capacity Sharing for Development')>",
+                "total_participants": <number or 'Not collected' (only if group training and indicator is 'Capacity Sharing for Development')>,
+                "male_participants": <number or 'Not collected' (only if group training and indicator is 'Capacity Sharing for Development')>,
+                "female_participants": <number or 'Not collected' (only if group training and indicator is 'Capacity Sharing for Development')>,
+                "non_binary_participants": <number or 'Not collected' (only if group training and indicator is 'Capacity Sharing for Development')>,
+                "training_modality": "<value or 'Not collected' (only if indicator is 'Capacity Sharing for Development')>",
+                "start_date": "<value or 'Not collected' (only if indicator is 'Capacity Sharing for Development')>",
+                "end_date": "<value or 'Not collected' (only if indicator is 'Capacity Sharing for Development')>",
+                "length_of_training": "<Short-term or Long-term or 'Not collected' (only if indicator is 'Capacity Sharing for Development')>",
                 "alliance_main_contact_person_first_name": "<value or 'Not collected'>",
                 "alliance_main_contact_person_last_name": "<value or 'Not collected'>",
-                "evidence_for_stage": "<value or 'Not collected'>",
-                "policy_type": "<'Policy or Strategy' | 'Legal instrument' | 'Program, Budget, or Investment' | 'Not collected'>",
-                "stage_in_policy_process": "<Stage 1: ... | Stage 2: ... | Stage 3: ... | Not collected>"
+                "evidence_for_stage": "<value or 'Not collected' (only if indicator is 'Policy Change')>",
+                "policy_type": "<'Policy or Strategy' | 'Legal instrument' | 'Program, Budget, or Investment' | 'Not collected' (only if indicator is 'Policy Change')>",
+                "stage_in_policy_process": "<Stage 1: ... | Stage 2: ... | Stage 3: ... | Not collected (only if indicator is 'Policy Change')>"
             }
         ]
-    }
-
-    If no results match the indicators, return exactly:
-
-    {
-        "results": []
     }
 """

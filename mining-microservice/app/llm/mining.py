@@ -5,7 +5,7 @@ from app.utils.config.config_util import BR
 from app.utils.prompt.default_prompt import DEFAULT_PROMPT
 from app.utils.s3.s3_util import read_document_from_s3
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-#from app.llm.vectorize import get_embedding, store_embeddings_in_lancedb, get_relevant_chunk, clear_lancedb
+from app.llm.vectorize import get_embedding, store_embeddings_in_lancedb, get_relevant_chunk, clear_lancedb
 
 
 bedrock_runtime = boto3.client(

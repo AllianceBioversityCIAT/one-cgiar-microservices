@@ -3,9 +3,12 @@ import boto3
 import lancedb
 from pathlib import Path
 from app.utils.config.config_util import BR
+from sentence_transformers import SentenceTransformer
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = str(BASE_DIR / "app" / "db" / "miningdb")
+
+model = SentenceTransformer("intfloat/e5-large-v2")
 
 
 bedrock_runtime = boto3.client(
@@ -17,14 +20,15 @@ bedrock_runtime = boto3.client(
 
 
 def get_embedding(text):
-    body = json.dumps({"inputText": text})
-    response = bedrock_runtime.invoke_model(
-        modelId="amazon.titan-embed-text-v2:0",
-        body=body,
-        contentType="application/json",
-        accept="application/json"
-    )
-    return json.loads(response['body'].read())['embedding']
+    # body = json.dumps({"inputText": text})
+    # response = bedrock_runtime.invoke_model(
+    #     modelId="amazon.titan-embed-text-v2:0",
+    #     body=body,
+    #     contentType="application/json",
+    #     accept="application/json"
+    # )
+    # return json.loads(response['body'].read())['embedding']
+    return model.encode(text).tolist()
 
 
 def store_embeddings_in_lancedb(chunks, embeddings, db_path=DB_PATH, table_name="files"):

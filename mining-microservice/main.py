@@ -6,5 +6,5 @@ logger = get_logger()
 if __name__ == "__main__":
     logger.info("Starting text-mining microservice")    
     bucket_name = "microservice-mining"
-    file_key = "Guatemala Policy Brief 2024.pdf"
+    file_key = "ITR D314 Apr 20 2023.docx"
     response = process_document(bucket_name, file_key)
