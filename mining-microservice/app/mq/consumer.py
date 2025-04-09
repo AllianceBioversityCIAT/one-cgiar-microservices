@@ -1,10 +1,16 @@
 from app.utils.logger.logger_util import logger
-from app.utils.config.config_util import RABBITMQ
+from app.utils.config.config_util import RABBITMQ, MS_NAME
 from app.utils.prompt.default_prompt import DEFAULT_PROMPT
 from app.llm.mining import process_document
+from app.middleware.auth_middleware import AuthMiddleware
+from app.utils.notification.notification_service import NotificationService
 import json
 import pika
 import os
+import asyncio
+
+auth_middleware = AuthMiddleware()
+notification_service = NotificationService()
 
 
 def get_rabbitmq_connection():
@@ -28,16 +34,45 @@ def callback(ch, method, properties, body):
 
     try:
         message = json.loads(body.decode())
-        key_value = message.get("key")
-        bucket_name = message.get("bucketName")
-        prompt = message.get("prompt", DEFAULT_PROMPT)
+        logger.debug(f"Received message: {message}")
 
-        logger.info(f"Processing message for document: {key_value}")
+        authenticated_message = asyncio.run(
+            auth_middleware.authenticate(message))
+
+        if not authenticated_message:
+            logger.error("Authentication failed, skipping message processing")
+            if properties.reply_to:
+                error_response = {
+                    "status": "error",
+                    "key": message.get("key"),
+                    "error": "Authentication failed"
+                }
+                ch.basic_publish(
+                    exchange='',
+                    routing_key=properties.reply_to,
+                    properties=pika.BasicProperties(
+                        correlation_id=properties.correlation_id),
+                    body=json.dumps(error_response)
+                )
+            return
+
+        key_value = authenticated_message.get("key")
+        bucket_name = authenticated_message.get("bucketName")
+        prompt = authenticated_message.get("prompt", DEFAULT_PROMPT)
+
+        user = authenticated_message.get('user', {})
+        sender = user.get('sender', {})
+        sender_mis = sender.get('sender_mis', {})
+        sender_name = sender_mis.get('name', 'unknown')
+        sender_env = sender_mis.get('environment', 'unknown')
+
+        logger.info(
+            f"Processing authenticated message for document: {key_value} from {sender_name}")
 
         response = process_document(bucket_name, key_value, prompt)
 
         if properties.reply_to:
-            response = {
+            success_response = {
                 "status": "success",
                 "key": key_value,
                 "extracted_info": response
@@ -47,9 +82,27 @@ def callback(ch, method, properties, body):
                 routing_key=properties.reply_to,
                 properties=pika.BasicProperties(
                     correlation_id=properties.correlation_id),
-                body=json.dumps(response)
+                body=json.dumps(success_response)
             )
             logger.info(f"Response sent to {properties.reply_to}")
+
+            try:
+                ms_name = MS_NAME
+                asyncio.run(notification_service.send_slack_notification(
+                    emoji=':ai: :pick:',
+                    app_name=ms_name,
+                    color='#36a64f',
+                    title='Document Processed',
+                    message=f"Successfully processed document: *{key_value}*\n" +
+                            f"Requested by: *{sender_name}* ({sender_env})\n" +
+                            f"Bucket: *{bucket_name}*",
+                            priority='Low'
+                            ))
+                logger.info(
+                    f"Success notification sent for {key_value} processed for {sender_name}")
+            except Exception as notify_error:
+                logger.error(
+                    f"Error sending notification: {str(notify_error)}")
 
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}", exc_info=True)
