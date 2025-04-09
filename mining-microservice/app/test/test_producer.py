@@ -47,7 +47,7 @@ try:
         auto_ack=True)
 
     message = {
-        "key": "ITR D314 Apr 20 2023.docx",
+        "key": "FiBL Tech Report Jan to Jun 2024.pdf",
         "bucketName": "microservice-mining",
         "credentials": json.dumps({
             "username": os.getenv("API_USERNAME"),
