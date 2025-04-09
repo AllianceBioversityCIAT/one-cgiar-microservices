@@ -1,9 +1,11 @@
 name: Trigger Jenkins Job Release Notes Microservice
 
 on:
+  # Trigger the workflow on a push to the specified branch
   push:
     branches:
       - "main-release-notes-microservice"
+  # Trigger the workflow on a pull request to the specified branch
   pull_request:
     branches:
       - "main-release-notes-microservice"
