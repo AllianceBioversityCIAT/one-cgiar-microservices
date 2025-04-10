@@ -6,7 +6,14 @@ from app.utils.logger.logger_util import get_logger
 from app.utils.s3.s3_util import read_document_from_s3
 from app.utils.prompt.default_prompt import DEFAULT_PROMPT
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from app.llm.vectorize import get_embedding, store_embeddings_in_lancedb, get_relevant_chunk, clear_lancedb
+from app.llm.vectorize import (get_embedding, 
+    check_reference_exists,
+    store_reference_embeddings,
+    store_temp_embeddings, 
+    get_all_reference_data,
+    get_relevant_chunk, 
+    clear_lancedb
+)
 
 
 logger = get_logger()
@@ -20,7 +27,7 @@ bedrock_runtime = boto3.client(
 
 
 def split_text(text):
-    logger.info("✂️ Dividing the text into fragments...")
+    logger.info("✂️  Dividing the text into fragments...")
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=8000, chunk_overlap=1500)
     return text_splitter.split_text(text)
@@ -56,22 +63,58 @@ def invoke_model(prompt):
     except Exception as e:
         logger.error(f"❌ Error invoking the model: {str(e)}")
         raise
-    
+
+
+def initialize_reference_data(bucket_name, file_key_regions, file_key_countries):
+    """Initialize reference data if it doesn't exist"""
+    try:
+        if check_reference_exists():
+            logger.info("✅ Reference data already exists in the database")
+            return True
+            
+        logger.info("🔄 Initializing reference data...")
+        
+        document_content_regions = read_document_from_s3(bucket_name, file_key_regions)
+        regions_embeddings = get_embedding(document_content_regions)
+        
+        document_content_countries = read_document_from_s3(bucket_name, file_key_countries)
+        countries_embeddings = get_embedding(document_content_countries)
+        
+        all_content = document_content_regions + document_content_countries
+        all_embeddings = regions_embeddings + countries_embeddings
+        
+        store_reference_embeddings(all_content, all_embeddings)
+        
+        logger.info("✅ Reference data initialized successfully")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error initializing reference data: {str(e)}")
+        raise
+
 
 def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
     start_time = time.time()
 
     try:
+        reference_file_regions = "clarisa_regions.xlsx"
+        reference_file_countries = "clarisa_countries.xlsx"
+        initialize_reference_data(bucket_name, reference_file_regions, reference_file_countries)
+        
         document_content = read_document_from_s3(bucket_name, file_key)
-        # chunks = split_text(document_content)
-        # embeddings = [get_embedding(chunk) for chunk in chunks]
+        chunks = split_text(document_content)
+        embeddings = [get_embedding(chunk) for chunk in chunks]
 
-        # db, table_name = store_embeddings_in_lancedb(chunks, embeddings)
+        db, temp_table_name = store_temp_embeddings(chunks, embeddings)
 
-        # relevant_chunks = get_relevant_chunk(prompt, db, table_name)
+        all_reference_data = get_all_reference_data()
+        
+        relevant_chunks = get_relevant_chunk(prompt, db, temp_table_name)
+
+        context = all_reference_data + relevant_chunks
 
         query = f"""
-        Based on this context:\n{document_content}\n\n
+        Based on this context:\n{context}\n\n
         Answer the question:\n{prompt}
         """
 
@@ -87,5 +130,6 @@ def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
         logger.error(f"❌ Error: {str(e)}")
         raise
 
-    # finally:
-    #     clear_lancedb(db, table_name)
+    finally:
+        if 'db' in locals() and 'temp_table_name' in locals():
+            clear_lancedb(db, temp_table_name)

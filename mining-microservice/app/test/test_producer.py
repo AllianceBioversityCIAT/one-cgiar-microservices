@@ -47,7 +47,7 @@ try:
         auto_ack=True)
 
     message = {
-        "key": "FiBL Tech Report Jan to Jun 2024.pdf",
+        "key": "ITR D314 Apr 20 2023.docx",
         "bucketName": "microservice-mining",
         "credentials": json.dumps({
             "username": os.getenv("API_USERNAME"),
@@ -70,7 +70,7 @@ try:
     print("Message sent:", message_json)
     print("Waiting for response...")
 
-    timeout = 60
+    timeout = 180
     start_time = time.time()
 
     while correlation_id not in responses:
