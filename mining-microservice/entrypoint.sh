@@ -11,7 +11,7 @@ sleep 5
 
 # Run the test once
 echo "[INFO] Running test_producer.py once..."
-python app/app/test/test_producer.py || {
+python app/test/test_producer.py || {
     echo "[ERROR] Test failed. Stopping consumer and exiting."
     kill $CONSUMER_PID
     exit 1
