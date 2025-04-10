@@ -11,4 +11,4 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run the test first, then the consumer only if it passes
-CMD bash -c "python app/app/test/test_producer.py && python main.py"
+CMD bash -c "python app/test/test_producer.py && python main.py"
