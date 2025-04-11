@@ -75,7 +75,7 @@ def callback(ch, method, properties, body):
             success_response = {
                 "status": "success",
                 "key": key_value,
-                "extracted_info": response
+                "extracted_info": response["content"]
             }
             ch.basic_publish(
                 exchange='',
@@ -95,7 +95,8 @@ def callback(ch, method, properties, body):
                     title='Document Processed',
                     message=f"Successfully processed document: *{key_value}*\n" +
                             f"Requested by: *{sender_name}* ({sender_env})\n" +
-                            f"Bucket: *{bucket_name}*",
+                            f"Bucket: *{bucket_name}*\n",
+                            time_taken=f"Time taken: *{response['time_taken']}* seconds\n",
                             priority='Low'
                             ))
                 logger.info(
@@ -119,6 +120,17 @@ def callback(ch, method, properties, body):
                     correlation_id=properties.correlation_id),
                 body=json.dumps(error_response)
             )
+            asyncio.run(notification_service.send_slack_notification(
+                emoji=':ai: :pick: :alert:',
+                app_name=MS_NAME,
+                color='#FF0000',
+                title='Document Processing Failed',
+                message=f"Error processing document: *{key_value}*\n" +
+                        f"Requested by: *{sender_name}* ({sender_env})\n" +
+                        f"Error: *{str(e)}*\n",
+                        time_taken="Time taken: *N/A*\n",
+                        priority='High'
+                        ))
             logger.info(f"Error response sent to {properties.reply_to}")
     finally:
         if local_file and os.path.exists(local_file):
