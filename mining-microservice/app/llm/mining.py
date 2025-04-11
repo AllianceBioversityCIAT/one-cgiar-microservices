@@ -6,14 +6,14 @@ from app.utils.logger.logger_util import get_logger
 from app.utils.s3.s3_util import read_document_from_s3
 from app.utils.prompt.default_prompt import DEFAULT_PROMPT
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from app.llm.vectorize import (get_embedding, 
-    check_reference_exists,
-    store_reference_embeddings,
-    store_temp_embeddings, 
-    get_all_reference_data,
-    get_relevant_chunk, 
-    clear_lancedb
-)
+from app.llm.vectorize import (get_embedding,
+                               check_reference_exists,
+                               store_reference_embeddings,
+                               store_temp_embeddings,
+                               get_all_reference_data,
+                               get_relevant_chunk,
+                               clear_lancedb
+                               )
 
 
 logger = get_logger()
@@ -22,7 +22,7 @@ bedrock_runtime = boto3.client(
     service_name='bedrock-runtime',
     aws_access_key_id=BR['aws_access_key'],
     aws_secret_access_key=BR['aws_secret_key'],
-    region_name='us-east-1' 
+    region_name='us-east-1'
 )
 
 
@@ -59,7 +59,7 @@ def invoke_model(prompt):
             accept="application/json"
         )
         return json.loads(response['body'].read())['content'][0]['text']
-    
+
     except Exception as e:
         logger.error(f"❌ Error invoking the model: {str(e)}")
         raise
@@ -71,23 +71,25 @@ def initialize_reference_data(bucket_name, file_key_regions, file_key_countries)
         if check_reference_exists():
             logger.info("✅ Reference data already exists in the database")
             return True
-            
+
         logger.info("🔄 Initializing reference data...")
-        
-        document_content_regions = read_document_from_s3(bucket_name, file_key_regions)
+
+        document_content_regions = read_document_from_s3(
+            bucket_name, file_key_regions)
         regions_embeddings = get_embedding(document_content_regions)
-        
-        document_content_countries = read_document_from_s3(bucket_name, file_key_countries)
+
+        document_content_countries = read_document_from_s3(
+            bucket_name, file_key_countries)
         countries_embeddings = get_embedding(document_content_countries)
-        
+
         all_content = document_content_regions + document_content_countries
         all_embeddings = regions_embeddings + countries_embeddings
-        
+
         store_reference_embeddings(all_content, all_embeddings)
-        
+
         logger.info("✅ Reference data initialized successfully")
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ Error initializing reference data: {str(e)}")
         raise
@@ -99,8 +101,9 @@ def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
     try:
         reference_file_regions = "clarisa_regions.xlsx"
         reference_file_countries = "clarisa_countries.xlsx"
-        initialize_reference_data(bucket_name, reference_file_regions, reference_file_countries)
-        
+        initialize_reference_data(
+            bucket_name, reference_file_regions, reference_file_countries)
+
         document_content = read_document_from_s3(bucket_name, file_key)
         chunks = split_text(document_content)
         embeddings = [get_embedding(chunk) for chunk in chunks]
@@ -108,7 +111,7 @@ def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
         db, temp_table_name = store_temp_embeddings(chunks, embeddings)
 
         all_reference_data = get_all_reference_data()
-        
+
         relevant_chunks = get_relevant_chunk(prompt, db, temp_table_name)
 
         context = all_reference_data + relevant_chunks
@@ -124,7 +127,11 @@ def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
         elapsed_time = end_time - start_time
         logger.info(f"✅ Successfully generated response:\n{response_text}")
         logger.info(f"⏱️ Response time: {elapsed_time:.2f} seconds")
-        return response_text
+
+        return {
+            "content": response_text,
+            "time_taken": f"{elapsed_time:.2f}"
+        }
 
     except Exception as e:
         logger.error(f"❌ Error: {str(e)}")

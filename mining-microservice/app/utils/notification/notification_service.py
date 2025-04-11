@@ -17,7 +17,8 @@ class NotificationService:
         color: str,
         title: str,
         message: str,
-        priority: str
+        priority: str,
+        time_taken: Optional[str]
     ) -> bool:
         """Send a notification to Slack"""
         if not self.slack_webhook:
@@ -32,7 +33,7 @@ class NotificationService:
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"{emoji} *{app_name}*\n*{title}*\n{message}\n*Priority:* {priority}"
+                            "text": f"{emoji} *{app_name}*\n*{title}*\n{message}\n{time_taken}\n*Priority:* {priority}"
                         }
                     }
                 ],
