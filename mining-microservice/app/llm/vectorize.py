@@ -4,7 +4,6 @@ import lancedb
 from pathlib import Path
 from app.utils.config.config_util import BR
 from app.utils.logger.logger_util import get_logger
-# from sentence_transformers import SentenceTransformer
 
 
 logger = get_logger()
@@ -14,8 +13,6 @@ DB_PATH = str(BASE_DIR / "app" / "db" / "miningdb")
 
 REFERENCE_TABLE_NAME = "clarisa_reference"
 TEMP_TABLE_NAME = "temp_documents"
-
-# model = SentenceTransformer("intfloat/e5-large-v2")
 
 
 bedrock_runtime = boto3.client(
@@ -41,7 +38,6 @@ def get_embedding(text):
         embeddings = response_body['embedding']
         
         return embeddings
-        #return model.encode(text).tolist()
     except Exception as e:
         logger.error(f"❌ Error generating embedding: {str(e)}")
         raise
@@ -130,7 +126,7 @@ def get_relevant_chunk(query, db, table_name):
         result = table.search(query_embedding).to_pandas()
         return result["text"].tolist()
     except Exception as e:
-        logger.error(f"❌ Error retrieving relevant chunk: {str(e)}")
+        logger.error(f"❌ Error retrieving relevant chunks: {str(e)}")
         raise
 
 
