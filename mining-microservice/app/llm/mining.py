@@ -106,6 +106,8 @@ def process_document(bucket_name, file_key, prompt=DEFAULT_PROMPT):
 
         document_content = read_document_from_s3(bucket_name, file_key)
         chunks = split_text(document_content)
+
+        logger.info("#️⃣ Generating embeddings...")
         embeddings = [get_embedding(chunk) for chunk in chunks]
 
         db, temp_table_name = store_temp_embeddings(chunks, embeddings)
