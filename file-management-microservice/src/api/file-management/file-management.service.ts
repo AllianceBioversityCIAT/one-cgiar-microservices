@@ -22,7 +22,7 @@ export class FileManagementService {
   private readonly maxAttempts: number = 6;
 
   private readonly _logger = new Logger(FileManagementService.name);
-  private s3Client: S3Client;
+  private readonly s3Client: S3Client;
 
   constructor(
     private readonly _notificationsService: NotificationsService,
