@@ -3,7 +3,7 @@ import {
   NestMiddleware,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Request, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { StarService } from '../tools/star/star.service';
 
 interface StarAuthenticatedRequest extends Request {
@@ -14,7 +14,7 @@ interface StarAuthenticatedRequest extends Request {
 export class JwtStarMiddleware implements NestMiddleware {
   constructor(private readonly starService: StarService) {}
 
-  async use(req: StarAuthenticatedRequest, next: NextFunction) {
+  async use(req: StarAuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const token = req.headers['access-token'] as string;
 
