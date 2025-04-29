@@ -3,22 +3,18 @@ import {
   NestMiddleware,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import { Request, NextFunction } from 'express';
 import { StarService } from '../tools/star/star.service';
 
-declare global {
-  namespace Express {
-    interface Request {
-      starUser?: any;
-    }
-  }
+interface StarAuthenticatedRequest extends Request {
+  starUser?: any;
 }
 
 @Injectable()
 export class JwtStarMiddleware implements NestMiddleware {
   constructor(private readonly starService: StarService) {}
 
-  async use(req: Request, res: Response, next: NextFunction) {
+  async use(req: StarAuthenticatedRequest, next: NextFunction) {
     try {
       const token = req.headers['access-token'] as string;
 

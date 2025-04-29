@@ -9,9 +9,7 @@ export class Star {
   private readonly http: HttpService;
 
   constructor(http: HttpService) {
-    this.starHost =
-      env.STAR_HOST ||
-      'https://management-allianceindicatorstest.ciat.cgiar.org/api/';
+    this.starHost = env.STAR_HOST;
     this.http = http;
   }
 

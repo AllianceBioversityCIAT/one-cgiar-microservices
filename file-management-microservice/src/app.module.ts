@@ -61,11 +61,9 @@ export class AppModule implements NestModule {
       },
     );
 
-    consumer
-      .apply(JwtStarMiddleware)
-      .forRoutes({
-        path: 'api/file-management/upload-file',
-        method: RequestMethod.ALL,
-      });
+    consumer.apply(JwtStarMiddleware).forRoutes({
+      path: 'api/file-management/upload-file',
+      method: RequestMethod.ALL,
+    });
   }
 }

@@ -28,7 +28,6 @@ export class JwtClarisaMiddleware implements NestMiddleware {
     @Next() next: NextFunction,
   ) {
     let authHeader: AuthorizationDto;
-    console.log("🚀 ~ JwtClarisaMiddleware ~ authHeader:", authHeader)
     if (typeof req.headers['acess-token'] === 'string') {
       try {
         authHeader = JSON.parse(req.headers['acess-token']);
