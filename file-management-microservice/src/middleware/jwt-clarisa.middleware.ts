@@ -15,8 +15,8 @@ import { ResClarisaValidateConectioDto } from '../tools/clarisa/dto/clarisa-crea
 import { NotificationsService } from '../api/notifications/notifications.service';
 
 @Injectable()
-export class JwtMiddleware implements NestMiddleware {
-  private readonly _logger = new Logger(JwtMiddleware.name);
+export class JwtClarisaMiddleware implements NestMiddleware {
+  private readonly _logger = new Logger(JwtClarisaMiddleware.name);
   constructor(
     private readonly clarisaService: ClarisaService,
     private readonly _notificationService: NotificationsService,
@@ -28,9 +28,10 @@ export class JwtMiddleware implements NestMiddleware {
     @Next() next: NextFunction,
   ) {
     let authHeader: AuthorizationDto;
-    if (typeof req.headers['auth'] === 'string') {
+    console.log("🚀 ~ JwtClarisaMiddleware ~ authHeader:", authHeader)
+    if (typeof req.headers['acess-token'] === 'string') {
       try {
-        authHeader = JSON.parse(req.headers['auth']);
+        authHeader = JSON.parse(req.headers['acess-token']);
         this._logger.debug(
           `A client ${authHeader.username} is trying to access to the File Management microservice`,
         );
@@ -40,7 +41,7 @@ export class JwtMiddleware implements NestMiddleware {
           'File Management Microservice',
           '#FF0000',
           'Invalid credentials',
-          'Auth header is missing or not in the correct format.',
+          `Auth header is missing or not in the correct format. ${error}`,
           'Medium',
         );
         throw new UnauthorizedException('Invalid auth header format.');

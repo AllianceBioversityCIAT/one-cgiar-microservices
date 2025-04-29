@@ -10,7 +10,7 @@ import Handlebars, { Exception } from 'handlebars';
 import { ClarisaModule } from '../../tools/clarisa/clarisa.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { FileManagementModule } from '../file-management/file-management.module';
-import { JwtMiddleware } from '../../middleware/jwt.middleware';
+import { JwtClarisaMiddleware } from '../../middleware/jwt-clarisa.middleware';
 
 @Module({
   controllers: [PdfController],
@@ -20,7 +20,7 @@ import { JwtMiddleware } from '../../middleware/jwt.middleware';
 })
 export class PdfModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(JwtMiddleware).forRoutes({
+    consumer.apply(JwtClarisaMiddleware).forRoutes({
       path: '/api/pdf/*',
       method: RequestMethod.ALL,
     });

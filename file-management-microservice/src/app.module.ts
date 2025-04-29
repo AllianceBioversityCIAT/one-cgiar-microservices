@@ -12,16 +12,19 @@ import { FileManagementModule } from './api/file-management/file-management.modu
 import { ClarisaModule } from './tools/clarisa/clarisa.module';
 import { GlobalExceptions } from './errors/global.exception';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
-import { JwtMiddleware } from './middleware/jwt.middleware';
+import { JwtClarisaMiddleware } from './middleware/jwt-clarisa.middleware';
 import { NotificationsModule } from './api/notifications/notifications.module';
 import { PdfModule } from './api/pdf/pdf.module';
 import { ConfigModule } from '@nestjs/config';
+import { JwtStarMiddleware } from './middleware/jwt-star.middleware';
+import { StarModule } from './tools/star/star.module';
 
 @Module({
   imports: [
     RouterModule.register(MainRoutes),
     FileManagementModule,
     ClarisaModule,
+    StarModule,
     NotificationsModule,
     PdfModule,
     ConfigModule.forRoot({
@@ -30,7 +33,6 @@ import { ConfigModule } from '@nestjs/config';
   ],
   controllers: [AppController],
   providers: [
-    AppService,
     AppService,
     {
       provide: APP_INTERCEPTOR,
@@ -44,7 +46,7 @@ import { ConfigModule } from '@nestjs/config';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(JwtMiddleware).forRoutes(
+    consumer.apply(JwtClarisaMiddleware).forRoutes(
       {
         path: '/api/file-management/validation',
         method: RequestMethod.ALL,
@@ -58,5 +60,12 @@ export class AppModule implements NestModule {
         method: RequestMethod.ALL,
       },
     );
+
+    consumer
+      .apply(JwtStarMiddleware)
+      .forRoutes({
+        path: 'api/file-management/upload-file',
+        method: RequestMethod.ALL,
+      });
   }
 }
