@@ -28,9 +28,9 @@ export class JwtClarisaMiddleware implements NestMiddleware {
     @Next() next: NextFunction,
   ) {
     let authHeader: AuthorizationDto;
-    if (typeof req.headers['acess-token'] === 'string') {
+    if (typeof req.headers['auth'] === 'string') {
       try {
-        authHeader = JSON.parse(req.headers['acess-token']);
+        authHeader = JSON.parse(req.headers['auth']);
         this._logger.debug(
           `A client ${authHeader.username} is trying to access to the File Management microservice`,
         );
