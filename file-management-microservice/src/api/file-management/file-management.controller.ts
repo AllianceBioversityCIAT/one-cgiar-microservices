@@ -42,7 +42,7 @@ export class FileManagementController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Bucket name, file name, and file are required.',
+    description: 'Bucket name and file are required.',
   })
   @ApiResponse({ status: 500, description: 'Internal server error.' })
   @ApiConsumes('multipart/form-data')
@@ -53,6 +53,7 @@ export class FileManagementController {
         file: {
           type: 'string',
           format: 'binary',
+          description: 'File to upload',
         },
         bucketName: {
           type: 'string',
@@ -60,9 +61,19 @@ export class FileManagementController {
         },
         fileName: {
           type: 'string',
-          description: 'Name to save the file as',
+          description:
+            'Custom name to save the file as (optional, defaults to original filename)',
+        },
+        pageLimit: {
+          type: 'number',
+          description: 'Maximum number of pages allowed for PDF/DOC/DOCX files',
+        },
+        weightLimit: {
+          type: 'number',
+          description: 'Maximum file size in bytes',
         },
       },
+      required: ['file', 'bucketName'],
     },
   })
   @Post('upload')
@@ -131,7 +142,7 @@ export class FileManagementController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Bucket name, file name, and file are required.',
+    description: 'Bucket name and file are required.',
   })
   @ApiResponse({
     status: 401,
@@ -146,6 +157,7 @@ export class FileManagementController {
         file: {
           type: 'string',
           format: 'binary',
+          description: 'File to upload',
         },
         bucketName: {
           type: 'string',
@@ -153,9 +165,19 @@ export class FileManagementController {
         },
         fileName: {
           type: 'string',
-          description: 'Name to save the file as',
+          description:
+            'Custom name to save the file as (optional, defaults to original filename)',
+        },
+        pageLimit: {
+          type: 'number',
+          description: 'Maximum number of pages allowed for PDF/DOC/DOCX files',
+        },
+        weightLimit: {
+          type: 'number',
+          description: 'Maximum file size in bytes',
         },
       },
+      required: ['file', 'bucketName'],
     },
   })
   @Post('upload-file')
