@@ -9,6 +9,12 @@ export class UploadFileDto {
 
   @ApiProperty({ description: 'File to upload' })
   file: any;
+
+  @ApiProperty({ description: 'Page limit' })
+  pageLimit?: number;
+
+  @ApiProperty({ description: 'Weigth limit' })
+  weightLimit?: number;
 }
 
 export class FileValidationDto {

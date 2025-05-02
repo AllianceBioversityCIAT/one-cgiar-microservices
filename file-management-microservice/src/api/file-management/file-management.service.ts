@@ -16,6 +16,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SubscribeApplicationDto } from './dto/subscribe-application.dto';
 import { ClarisaService } from '../../tools/clarisa/clarisa.service';
 
+import { PDFDocument } from 'pdf-lib';
+import * as mammoth from 'mammoth';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
 @Injectable()
 export class FileManagementService {
   private readonly interval: number = 3000;
@@ -42,7 +48,7 @@ export class FileManagementService {
     uploadFileDto: UploadFileDto,
   ): Promise<ResponseUtils> {
     try {
-      const { fileName, bucketName } = uploadFileDto;
+      const { fileName, bucketName, pageLimit, weightLimit } = uploadFileDto;
 
       if (!file || !fileName || !bucketName) {
         this._logger.error('File, fileName and bucketName are required');
@@ -51,6 +57,72 @@ export class FileManagementService {
           description: 'File, fileName and bucketName are required',
           status: HttpStatus.BAD_REQUEST,
         });
+      }
+
+      if (weightLimit && file.size > weightLimit) {
+        this._logger.warn(
+          `File size (${file.size} bytes) exceeds the limit (${weightLimit} bytes)`,
+        );
+        return ResponseUtils.format({
+          data: null,
+          description: `File size exceeds the limit of ${weightLimit} bytes`,
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+
+      let pageCount = null;
+      const fileExtension = path.extname(fileName).toLowerCase();
+
+      if (pageLimit && ['.pdf', '.doc', '.docx'].includes(fileExtension)) {
+        try {
+          if (fileExtension === '.pdf') {
+            const pdfDoc = await PDFDocument.load(file.buffer);
+            pageCount = pdfDoc.getPageCount();
+            this._logger.debug('PDF page count:', pageCount);
+          } else if (fileExtension === '.doc' || fileExtension === '.docx') {
+            const tempDir = os.tmpdir();
+            const tempFilePath = path.join(
+              tempDir,
+              `temp_${Date.now()}${fileExtension}`,
+            );
+
+            await fs.promises.writeFile(tempFilePath, file.buffer);
+
+            try {
+              const result = await mammoth.convertToHtml({
+                path: tempFilePath,
+              });
+              const htmlContent = result.value;
+
+              const charsPerPage = 3000;
+              pageCount = Math.ceil(htmlContent.length / charsPerPage);
+              this._logger.debug('Word page count:', pageCount);
+            } finally {
+              await fs.promises.unlink(tempFilePath).catch(() => {});
+            }
+          }
+
+          if (pageCount && pageCount > pageLimit) {
+            this._logger.warn(
+              `Document has ${pageCount} pages, which exceeds the limit of ${pageLimit} pages`,
+            );
+            return ResponseUtils.format({
+              data: null,
+              description: `Document has ${pageCount} pages, which exceeds the limit of ${pageLimit} pages`,
+              status: HttpStatus.BAD_REQUEST,
+            });
+          }
+        } catch (pageCountError) {
+          this._logger.warn(`Could not count pages: ${pageCountError.message}`);
+          this._logger.warn(
+            'Unable to verify page count against limit, rejecting upload for safety',
+          );
+          return ResponseUtils.format({
+            data: null,
+            description: `Unable to verify page count against limit: ${pageCountError.message}`,
+            status: HttpStatus.BAD_REQUEST,
+          });
+        }
       }
 
       const key: string = fileName;
@@ -68,7 +140,7 @@ export class FileManagementService {
         'File Management Microservice',
         '#4CAF50',
         'File Upload Successful',
-        `File "${fileName}" (${file.size} bytes, ${file.mimetype}) successfully uploaded to bucket "${bucketName}"`,
+        `File "${fileName}" (${file.size} bytes, ${file.mimetype}${pageCount ? ', ' + pageCount + ' pages' : ''}) successfully uploaded to bucket "${bucketName}"`,
         'Low',
       );
 
@@ -78,6 +150,7 @@ export class FileManagementService {
           originalName: file.originalname,
           mimetype: file.mimetype,
           size: file.size,
+          pageCount: pageCount,
           location: `https://${bucketName}.s3.amazonaws.com/${key}`,
         },
         description: 'File uploaded successfully',
