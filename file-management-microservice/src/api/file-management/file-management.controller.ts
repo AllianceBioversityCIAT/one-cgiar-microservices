@@ -42,7 +42,7 @@ export class FileManagementController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Bucket name, file name, and file are required.',
+    description: 'Bucket name and file are required.',
   })
   @ApiResponse({ status: 500, description: 'Internal server error.' })
   @ApiConsumes('multipart/form-data')
@@ -53,6 +53,7 @@ export class FileManagementController {
         file: {
           type: 'string',
           format: 'binary',
+          description: 'File to upload',
         },
         bucketName: {
           type: 'string',
@@ -60,9 +61,19 @@ export class FileManagementController {
         },
         fileName: {
           type: 'string',
-          description: 'Name to save the file as',
+          description:
+            'Custom name to save the file as (optional, defaults to original filename)',
+        },
+        pageLimit: {
+          type: 'number',
+          description: 'Maximum number of pages allowed for PDF/DOC/DOCX files',
+        },
+        weightLimit: {
+          type: 'number',
+          description: 'Maximum file size in bytes',
         },
       },
+      required: ['file', 'bucketName'],
     },
   })
   @Post('upload')
@@ -116,6 +127,68 @@ export class FileManagementController {
   async subscribeApplication(@Body() newApplication: SubscribeApplicationDto) {
     return await this.fileManagementService.subscribeApplication(
       newApplication,
+    );
+  }
+
+  @ApiOperation({ summary: 'Upload a file to S3 using STAR authentication' })
+  @ApiHeader({
+    name: 'access-token',
+    description: 'STAR access token for authentication and authorization',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'File successfully uploaded to S3.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bucket name and file are required.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired STAR token.',
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload',
+        },
+        bucketName: {
+          type: 'string',
+          description: 'S3 bucket name',
+        },
+        fileName: {
+          type: 'string',
+          description:
+            'Custom name to save the file as (optional, defaults to original filename)',
+        },
+        pageLimit: {
+          type: 'number',
+          description: 'Maximum number of pages allowed for PDF/DOC/DOCX files',
+        },
+        weightLimit: {
+          type: 'number',
+          description: 'Maximum file size in bytes',
+        },
+      },
+      required: ['file', 'bucketName'],
+    },
+  })
+  @Post('upload-file')
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() createFileManagmentDto: UploadFileDto,
+  ) {
+    return await this.fileManagementService.uploadFile(
+      file,
+      createFileManagmentDto,
     );
   }
 }

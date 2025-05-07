@@ -15,8 +15,8 @@ import { ResClarisaValidateConectioDto } from '../tools/clarisa/dto/clarisa-crea
 import { NotificationsService } from '../api/notifications/notifications.service';
 
 @Injectable()
-export class JwtMiddleware implements NestMiddleware {
-  private readonly _logger = new Logger(JwtMiddleware.name);
+export class JwtClarisaMiddleware implements NestMiddleware {
+  private readonly _logger = new Logger(JwtClarisaMiddleware.name);
   constructor(
     private readonly clarisaService: ClarisaService,
     private readonly _notificationService: NotificationsService,
@@ -40,7 +40,7 @@ export class JwtMiddleware implements NestMiddleware {
           'File Management Microservice',
           '#FF0000',
           'Invalid credentials',
-          'Auth header is missing or not in the correct format.',
+          `Auth header is missing or not in the correct format. ${error}`,
           'Medium',
         );
         throw new UnauthorizedException('Invalid auth header format.');

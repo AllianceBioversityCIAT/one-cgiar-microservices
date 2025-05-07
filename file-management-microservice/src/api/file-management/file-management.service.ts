@@ -16,13 +16,19 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SubscribeApplicationDto } from './dto/subscribe-application.dto';
 import { ClarisaService } from '../../tools/clarisa/clarisa.service';
 
+import { PDFDocument } from 'pdf-lib';
+import * as mammoth from 'mammoth';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
 @Injectable()
 export class FileManagementService {
   private readonly interval: number = 3000;
   private readonly maxAttempts: number = 6;
 
   private readonly _logger = new Logger(FileManagementService.name);
-  private s3Client: S3Client;
+  private readonly s3Client: S3Client;
 
   constructor(
     private readonly _notificationsService: NotificationsService,
@@ -41,34 +47,60 @@ export class FileManagementService {
     file: Express.Multer.File,
     uploadFileDto: UploadFileDto,
   ): Promise<ResponseUtils> {
-    try {
-      const { fileName, bucketName } = uploadFileDto;
+    const { bucketName, pageLimit, weightLimit } = uploadFileDto;
+    const fileName = uploadFileDto.fileName || file?.originalname;
 
-      if (!file || !fileName || !bucketName) {
-        this._logger.error('File, fileName and bucketName are required');
-        return ResponseUtils.format({
-          data: null,
-          description: 'File, fileName and bucketName are required',
-          status: HttpStatus.BAD_REQUEST,
-        });
+    if (!file || !bucketName) {
+      return this.badRequest('File and bucketName are required');
+    }
+
+    if (weightLimit && file.size > weightLimit) {
+      return this.badRequest(
+        `File size exceeds the limit of ${weightLimit} bytes`,
+        `File size (${file.size} bytes) exceeds the limit (${weightLimit} bytes)`,
+        'warn',
+      );
+    }
+
+    const extension = path.extname(fileName).toLowerCase();
+    const allowed = [
+      '.pdf',
+      '.txt',
+      '.doc',
+      '.docx',
+      '.xls',
+      '.xlsx',
+      '.ppt',
+      '.pptx',
+    ];
+
+    if (!allowed.includes(extension)) {
+      return this.badRequest(
+        `File type ${extension} is not allowed. Allowed types: PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX`,
+        `File type ${extension} is not allowed`,
+        'warn',
+      );
+    }
+
+    let pageCount: number | null = null;
+    if (pageLimit && ['.pdf', '.doc', '.docx'].includes(extension)) {
+      pageCount = await this.safeCountPages(file, extension);
+      if (pageCount > pageLimit) {
+        return this.badRequest(
+          `Document has ${pageCount} pages, which exceeds the limit of ${pageLimit} pages`,
+          `Document page count limit exceeded`,
+          'warn',
+        );
       }
+    }
 
-      const key: string = fileName;
-      const uploadParams = {
-        Bucket: bucketName,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      };
-
-      await this.s3Client.send(new PutObjectCommand(uploadParams));
-
-      await this._notificationsService.sendSlackNotification(
+    try {
+      const location = await this.uploadToS3(bucketName, fileName, file);
+      const pageCountText = pageCount ? `, ${pageCount} pages` : '';
+      await this.notifySlack(
         ':file_folder:',
-        'File Management Microservice',
-        '#4CAF50',
         'File Upload Successful',
-        `File "${fileName}" (${file.size} bytes, ${file.mimetype}) successfully uploaded to bucket "${bucketName}"`,
+        `File "${fileName}" (${file.size} bytes${pageCountText}) successfully uploaded to bucket "${bucketName}"`,
         'Low',
       );
 
@@ -78,27 +110,95 @@ export class FileManagementService {
           originalName: file.originalname,
           mimetype: file.mimetype,
           size: file.size,
-          location: `https://${bucketName}.s3.amazonaws.com/${key}`,
+          pageCount,
+          location,
         },
         description: 'File uploaded successfully',
         status: HttpStatus.CREATED,
       });
-    } catch (error) {
-      this._logger.error(`Error uploading file: ${error}`);
-      await this._notificationsService.sendSlackNotification(
+    } catch (err) {
+      this._logger.error(`Error uploading file: ${err}`);
+      await this.notifySlack(
         ':x:',
-        'File Management Microservice',
-        '#FF0000',
         'File Upload Error',
-        `Failed to upload file "${uploadFileDto?.fileName}" to bucket "${uploadFileDto?.bucketName}". Error: ${error.message}`,
+        `Failed to upload file "${fileName}" to bucket "${bucketName}". Error: ${err.message}`,
         'High',
       );
       return ResponseUtils.format({
         data: null,
-        description: `Error uploading file: ${error.message}`,
+        description: `Error uploading file: ${err.message}`,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
+  }
+
+  private badRequest(
+    description: string,
+    logMessage?: string,
+    level: 'warn' | 'error' = 'error',
+  ): ResponseUtils {
+    if (level === 'warn') this._logger.warn(logMessage || description);
+    else this._logger.error(logMessage || description);
+    return ResponseUtils.format({
+      data: null,
+      description,
+      status: HttpStatus.BAD_REQUEST,
+    });
+  }
+
+  private async safeCountPages(
+    file: Express.Multer.File,
+    extension: string,
+  ): Promise<number> {
+    try {
+      if (extension === '.pdf') {
+        const pdf = await PDFDocument.load(file.buffer);
+        return pdf.getPageCount();
+      }
+      const tempPath = path.join(os.tmpdir(), `temp_${Date.now()}${extension}`);
+      await fs.promises.writeFile(tempPath, file.buffer);
+      const { value: html } = await mammoth.convertToHtml({ path: tempPath });
+      await fs.promises.unlink(tempPath).catch(() => {});
+      const charsPerPage = 3000;
+      return Math.ceil(html.length / charsPerPage);
+    } catch (err) {
+      this._logger.warn(`Could not count pages: ${err.message}`);
+      throw new Error(
+        `Unable to verify page count against limit: ${err.message}`,
+      );
+    }
+  }
+
+  private async uploadToS3(
+    bucket: string,
+    key: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }),
+    );
+    return `https://${bucket}.s3.amazonaws.com/${key}`;
+  }
+
+  private async notifySlack(
+    icon: string,
+    title: string,
+    message: string,
+    severity: 'Low' | 'High',
+  ): Promise<void> {
+    await this._notificationsService.sendSlackNotification(
+      icon,
+      'File Management Microservice',
+      severity === 'High' ? '#FF0000' : '#4CAF50',
+      title,
+      message,
+      severity,
+    );
   }
 
   async fileValidation(fileValidationDto: FileValidationDto) {
