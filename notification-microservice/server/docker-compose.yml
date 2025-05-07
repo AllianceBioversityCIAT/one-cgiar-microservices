@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  dev:
+    env_file:
+      - .env
+    container_name: email-notifications-microservice
+    image: email-notifications-microservice
+    build:
+      context: .
+      target: development
+      dockerfile: ./Dockerfile
+    command: npm run start
+    ports:
+      - 3001:3001
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    restart: unless-stopped

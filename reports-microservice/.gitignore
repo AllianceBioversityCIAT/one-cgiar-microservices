@@ -1,0 +1,44 @@
+# Ignorar todos los archivos .env en cualquier subdirectorio
+**/.env
+
+# Ignorar node_modules en cualquier subdirectorio
+**/node_modules/
+
+# Ignorar archivos de compilación
+**/dist/
+**/build/
+
+# Ignorar archivos de logs
+**/logs
+**/*.log
+
+# Ignorar archivos de caché de npm
+**/.npm
+
+# Ignorar archivos de caché de yarn
+**/.yarn-cache
+
+# Ignorar archivos de cobertura
+**/coverage/
+
+# Ignorar archivos temporales
+**/.tmp
+**/.temp
+
+# Ignorar archivos de IDE y editores
+**/.idea/
+**/.vscode/
+**/*.swp
+**/*.swo
+
+# Ignorar archivos del sistema operativo
+**/.DS_Store
+**/Thumbs.db
+
+# Ignorar archivos de configuración local
+**/*.local
+
+# Mantener archivos de ejemplo .env
+!**/.env.example
+
+.serverless
