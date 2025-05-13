@@ -5,6 +5,8 @@ import * as bodyparser from 'body-parser';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger: Logger = new Logger('Bootstrap');
@@ -12,20 +14,29 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // Apply global validation pipe
   app.useGlobalPipes(new ValidationPipe());
-
-  // Apply global logging interceptor
   app.useGlobalInterceptors(new LoggingInterceptor());
-
-  // Body parser configuration
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.use(bodyparser.urlencoded({ limit: '100mb', extended: true }));
   app.use(bodyparser.json({ limit: '100mb' }));
-
-  // Enable CORS
   app.enableCors();
 
-  // Security with Helmet
+  const config = new DocumentBuilder()
+    .setTitle('CGIAR Authentication API')
+    .setDescription('Authentication and authorization microservice for CGIAR applications')
+    .setVersion('1.0')
+    .addTag('auth', 'Authentication endpoints')
+    .build();
+    
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document, {
+    explorer: true,
+    swaggerOptions: {
+      filter: true,
+      showRequestDuration: true,
+    },
+  });
+
   app.use(
     helmet({
       xssFilter: true,
@@ -46,15 +57,14 @@ async function bootstrap() {
     }),
   );
 
-  // Configuration and port setup
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
 
-  // Start the server
   await app
     .listen(port)
     .then(() => {
       logger.log(`Application is running http://localhost:${port}`);
+      logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
     })
     .catch((err) => {
       const portValue: number | string = port || '<Not defined>';
