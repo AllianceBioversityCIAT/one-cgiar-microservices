@@ -12,7 +12,7 @@ export class MisService {
 
   async getMisInfo(misId: string): Promise<any> {
     try {
-      const misEndpoint = this.configService.get<string>('CLARISA_ENDPOINT');
+      const misEndpoint = this.configService.get<string>('CLARISA_HOST');
       const url = `${misEndpoint}/mises/get/${misId}`;
       const response = await firstValueFrom(this.httpService.get(url));
 

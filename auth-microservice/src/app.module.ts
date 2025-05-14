@@ -1,15 +1,23 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { CommonModule } from './common/common.module';
+import { AuthModule } from './api/auth/auth.module';
+import { CommonModule } from './shared/common.module';
+import { JwtClarisaMiddleware } from './middleware/jwt-clarisa.middleware';
+import { ClarisaModule } from './tools/clarisa/clarisa.module';
 
 @Module({
   imports: [
     AuthModule,
     CommonModule,
+    ClarisaModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -24,4 +32,11 @@ import { CommonModule } from './common/common.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(JwtClarisaMiddleware).forRoutes({
+      path: '/auth/*path',
+      method: RequestMethod.ALL,
+    });
+  }
+}

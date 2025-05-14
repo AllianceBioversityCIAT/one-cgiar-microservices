@@ -74,7 +74,7 @@ describe('MisService', () => {
 
       const result = await service.getMisInfo(misId);
 
-      expect(configService.get).toHaveBeenCalledWith('CLARISA_ENDPOINT');
+      expect(configService.get).toHaveBeenCalledWith('CLARISA_HOST');
       expect(httpService.get).toHaveBeenCalledWith(
         `${clarisaEndpoint}/mises/get/${misId}`,
       );

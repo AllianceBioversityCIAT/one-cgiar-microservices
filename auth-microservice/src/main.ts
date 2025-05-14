@@ -4,9 +4,9 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import * as bodyparser from 'body-parser';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
+import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger: Logger = new Logger('Bootstrap');
@@ -23,11 +23,47 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('CGIAR Authentication API')
-    .setDescription('Authentication and authorization microservice for CGIAR applications')
+    .setDescription(
+      `
+      Authentication and authorization microservice for CGIAR applications.
+      
+      ## Authentication with CLARISA
+      
+      This API requires authentication using CLARISA credentials. To authenticate your requests, include the following header:
+      
+      \`\`\`
+      {
+        "auth": "{"username":"your_client_id","password":"your_client_secret"}"
+      }
+      \`\`\`
+      
+      These credentials must be obtained from CLARISA and are specific to your Management Information System (MIS).
+      
+      ## Getting CLARISA Credentials
+      
+      If you don't have CLARISA credentials, contact the CGIAR administration to request a connection between your MIS and this Authentication Microservice.
+      
+      ## Error Codes
+      
+      - **400 Bad Request**: Missing or malformed authentication header
+      - **401 Unauthorized**: Invalid credentials
+      - **500 Internal Server Error**: Server-side error
+    `,
+    )
     .setVersion('1.0')
     .addTag('auth', 'Authentication endpoints')
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'auth',
+        in: 'header',
+        description:
+          'CLARISA authentication credentials in JSON format: {"username":"client_id","password":"client_secret"}',
+      },
+      'clarisa-auth',
+    )
     .build();
-    
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
     explorer: true,
@@ -64,7 +100,9 @@ async function bootstrap() {
     .listen(port)
     .then(() => {
       logger.log(`Application is running http://localhost:${port}`);
-      logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
+      logger.log(
+        `Swagger documentation available at http://localhost:${port}/api/docs`,
+      );
     })
     .catch((err) => {
       const portValue: number | string = port || '<Not defined>';
