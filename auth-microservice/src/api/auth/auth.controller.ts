@@ -8,6 +8,7 @@ import {
   ApiBody,
   ApiBadRequestResponse,
   ApiInternalServerErrorResponse,
+  ApiOperation,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
@@ -17,6 +18,7 @@ import {
   ErrorResponse,
   TokenResponse,
 } from '../../shared/swagger/responses-swagger';
+import { CustomAuthDto } from './dto/custom-auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -97,5 +99,18 @@ export class AuthController {
   @Post('userinfo')
   async getUserInfo(@Body() body: { accessToken: string }) {
     return this.authService.getUserInfo(body.accessToken);
+  }
+
+  @Post('login/custom')
+  @ApiOperation({ summary: 'Authenticate user with custom password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns authentication tokens and user info',
+  })
+  @ApiResponse({ status: 401, description: 'Authentication failed' })
+  async loginWithCustomPassword(
+    @Body() customAuthDto: CustomAuthDto,
+  ): Promise<any> {
+    return this.authService.authenticateWithCustomPassword(customAuthDto);
   }
 }

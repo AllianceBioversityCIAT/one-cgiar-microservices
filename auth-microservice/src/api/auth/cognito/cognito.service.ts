@@ -35,44 +35,14 @@ export class CognitoService {
     return hmac.digest('base64');
   }
 
-  async loginWithAzureAD(username: string, password: string): Promise<any> {
-    try {
-      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID_AD');
-      const clientSecret = this.configService.get<string>('CLIENT_SECRET_AD');
-      const secretHash = this.calculateSecretHash(
-        username,
-        clientId,
-        clientSecret,
-      );
-
-      const command = new AdminInitiateAuthCommand({
-        UserPoolId: this.configService.get<string>('COGNITO_USER_POOL_ID'),
-        ClientId: clientId,
-        AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
-        AuthParameters: {
-          USERNAME: username,
-          PASSWORD: password,
-          SECRET_HASH: secretHash,
-        },
-      });
-
-      const response = await this.cognitoClient.send(command);
-      return response;
-    } catch (error) {
-      throw new HttpException('Authentication failed', HttpStatus.UNAUTHORIZED);
-    }
-  }
-
   async loginWithCustomPassword(
     username: string,
     password: string,
   ): Promise<any> {
     try {
-      const clientId = this.configService.get<string>(
-        'COGNITO_CLIENT_ID_USER_PASS',
-      );
+      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID_USER');
       const clientSecret = this.configService.get<string>(
-        'CLIENT_SECRET_USER_PASS',
+        'COGNITO_CLIENT_SECRET_USER_PASS',
       );
       const secretHash = this.calculateSecretHash(
         username,

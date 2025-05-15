@@ -11,6 +11,8 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
+import { CustomAuthDto } from './dto/custom-auth.dto';
+import { CognitoService } from './cognito/cognito.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +21,7 @@ export class AuthService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly cognitoService: CognitoService,
   ) {}
 
   /**
@@ -32,7 +35,6 @@ export class AuthService {
     @Req() request: RequestWithCustomAttrs,
   ) {
     try {
-      // Obtiene la información del MIS directamente de la solicitud
       const misMetadata = request.senderMisMetadata;
 
       if (!misMetadata || !misMetadata.mis_auth) {
@@ -74,7 +76,6 @@ export class AuthService {
     @Req() request: RequestWithCustomAttrs,
   ) {
     try {
-      // Obtiene la información del MIS directamente de la solicitud
       const misMetadata = request.senderMisMetadata;
 
       if (!misMetadata || !misMetadata.mis_auth) {
@@ -105,7 +106,6 @@ export class AuthService {
       params.append('code', validateCodeDto.code);
       params.append('redirect_uri', misMetadata.mis_auth.auth_url);
 
-      // Obtener tokens de Cognito
       const tokenResponse = await firstValueFrom(
         this.httpService.post(tokenEndpoint, params.toString(), {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -140,6 +140,44 @@ export class AuthService {
         error.message || 'Error validating authorization code',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  /**
+   * Authenticates a user using username and password
+   * @param customAuthDto Custom auth credentials
+   * @returns Authentication result with tokens
+   */
+  async authenticateWithCustomPassword(
+    customAuthDto: CustomAuthDto,
+  ): Promise<any> {
+    this.logger.log('Authenticating user with custom password');
+
+    try {
+      const { username, password } = customAuthDto;
+
+      const authResult = await this.cognitoService.loginWithCustomPassword(
+        username,
+        password,
+      );
+
+      const tokens = {
+        accessToken: authResult.AuthenticationResult.AccessToken,
+        idToken: authResult.AuthenticationResult.IdToken,
+        refreshToken: authResult.AuthenticationResult.RefreshToken,
+        expiresIn: authResult.AuthenticationResult.ExpiresIn,
+        tokenType: authResult.AuthenticationResult.TokenType,
+      };
+
+      const userInfo = await this.getUserInfo(tokens.accessToken);
+
+      return {
+        tokens,
+        userInfo,
+      };
+    } catch (error) {
+      this.logger.error('Authentication failed', error);
+      throw new HttpException('Authentication failed', HttpStatus.UNAUTHORIZED);
     }
   }
 

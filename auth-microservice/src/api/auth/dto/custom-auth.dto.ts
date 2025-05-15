@@ -1,23 +1,7 @@
-import {
-  IsNotEmpty,
-  IsString,
-  IsEmail,
-  IsNumber,
-  IsInt,
-} from 'class-validator';
+import { IsNotEmpty, IsString, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class PasswordAuthDto {
-  @ApiProperty({
-    description: 'Management Information System ID',
-    example: 123,
-    type: Number,
-  })
-  @IsNotEmpty()
-  @IsNumber()
-  @IsInt()
-  misId: string;
-
+export class CustomAuthDto {
   @ApiProperty({
     description: 'User email address',
     example: 'user@cgiar.org',

@@ -83,7 +83,6 @@ export class ClarisaService {
 
       const misMetadata = await this.getMisMetadata(senderId);
 
-      // Comprobar si misMetadata existe y tiene la estructura esperada
       if (!misMetadata || !misMetadata.mis_auth) {
         this.logger.error(
           `Failed to get metadata for MIS ID: ${senderId} or missing mis_auth`,
@@ -142,13 +141,10 @@ export class ClarisaService {
   async getMisMetadata(misId: number): Promise<MisMetadataDto | null> {
     this.logger.log(`Getting MIS metadata for ID: ${misId}`);
     try {
-      // La respuesta de este endpoint es directamente el objeto MisMetadataDto, no un ResponseClarisaDto
       const misMetadata = await this.connection.get<MisMetadataDto>(
         `mises/get-metadata/${misId}`,
       );
-      this.logger.debug(`MIS metadata response:`, misMetadata);
 
-      // Verificar que la respuesta tenga la estructura esperada
       if (
         misMetadata &&
         typeof misMetadata === 'object' &&
