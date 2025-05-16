@@ -136,6 +136,11 @@ export class FileManagementController {
     description: 'STAR access token for authentication and authorization',
     required: true,
   })
+  @ApiHeader({
+    name: 'environment-url',
+    description: 'URL of the STAR environment',
+    required: true,
+  })
   @ApiResponse({
     status: 200,
     description: 'File successfully uploaded to S3.',
@@ -177,7 +182,7 @@ export class FileManagementController {
           description: 'Maximum file size in bytes',
         },
       },
-      required: ['file', 'bucketName'],
+      required: ['file', 'bucketName', 'environmentUrl'],
     },
   })
   @Post('upload-file')

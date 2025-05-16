@@ -11,61 +11,21 @@ export class Star {
   private readonly logger = new Logger(Star.name);
 
   constructor(http: HttpService) {
-    this.isProduction =
-      this.validateEnvironmentVariable('IS_PRODUCTION') === 'true';
-
-    const starHostKey = this.isProduction ? 'STAR_HOST_PROD' : 'STAR_HOST_TEST';
-    this.starHost = this.validateEnvironmentVariable(starHostKey);
-
-    if (!this.starHost.endsWith('/')) {
-      this.starHost += '/';
-    }
-
     this.http = http;
-    this.logger.log(
-      `Initialized Star connection with ${this.isProduction ? 'PRODUCTION' : 'TEST'} environment`,
-    );
-  }
-
-  /**
-   * Valida una variable de entorno y retorna su valor o lanza una excepción si no está definida
-   * @param variableName Nombre de la variable de entorno
-   * @param defaultValue Valor predeterminado opcional si la variable no está definida
-   * @returns El valor de la variable de entorno
-   */
-  private validateEnvironmentVariable(
-    variableName: string,
-    defaultValue?: string,
-  ): string {
-    const value = env[variableName];
-
-    if (value === undefined) {
-      if (defaultValue !== undefined) {
-        this.logger.warn(
-          `Environment variable ${variableName} not defined, using default value`,
-        );
-        return defaultValue;
-      }
-      throw new Error(
-        `Required environment variable ${variableName} is not defined`,
-      );
-    }
-
-    return value;
   }
 
   public async validateToken(
     token: string,
+    environmentUrl: string,
   ): Promise<StarTokenValidationResponse> {
     if (!token) {
       throw new BadRequestException('Token is required');
     }
-
     try {
       return await firstValueFrom(
         this.http
           .patch(
-            this.starHost + 'authorization/validate-token',
+            environmentUrl + 'authorization/validate-token',
             {},
             {
               headers: {

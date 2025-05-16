@@ -11,7 +11,10 @@ export class StarService {
     this.connection = new Star(this._http);
   }
 
-  async validateToken(token: string): Promise<StarTokenValidationResponse> {
-    return await this.connection.validateToken(token);
+  async validateToken(
+    token: string,
+    environmentUrl: string,
+  ): Promise<StarTokenValidationResponse> {
+    return await this.connection.validateToken(token, environmentUrl);
   }
 }
