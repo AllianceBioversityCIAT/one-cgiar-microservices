@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { MisService } from './mis.service';
 import { of, throwError } from 'rxjs';
-import { AxiosResponse, AxiosError } from 'axios';
+import { AxiosResponse } from 'axios';
 
 describe('MisService', () => {
   let service: MisService;

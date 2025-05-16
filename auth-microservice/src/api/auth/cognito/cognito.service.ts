@@ -1,9 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import {
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-  AdminInitiateAuthCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -35,6 +31,12 @@ export class CognitoService {
     return hmac.digest('base64');
   }
 
+  /**
+   * Realiza una autenticación directa contra el endpoint de Cognito usando HTTP POST
+   * @param username Nombre de usuario (email)
+   * @param password Contraseña
+   * @returns Respuesta de la autenticación
+   */
   async loginWithCustomPassword(
     username: string,
     password: string,
@@ -49,7 +51,8 @@ export class CognitoService {
         clientId,
         clientSecret,
       );
-      const command = new InitiateAuthCommand({
+
+      const payload = {
         AuthFlow: 'USER_PASSWORD_AUTH',
         ClientId: clientId,
         AuthParameters: {
@@ -57,12 +60,36 @@ export class CognitoService {
           PASSWORD: password,
           SECRET_HASH: secretHash,
         },
-      });
+      };
 
-      const response = await this.cognitoClient.send(command);
-      return response;
+      const headers = {
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+        'Content-Type': 'application/x-amz-json-1.1',
+      };
+
+      const response = await fetch(
+        this.configService.get<string>('COGNITO_USER_POOL_URL'),
+        {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new HttpException(
+          errorData.message || 'Authentication failed',
+          response.status,
+        );
+      }
+
+      return await response.json();
     } catch (error) {
-      throw new HttpException('Authentication failed', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        error.message || 'Authentication failed',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 }

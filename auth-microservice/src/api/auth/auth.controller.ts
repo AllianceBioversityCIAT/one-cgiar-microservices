@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Req } from '@nestjs/common';
+import { Controller, Post, Body, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ProviderAuthDto } from './dto/provider-auth.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
@@ -10,7 +10,6 @@ import {
   ApiInternalServerErrorResponse,
   ApiOperation,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { ApiClarisaAuth } from '../../shared/decorator/clarisa-auth.decorator';
 import {

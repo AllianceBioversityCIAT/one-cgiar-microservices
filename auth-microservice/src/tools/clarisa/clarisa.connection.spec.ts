@@ -1,4 +1,3 @@
-import { Test } from '@nestjs/testing';
 import { HttpService } from '@nestjs/axios';
 import { Clarisa, ClarisaOptions, JwtClarisa } from './clarisa.connection';
 import { of, throwError } from 'rxjs';

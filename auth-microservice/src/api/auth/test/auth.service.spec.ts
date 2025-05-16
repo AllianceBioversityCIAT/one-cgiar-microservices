@@ -6,7 +6,7 @@ import { CognitoService } from '../cognito/cognito.service';
 import { ProviderAuthDto } from '../dto/provider-auth.dto';
 import { ValidateCodeDto } from '../dto/validate-code.dto';
 import { CustomAuthDto } from '../dto/custom-auth.dto';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { RequestWithCustomAttrs } from '../../../middleware/jwt-clarisa.middleware';
@@ -234,7 +234,7 @@ describe('AuthService', () => {
   });
 
   describe('authenticateWithCustomPassword', () => {
-    it('should authenticate with custom password and return tokens and user info', async () => {
+    it('should authenticate with custom password and return tokens only', async () => {
       const customAuthDto: CustomAuthDto = {
         username: 'user@cgiar.org',
         password: 'password123',
@@ -253,9 +253,6 @@ describe('AuthService', () => {
       jest
         .spyOn(cognitoService, 'loginWithCustomPassword')
         .mockResolvedValueOnce(authResult);
-      jest
-        .spyOn(service, 'getUserInfo')
-        .mockResolvedValueOnce(mockUserInfoResponse.data);
 
       const result =
         await service.authenticateWithCustomPassword(customAuthDto);
@@ -264,9 +261,13 @@ describe('AuthService', () => {
         customAuthDto.username,
         customAuthDto.password,
       );
-      expect(service.getUserInfo).toHaveBeenCalledWith('mock-access-token');
+
       expect(result).toHaveProperty('tokens.accessToken', 'mock-access-token');
-      expect(result).toHaveProperty('userInfo', mockUserInfoResponse.data);
+      expect(result).toHaveProperty('tokens.idToken', 'mock-id-token');
+      expect(result).toHaveProperty(
+        'tokens.refreshToken',
+        'mock-refresh-token',
+      );
     });
 
     it('should throw exception when authentication fails', async () => {

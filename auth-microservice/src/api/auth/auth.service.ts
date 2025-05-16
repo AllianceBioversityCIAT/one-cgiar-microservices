@@ -169,11 +169,8 @@ export class AuthService {
         tokenType: authResult.AuthenticationResult.TokenType,
       };
 
-      const userInfo = await this.getUserInfo(tokens.accessToken);
-
       return {
         tokens,
-        userInfo,
       };
     } catch (error) {
       this.logger.error('Authentication failed', error);

@@ -6,7 +6,8 @@ import { ApiProperty } from '@nestjs/swagger';
 export class AuthUrlResponse {
   @ApiProperty({
     description: 'Authentication URL for the specified provider',
-    example: 'https://ost-toc.auth.us-east-1.amazoncognito.com/oauth2/authorize?response_type=code&client_id=client-id&redirect_uri=https://example.com/callback&scope=openid+email+profile&identity_provider=CGIAR-AzureAD',
+    example:
+      'https://ost-toc.auth.us-east-1.amazoncognito.com/oauth2/authorize?response_type=code&client_id=client-id&redirect_uri=https://example.com/callback&scope=openid+email+profile&identity_provider=CGIAR-AzureAD',
   })
   authUrl: string;
 }

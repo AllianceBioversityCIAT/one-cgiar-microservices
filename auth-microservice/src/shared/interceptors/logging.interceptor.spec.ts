@@ -1,4 +1,3 @@
-import { Test } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
 import { CallHandler, ExecutionContext, Logger } from '@nestjs/common';
 import { LoggingInterceptor } from './logging.interceptor';
@@ -122,7 +121,7 @@ describe('LoggingInterceptor', () => {
           method: 'GET',
           originalUrl: '/test-url',
           ip: '127.0.0.1',
-          get: (header: string) => null,
+          get: () => null,
         }),
         getResponse: () => ({
           statusCode: 200,

@@ -173,7 +173,7 @@ describe('JwtClarisaMiddleware', () => {
       ).rejects.toThrow(UnauthorizedException);
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        "MIS ID 123 does not have authentication configuration"
+        'MIS ID 123 does not have authentication configuration',
       );
     });
 

@@ -3,11 +3,9 @@ import { CognitoService } from './cognito.service';
 import { ConfigService } from '@nestjs/config';
 import { HttpException } from '@nestjs/common';
 import * as crypto from 'crypto';
-import {
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-  InitiateAuthCommandOutput,
-} from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+
+global.fetch = jest.fn();
 
 jest.mock('@aws-sdk/client-cognito-identity-provider', () => {
   const originalModule = jest.requireActual(
@@ -19,7 +17,6 @@ jest.mock('@aws-sdk/client-cognito-identity-provider', () => {
     CognitoIdentityProviderClient: jest.fn().mockImplementation(() => ({
       send: jest.fn(),
     })),
-    InitiateAuthCommand: jest.fn(),
   };
 });
 
@@ -51,6 +48,8 @@ describe('CognitoService', () => {
                 AWS_SECRET_ACCESS_KEY: 'mock-secret-key',
                 COGNITO_CLIENT_ID_USER: 'mock-client-id',
                 COGNITO_CLIENT_SECRET_USER_PASS: 'mock-client-secret',
+                COGNITO_USER_POOL_URL:
+                  'https://cognito-idp.us-east-1.amazonaws.com/',
               };
               return config[key];
             }),
@@ -62,6 +61,8 @@ describe('CognitoService', () => {
     service = module.get<CognitoService>(CognitoService);
     configService = module.get<ConfigService>(ConfigService);
     cognitoClient = service['cognitoClient'];
+
+    (global.fetch as jest.Mock).mockReset();
   });
 
   it('should be defined', () => {
@@ -80,78 +81,9 @@ describe('CognitoService', () => {
     });
   });
 
-  describe('calculateSecretHash', () => {
-    it('should calculate secret hash correctly', () => {
-      const username = 'test@example.com';
-      const clientId = 'mock-client-id';
-      const clientSecret = 'mock-client-secret';
-
-      // Get the real crypto module
-      const realCrypto = jest.requireActual('crypto');
-
-      // Calculate expected hash using real crypto
-      const realHmac = realCrypto.createHmac('sha256', clientSecret);
-      realHmac.update(username + clientId);
-      const expectedHash = realHmac.digest('base64');
-
-      // Temporarily use real crypto implementation
-      jest
-        .spyOn(crypto, 'createHmac')
-        .mockImplementation((...args) => realCrypto.createHmac(...args));
-
-      const calculateSecretHashResult = service['calculateSecretHash'](
-        username,
-        clientId,
-        clientSecret,
-      );
-
-      // Restore the mock for other tests
-      jest.spyOn(crypto, 'createHmac').mockImplementation(
-        () =>
-          ({
-            update: jest.fn().mockReturnThis(),
-            digest: jest.fn().mockReturnValue('mocked-hash-value'),
-          }) as any,
-      );
-
-      expect(calculateSecretHashResult.length).toBeGreaterThan(0);
-      expect(typeof calculateSecretHashResult).toBe('string');
-      expect(calculateSecretHashResult).toBe(expectedHash);
-    });
-
-    it('should use the correct algorithm and encoding', () => {
-      const username = 'test@example.com';
-      const clientId = 'mock-client-id';
-      const clientSecret = 'mock-client-secret';
-
-      jest.spyOn(crypto, 'createHmac').mockRestore();
-      const hmacSpy = jest.spyOn(crypto, 'createHmac');
-
-      const mockDigest = jest.fn().mockReturnValue('base64-encoded-result');
-      const mockUpdate = jest.fn().mockReturnThis();
-      hmacSpy.mockReturnValue({
-        update: mockUpdate,
-        digest: mockDigest,
-      } as any);
-
-      service['calculateSecretHash'](username, clientId, clientSecret);
-
-      expect(hmacSpy).toHaveBeenCalledWith('sha256', clientSecret);
-      expect(mockUpdate).toHaveBeenCalledWith(username + clientId);
-      expect(mockDigest).toHaveBeenCalledWith('base64');
-
-      jest.spyOn(crypto, 'createHmac').mockImplementation(
-        () =>
-          ({
-            update: jest.fn().mockReturnThis(),
-            digest: jest.fn().mockReturnValue('mocked-hash-value'),
-          }) as any,
-      );
-    });
-  });
 
   describe('loginWithCustomPassword', () => {
-    it('should call InitiateAuth with correct parameters', async () => {
+    it('should call fetch with correct parameters', async () => {
       const username = 'test@example.com';
       const password = 'password123';
       const mockAuthResult = {
@@ -162,23 +94,35 @@ describe('CognitoService', () => {
           ExpiresIn: 3600,
           TokenType: 'Bearer',
         },
-        $metadata: {},
       };
 
-      cognitoClient.send.mockResolvedValueOnce(mockAuthResult);
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce(mockAuthResult),
+      });
 
       const result = await service.loginWithCustomPassword(username, password);
 
-      expect(InitiateAuthCommand).toHaveBeenCalledWith({
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        ClientId: 'mock-client-id',
-        AuthParameters: {
-          USERNAME: username,
-          PASSWORD: password,
-          SECRET_HASH: 'mocked-hash-value',
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://cognito-idp.us-east-1.amazonaws.com/',
+        {
+          method: 'POST',
+          headers: {
+            'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: JSON.stringify({
+            AuthFlow: 'USER_PASSWORD_AUTH',
+            ClientId: 'mock-client-id',
+            AuthParameters: {
+              USERNAME: username,
+              PASSWORD: password,
+              SECRET_HASH: 'mocked-hash-value',
+            },
+          }),
         },
-      });
-      expect(cognitoClient.send).toHaveBeenCalled();
+      );
+
       expect(result).toEqual(mockAuthResult);
     });
 
@@ -201,10 +145,13 @@ describe('CognitoService', () => {
           ExpiresIn: 3600,
           TokenType: 'Bearer',
         },
-        $metadata: {},
       };
 
-      cognitoClient.send.mockResolvedValueOnce(mockAuthResult);
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce(mockAuthResult),
+      });
+
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
         const config = {
           AWS_REGION: 'us-east-1',
@@ -212,6 +159,7 @@ describe('CognitoService', () => {
           AWS_SECRET_ACCESS_KEY: 'mock-secret-key',
           COGNITO_CLIENT_ID_USER: clientId,
           COGNITO_CLIENT_SECRET_USER_PASS: clientSecret,
+          COGNITO_USER_POOL_URL: 'https://cognito-idp.us-east-1.amazonaws.com/',
         };
         return config[key];
       });
@@ -223,29 +171,35 @@ describe('CognitoService', () => {
         clientId,
         clientSecret,
       );
-      expect(InitiateAuthCommand).toHaveBeenCalledWith({
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        ClientId: clientId,
-        AuthParameters: {
-          USERNAME: username,
-          PASSWORD: password,
-          SECRET_HASH: expectedSecretHash,
-        },
-      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining(expectedSecretHash),
+        }),
+      );
     });
 
     it('should throw exception when authentication fails', async () => {
       const username = 'test@example.com';
       const password = 'wrong-password';
 
-      cognitoClient.send.mockRejectedValueOnce(
-        new Error('NotAuthorizedException'),
-      );
+      const errorResponse = {
+        __type: 'NotAuthorizedException',
+        message: 'Incorrect username or password.',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce(errorResponse),
+      });
 
       await expect(
         service.loginWithCustomPassword(username, password),
       ).rejects.toThrow(HttpException);
-      expect(cognitoClient.send).toHaveBeenCalled();
+
+      expect(global.fetch).toHaveBeenCalled();
     });
   });
 });

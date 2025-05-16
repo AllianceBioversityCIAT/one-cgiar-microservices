@@ -30,11 +30,16 @@ export class Clarisa {
       try {
         this.logger.log('Getting new CLARISA token');
         this.token = await firstValueFrom(
-          this.http.post(this.configService.get('CLARISA_HOST') + 'auth/login', this.authBody).pipe(
-            map(({ data }) => {
-              return data.access_token;
-            }),
-          ),
+          this.http
+            .post(
+              this.configService.get('CLARISA_HOST') + 'auth/login',
+              this.authBody,
+            )
+            .pipe(
+              map(({ data }) => {
+                return data.access_token;
+              }),
+            ),
         );
         this.logger.log('CLARISA token obtained successfully');
       } catch (error) {

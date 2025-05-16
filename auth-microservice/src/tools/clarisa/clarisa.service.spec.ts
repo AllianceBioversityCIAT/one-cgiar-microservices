@@ -6,7 +6,6 @@ import {
   MisConfigDto,
   ResClarisaCreateConectioDto,
   ResClarisaValidateConectioDto,
-  ResMisConfigDto,
 } from './dto/clarisa-create-conection.dto';
 import { ResponseClarisaDto } from '../../shared/global-dto/response-clarisa.dto';
 import { Logger } from '@nestjs/common';

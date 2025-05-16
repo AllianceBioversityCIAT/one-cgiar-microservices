@@ -7,10 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClarisaService } from '../tools/clarisa/clarisa.service';
-import {
-  ResClarisaValidateConectioDto,
-  ResMisConfigDto,
-} from '../tools/clarisa/dto/clarisa-create-conection.dto';
+import { ResMisConfigDto } from '../tools/clarisa/dto/clarisa-create-conection.dto';
 import { AuthorizationDto } from '../shared/global-dto/auth.dto';
 import { MisMetadataDto } from '../tools/clarisa/dto/mis-medatada.dto';
 

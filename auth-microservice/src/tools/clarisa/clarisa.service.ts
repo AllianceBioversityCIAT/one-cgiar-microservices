@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Clarisa } from './clarisa.connection';
 import { HttpService } from '@nestjs/axios';
-import { env } from 'process';
 import {
   ClarisaCreateConenctionDto,
   MisConfigDto,

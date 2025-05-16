@@ -5,7 +5,6 @@ import { ProviderAuthDto } from '../dto/provider-auth.dto';
 import { ValidateCodeDto } from '../dto/validate-code.dto';
 import { CustomAuthDto } from '../dto/custom-auth.dto';
 import { HttpException } from '@nestjs/common';
-import { Request } from 'express';
 import { RequestWithCustomAttrs } from '../../../middleware/jwt-clarisa.middleware';
 
 const createMockRequest = () => {
@@ -62,7 +61,6 @@ const mockAuthService = {
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let service: AuthService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -76,7 +74,6 @@ describe('AuthController', () => {
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    service = module.get<AuthService>(AuthService);
 
     jest.clearAllMocks();
   });
