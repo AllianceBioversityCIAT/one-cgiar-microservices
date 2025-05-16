@@ -1,6 +1,5 @@
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, map } from 'rxjs';
-import { env } from 'process';
 import { BadRequestException, Logger } from '@nestjs/common';
 import { StarTokenValidationResponse } from './dto/star.dto';
 
