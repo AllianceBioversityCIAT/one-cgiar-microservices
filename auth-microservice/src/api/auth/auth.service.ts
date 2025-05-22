@@ -13,6 +13,9 @@ import { firstValueFrom } from 'rxjs';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { CustomAuthDto } from './dto/custom-auth.dto';
 import { CognitoService } from './cognito/cognito.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { RegisterUserDto } from './dto/register-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -203,6 +206,276 @@ export class AuthService {
       throw new HttpException(
         'Error retrieving user information',
         HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  /**
+   * Register a new user in Cognito
+   * @param registerUserDto User registration data
+   * @param request Express request with MIS metadata
+   * @returns Registration result
+   */
+  async registerUser(
+    registerUserDto: RegisterUserDto,
+    @Req() request: RequestWithCustomAttrs,
+  ): Promise<any> {
+    try {
+      const misMetadata = request.senderMisMetadata;
+
+      if (!misMetadata || !misMetadata.mis_auth) {
+        this.logger.error(
+          'MIS authentication information not found in request',
+        );
+        throw new HttpException(
+          'MIS authentication information not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log(`Registering new user: ${registerUserDto.username}`);
+
+      const result = await this.cognitoService.createUser(
+        registerUserDto.username,
+        registerUserDto.temporaryPassword,
+        registerUserDto.firstName,
+        registerUserDto.lastName,
+        registerUserDto.email,
+        registerUserDto.sendEmail || false,
+      );
+
+      return {
+        message: 'User registered successfully',
+        userSub: result.userSub,
+        temporaryPassword: true,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error registering user: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'User registration failed',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * Update user information in Cognito
+   * @param updateUserDto User update data
+   * @param request Express request with MIS metadata
+   * @returns Update result
+   */
+  async updateUser(
+    updateUserDto: UpdateUserDto,
+    @Req() request: RequestWithCustomAttrs,
+  ): Promise<any> {
+    try {
+      const misMetadata = request.senderMisMetadata;
+
+      if (!misMetadata || !misMetadata.mis_auth) {
+        this.logger.error(
+          'MIS authentication information not found in request',
+        );
+        throw new HttpException(
+          'MIS authentication information not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log(`Updating user: ${updateUserDto.username}`);
+
+      await this.cognitoService.updateUser(updateUserDto);
+
+      return {
+        message: 'User updated successfully',
+        username: updateUserDto.username,
+      };
+    } catch (error) {
+      this.logger.error(`Error updating user: ${error.message}`, error.stack);
+      throw new HttpException(
+        error.message || 'User update failed',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * Change user password in Cognito
+   * @param changePasswordDto Password change data
+   * @param request Express request with MIS metadata
+   * @returns Password change result
+   */
+  async changePassword(
+    changePasswordDto: ChangePasswordDto,
+    @Req() request: RequestWithCustomAttrs,
+  ): Promise<any> {
+    try {
+      const misMetadata = request.senderMisMetadata;
+
+      if (!misMetadata || !misMetadata.mis_auth) {
+        this.logger.error(
+          'MIS authentication information not found in request',
+        );
+        throw new HttpException(
+          'MIS authentication information not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log(
+        `Changing password for user: ${changePasswordDto.username}`,
+      );
+
+      await this.cognitoService.changeUserPassword(
+        changePasswordDto.username,
+        changePasswordDto.currentPassword,
+        changePasswordDto.newPassword,
+        misMetadata.mis_auth.cognito_client_id,
+        misMetadata.mis_auth.cognito_client_secret,
+      );
+
+      return {
+        message: 'Password changed successfully',
+        username: changePasswordDto.username,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error changing password: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'Password change failed',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * Validate if an access token is still valid
+   * @param accessToken Access token to validate
+   * @param request Express request with MIS metadata
+   * @returns Token validation result
+   */
+  async validateToken(
+    accessToken: string,
+    @Req() request: RequestWithCustomAttrs,
+  ): Promise<any> {
+    try {
+      if (!accessToken) {
+        throw new HttpException(
+          'Access token is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log('Validating access token');
+
+      const tokenInfo =
+        await this.cognitoService.validateAccessToken(accessToken);
+
+      const userInfo = await this.getUserInfo(accessToken);
+
+      return {
+        valid: true,
+        userInfo: userInfo,
+        expiresAt: tokenInfo.exp,
+        tokenUse: tokenInfo.token_use,
+        clientId: tokenInfo.client_id,
+      };
+    } catch (error) {
+      this.logger.error('Token validation failed:', error);
+
+      if (
+        error.name === 'TokenExpiredError' ||
+        error.name === 'NotAuthorizedException'
+      ) {
+        return {
+          valid: false,
+          error: 'Token expired or invalid',
+          code: 'TOKEN_EXPIRED',
+        };
+      }
+
+      throw new HttpException(
+        error.message || 'Token validation failed',
+        error.status || HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  /**
+   * Refresh authentication tokens using refresh token
+   * @param refreshToken Valid refresh token
+   * @param request Express request with MIS metadata
+   * @returns New authentication tokens
+   */
+  async refreshAuthenticationTokens(
+    refreshToken: string,
+    @Req() request: RequestWithCustomAttrs,
+  ): Promise<any> {
+    try {
+      const misMetadata = request.senderMisMetadata;
+
+      if (!misMetadata || !misMetadata.mis_auth) {
+        this.logger.error(
+          'MIS authentication information not found in request',
+        );
+        throw new HttpException(
+          'MIS authentication information not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!refreshToken) {
+        throw new HttpException(
+          'Refresh token is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log('Refreshing authentication tokens');
+
+      const newTokens = await this.cognitoService.refreshAccessToken(
+        refreshToken,
+        misMetadata.mis_auth.cognito_client_id,
+        misMetadata.mis_auth.cognito_client_secret,
+      );
+
+      const userInfo = await this.getUserInfo(newTokens.accessToken);
+
+      return {
+        accessToken: newTokens.accessToken,
+        idToken: newTokens.idToken,
+        refreshToken: newTokens.refreshToken || refreshToken,
+        expiresIn: newTokens.expiresIn,
+        tokenType: newTokens.tokenType || 'Bearer',
+        userInfo,
+      };
+    } catch (error) {
+      this.logger.error('Error refreshing authentication tokens:', error);
+
+      if (
+        error.name === 'NotAuthorizedException' ||
+        error.message?.includes('Refresh Token has expired')
+      ) {
+        throw new HttpException(
+          'Refresh token has expired. Please login again.',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      if (error.response) {
+        throw new HttpException(
+          `Token refresh failed: ${error.response.data.error_description || error.response.data.error}`,
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      throw new HttpException(
+        error.message || 'Error refreshing authentication tokens',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

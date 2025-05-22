@@ -60,7 +60,6 @@ describe('LoggingInterceptor', () => {
         expect(mockLogger.log.mock.calls[0][0]).toContain('GET /test-url');
         expect(mockLogger.log.mock.calls[0][0]).toContain('127.0.0.1');
         expect(mockLogger.log.mock.calls[0][0]).toContain('test-user-agent');
-        expect(mockLogger.log.mock.calls[0][0]).toContain('{"test":"data"}');
 
         expect(mockLogger.log.mock.calls[1][0]).toContain('[Response');
         expect(mockLogger.log.mock.calls[1][0]).toContain('GET /test-url 200');

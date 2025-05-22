@@ -17,13 +17,13 @@ export class LoggingInterceptor implements NestInterceptor {
     const ctx = context.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
-    const { ip, method, originalUrl: url, body } = request;
+    const { ip, method, originalUrl: url } = request;
     const userAgent = request.get('user-agent') || '';
 
     const requestId = `${Math.random().toString(36).substring(2, 15)}`;
 
     this.logger.log(
-      `[Request ${requestId}] ${method} ${url} - IP: ${ip} - User-Agent: ${userAgent} - Body: ${JSON.stringify(body)}`,
+      `[Request ${requestId}] ${method} ${url} - IP: ${ip} - User-Agent: ${userAgent}}`,
     );
 
     const startTime = Date.now();
