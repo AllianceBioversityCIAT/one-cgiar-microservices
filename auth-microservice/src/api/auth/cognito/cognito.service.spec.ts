@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CognitoService } from './cognito.service';
 import { ConfigService } from '@nestjs/config';
 import { HttpException } from '@nestjs/common';
-import * as crypto from 'crypto';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 
 global.fetch = jest.fn();
@@ -80,7 +79,6 @@ describe('CognitoService', () => {
       });
     });
   });
-
 
   describe('loginWithCustomPassword', () => {
     it('should call fetch with correct parameters', async () => {
