@@ -16,6 +16,7 @@ import { CognitoService } from './cognito/cognito.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
 
 @Injectable()
 export class AuthService {
@@ -149,13 +150,9 @@ export class AuthService {
   /**
    * Authenticates a user using username and password
    * @param customAuthDto Custom auth credentials
-   * @returns Authentication result with tokens
+   * @returns Authentication result with tokens or password challenge
    */
-  async authenticateWithCustomPassword(
-    customAuthDto: CustomAuthDto,
-  ): Promise<any> {
-    this.logger.log('Authenticating user with custom password');
-
+  async authenticateWithCustomPassword(customAuthDto: CustomAuthDto) {
     try {
       const { username, password } = customAuthDto;
 
@@ -163,6 +160,18 @@ export class AuthService {
         username,
         password,
       );
+
+      if (authResult.challengeName === 'NEW_PASSWORD_REQUIRED') {
+        this.logger.log(`User ${username} needs to set a new password`);
+
+        return {
+          challengeName: authResult.challengeName,
+          session: authResult.session,
+          userAttributes: authResult.userAttributes,
+          userId: authResult.userId,
+          message: 'Password change required. User must set a new password.',
+        };
+      }
 
       const tokens = {
         accessToken: authResult.AuthenticationResult.AccessToken,
@@ -178,6 +187,31 @@ export class AuthService {
     } catch (error) {
       this.logger.error('Authentication failed', error);
       throw new HttpException('Authentication failed', HttpStatus.UNAUTHORIZED);
+    }
+  }
+
+  async completeNewPasswordChallenge(
+    challengeDto: NewPasswordChallengeDto,
+  ): Promise<any> {
+    try {
+      const result = await this.cognitoService.completeNewPasswordChallenge(
+        challengeDto.username,
+        challengeDto.newPassword,
+        challengeDto.session,
+      );
+
+      return {
+        message: 'Password updated successfully',
+        tokens: {
+          accessToken: result.AuthenticationResult.AccessToken,
+          idToken: result.AuthenticationResult.IdToken,
+          refreshToken: result.AuthenticationResult.RefreshToken,
+          expiresIn: result.AuthenticationResult.ExpiresIn,
+          tokenType: result.AuthenticationResult.TokenType,
+        },
+      };
+    } catch (error) {
+      throw error;
     }
   }
 

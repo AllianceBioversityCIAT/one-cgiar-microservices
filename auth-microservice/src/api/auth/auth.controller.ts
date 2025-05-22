@@ -21,6 +21,7 @@ import { CustomAuthDto } from './dto/custom-auth.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
 
 @ApiTags('Authetication and Authorization')
 @Controller('auth')
@@ -29,6 +30,7 @@ export class AuthController {
 
   @Post('login/provider')
   @ApiClarisaAuth('Authenticate with OAuth provider')
+  @ApiOperation({ summary: 'Authenticate user with OAuth provider' })
   @ApiResponse({
     status: 200,
     description: 'Returns authentication URL for the specified provider',
@@ -48,6 +50,20 @@ export class AuthController {
     @Req() request: RequestWithCustomAttrs,
   ) {
     return this.authService.authenticateWithProvider(providerAuthDto, request);
+  }
+
+  @Post('login/custom')
+  @ApiClarisaAuth('Authenticate user with custom password')
+  @ApiOperation({ summary: 'Authenticate user with custom password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns authentication tokens and user info',
+    type: TokenResponse,
+  })
+  @ApiResponse({ status: 401, description: 'Authentication failed' })
+  @ApiBody({ type: CustomAuthDto })
+  async loginWithCustomPassword(@Body() customAuthDto: CustomAuthDto) {
+    return this.authService.authenticateWithCustomPassword(customAuthDto);
   }
 
   @Post('validate/code')
@@ -101,19 +117,6 @@ export class AuthController {
   })
   async getUserInfo(@Body() body: { accessToken: string }) {
     return this.authService.getUserInfo(body.accessToken);
-  }
-
-  @Post('login/custom')
-  @ApiOperation({ summary: 'Authenticate user with custom password' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns authentication tokens and user info',
-  })
-  @ApiResponse({ status: 401, description: 'Authentication failed' })
-  async loginWithCustomPassword(
-    @Body() customAuthDto: CustomAuthDto,
-  ): Promise<any> {
-    return this.authService.authenticateWithCustomPassword(customAuthDto);
   }
 
   @Post('register')
@@ -207,6 +210,41 @@ export class AuthController {
     return this.authService.changePassword(changePasswordDto, request);
   }
 
+  @Post('/complete-new-password-challenge')
+  @ApiClarisaAuth('Complete new password challenge')
+  @ApiOperation({ summary: 'Complete new password challenge' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password set successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Password set successfully' },
+        tokens: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string' },
+            refreshToken: { type: 'string' },
+            idToken: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid challenge parameters',
+    type: ErrorResponse,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponse,
+  })
+  @ApiBody({ type: NewPasswordChallengeDto })
+  async completeNewPasswordChallenge(
+    @Body() challengeDto: NewPasswordChallengeDto,
+  ) {
+    return this.authService.completeNewPasswordChallenge(challengeDto);
+  }
   @Post('validate-token')
   @ApiClarisaAuth('Validate access token')
   @ApiOperation({ summary: 'Validate if access token is still valid' })

@@ -6,6 +6,7 @@ import {
   CognitoIdentityProviderClient,
   GetUserCommand,
   InitiateAuthCommand,
+  RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -91,11 +92,67 @@ export class CognitoService {
         );
       }
 
-      return await response.json();
+      const result = await response.json();
+
+      if (result.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
+        return {
+          challengeName: 'NEW_PASSWORD_REQUIRED',
+          session: result.Session,
+          userAttributes: JSON.parse(result.ChallengeParameters.userAttributes),
+          userId: result.ChallengeParameters.USER_ID_FOR_SRP,
+          message: 'Password change required. User must set a new password.',
+        };
+      }
+      return result;
     } catch (error) {
       throw new HttpException(
         error.message || 'Authentication failed',
         HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  /**
+   * Complete NEW_PASSWORD_REQUIRED challenge
+   * @param username Username
+   * @param newPassword New password to set
+   * @param session Session from the challenge
+   * @returns Authentication result with tokens
+   */
+  async completeNewPasswordChallenge(
+    username: string,
+    newPassword: string,
+    session: string,
+  ): Promise<any> {
+    try {
+      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID_USER');
+      const clientSecret = this.configService.get<string>(
+        'COGNITO_CLIENT_SECRET_USER_PASS',
+      );
+      const secretHash = this.calculateSecretHash(
+        username,
+        clientId,
+        clientSecret,
+      );
+
+      const command = new RespondToAuthChallengeCommand({
+        ChallengeName: 'NEW_PASSWORD_REQUIRED',
+        ClientId: clientId,
+        ChallengeResponses: {
+          USERNAME: username,
+          NEW_PASSWORD: newPassword,
+          SECRET_HASH: secretHash,
+        },
+        Session: session,
+      });
+
+      const response = await this.cognitoClient.send(command);
+      return response;
+    } catch (error) {
+      console.log('🔧 AWS SDK Error:', error);
+      throw new HttpException(
+        error.message || 'Challenge response failed',
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -231,6 +288,7 @@ export class CognitoService {
           SECRET_HASH: secretHash,
         },
       });
+      console.log('🚀 ~ CognitoService ~ authCommand:', authCommand);
 
       const authResponse = await this.cognitoClient.send(authCommand);
 
@@ -246,9 +304,14 @@ export class CognitoService {
         PreviousPassword: currentPassword,
         ProposedPassword: newPassword,
       });
+      console.log(
+        '🚀 ~ CognitoService ~ changePasswordCommand:',
+        changePasswordCommand,
+      );
 
       await this.cognitoClient.send(changePasswordCommand);
     } catch (error) {
+      console.log('🚀 ~ CognitoService ~ error:', error);
       if (error.name === 'NotAuthorizedException') {
         throw new HttpException(
           'Current password is incorrect',
