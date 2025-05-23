@@ -171,5 +171,14 @@ export class PdfModule {
         return [];
       }
     });
+
+    Handlebars.registerHelper('ifAnd', function () {
+      const args = Array.from(arguments);
+      const options = args.pop();
+
+      const allTrue = args.every(Boolean);
+
+      return allTrue ? options.fn(this) : options.inverse(this);
+    });
   }
 }
