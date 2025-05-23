@@ -172,8 +172,7 @@ export class PdfModule {
       }
     });
 
-    Handlebars.registerHelper('ifAnd', function () {
-      const args = Array.from(arguments);
+    Handlebars.registerHelper('ifAnd', function (...args) {
       const options = args.pop();
 
       const allTrue = args.every(Boolean);
