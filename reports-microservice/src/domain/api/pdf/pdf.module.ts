@@ -179,5 +179,13 @@ export class PdfModule {
 
       return allTrue ? options.fn(this) : options.inverse(this);
     });
+
+    Handlebars.registerHelper('ifOr', function (...args) {
+      const options = args.pop();
+
+      const anyTrue = args.some(Boolean);
+
+      return anyTrue ? options.fn(this) : options.inverse(this);
+    });
   }
 }
