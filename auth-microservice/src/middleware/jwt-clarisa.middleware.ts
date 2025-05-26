@@ -71,9 +71,7 @@ export class JwtClarisaMiddleware implements NestMiddleware {
       );
 
       req.application = validationData.receiver_mis;
-
       req.senderId = validationData.sender_mis.id;
-
       req.senderMisMetadata = senderMisMetadata;
 
       next();
