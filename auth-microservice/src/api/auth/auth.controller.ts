@@ -284,11 +284,8 @@ export class AuthController {
       required: ['accessToken'],
     },
   })
-  async validateToken(
-    @Body() body: { accessToken: string },
-    @Req() request: RequestWithCustomAttrs,
-  ) {
-    return this.authService.validateToken(body.accessToken, request);
+  async validateToken(@Body() body: { accessToken: string }) {
+    return this.authService.validateToken(body.accessToken);
   }
 
   @Post('refresh')
