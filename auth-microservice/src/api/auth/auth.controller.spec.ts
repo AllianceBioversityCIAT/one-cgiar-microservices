@@ -468,16 +468,10 @@ describe('AuthController', () => {
 
       authService.validateToken.mockResolvedValue(mockValidationResult);
 
-      const result = await controller.validateToken(
-        body,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.validateToken(body);
 
       expect(result).toEqual(mockValidationResult);
-      expect(authService.validateToken).toHaveBeenCalledWith(
-        body.accessToken,
-        mockRequest,
-      );
+      expect(authService.validateToken).toHaveBeenCalledWith(body.accessToken);
     });
 
     it('should return invalid result for expired token', async () => {
@@ -491,10 +485,7 @@ describe('AuthController', () => {
 
       authService.validateToken.mockResolvedValue(mockExpiredTokenResult);
 
-      const result = await controller.validateToken(
-        body,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.validateToken(body);
 
       expect(result).toEqual(mockExpiredTokenResult);
       expect(result.valid).toBe(false);
@@ -507,9 +498,9 @@ describe('AuthController', () => {
         new HttpException('Token validation failed', HttpStatus.UNAUTHORIZED),
       );
 
-      await expect(
-        controller.validateToken(body, mockRequest as RequestWithCustomAttrs),
-      ).rejects.toThrow(HttpException);
+      await expect(controller.validateToken(body)).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 
@@ -725,8 +716,8 @@ describe('AuthController', () => {
         .mockResolvedValueOnce(result2);
 
       const [response1, response2] = await Promise.all([
-        controller.validateToken(body1, mockRequest as RequestWithCustomAttrs),
-        controller.validateToken(body2, mockRequest as RequestWithCustomAttrs),
+        controller.validateToken(body1),
+        controller.validateToken(body2),
       ]);
 
       expect(response1.userInfo.sub).toBe('user-1');

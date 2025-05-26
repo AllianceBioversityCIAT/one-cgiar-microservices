@@ -392,10 +392,7 @@ export class AuthService {
    * @param request Express request with MIS metadata
    * @returns Token validation result
    */
-  async validateToken(
-    accessToken: string,
-    @Req() request: RequestWithCustomAttrs,
-  ): Promise<any> {
+  async validateToken(accessToken: string): Promise<any> {
     try {
       if (!accessToken) {
         throw new HttpException(

@@ -149,7 +149,6 @@ export class CognitoService {
       const response = await this.cognitoClient.send(command);
       return response;
     } catch (error) {
-      console.log('🔧 AWS SDK Error:', error);
       throw new HttpException(
         error.message || 'Challenge response failed',
         HttpStatus.BAD_REQUEST,
@@ -311,7 +310,6 @@ export class CognitoService {
 
       await this.cognitoClient.send(changePasswordCommand);
     } catch (error) {
-      console.log('🚀 ~ CognitoService ~ error:', error);
       if (error.name === 'NotAuthorizedException') {
         throw new HttpException(
           'Current password is incorrect',
@@ -424,6 +422,7 @@ export class CognitoService {
       const payload = Buffer.from(base64Payload, 'base64').toString('utf8');
       return JSON.parse(payload);
     } catch (error) {
+      console.error('Error decoding JWT token:', error);
       throw new Error('Invalid token format');
     }
   }

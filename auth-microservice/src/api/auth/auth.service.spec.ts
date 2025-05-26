@@ -595,7 +595,7 @@ describe('AuthService', () => {
         .spyOn(service, 'getUserInfo')
         .mockResolvedValueOnce(mockUserInfoResponse.data);
 
-      const result = await service.validateToken(accessToken, mockRequest);
+      const result = await service.validateToken(accessToken);
 
       expect(result).toEqual({
         valid: true,
@@ -620,7 +620,7 @@ describe('AuthService', () => {
         .spyOn(cognitoService, 'validateAccessToken')
         .mockRejectedValueOnce(expiredError);
 
-      const result = await service.validateToken(accessToken, mockRequest);
+      const result = await service.validateToken(accessToken);
 
       expect(result).toEqual({
         valid: false,
@@ -639,7 +639,7 @@ describe('AuthService', () => {
         .spyOn(cognitoService, 'validateAccessToken')
         .mockRejectedValueOnce(unauthorizedError);
 
-      const result = await service.validateToken(accessToken, mockRequest);
+      const result = await service.validateToken(accessToken);
 
       expect(result).toEqual({
         valid: false,
@@ -649,7 +649,7 @@ describe('AuthService', () => {
     });
 
     it('should throw error for missing access token', async () => {
-      await expect(service.validateToken('', mockRequest)).rejects.toThrow(
+      await expect(service.validateToken('')).rejects.toThrow(
         new HttpException('Access token is required', HttpStatus.BAD_REQUEST),
       );
     });
@@ -661,9 +661,9 @@ describe('AuthService', () => {
         .spyOn(cognitoService, 'validateAccessToken')
         .mockRejectedValueOnce(new Error('Invalid token format'));
 
-      await expect(
-        service.validateToken(accessToken, mockRequest),
-      ).rejects.toThrow(HttpException);
+      await expect(service.validateToken(accessToken)).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 
