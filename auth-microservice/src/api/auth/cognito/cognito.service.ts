@@ -172,14 +172,12 @@ export class CognitoService {
     firstName: string,
     lastName: string,
     email: string,
-    sendEmail: boolean = false,
   ): Promise<any> {
     try {
       const command = new AdminCreateUserCommand({
         UserPoolId: this.configService.get<string>('COGNITO_USER_POOL_ID'),
         Username: username,
         TemporaryPassword: temporaryPassword,
-        MessageAction: sendEmail ? 'RESEND' : 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: email },
           { Name: 'given_name', Value: firstName },

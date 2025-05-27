@@ -30,12 +30,4 @@ export class RegisterUserDto {
     example: 'Doe',
   })
   lastName: string;
-
-  @ApiProperty({
-    description: 'Send welcome email to user',
-    example: false,
-    required: false,
-    default: false,
-  })
-  sendEmail?: boolean;
 }

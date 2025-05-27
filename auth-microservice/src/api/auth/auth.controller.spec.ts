@@ -318,7 +318,6 @@ describe('AuthController', () => {
         firstName: 'New',
         lastName: 'User',
         email: 'newuser@example.com',
-        sendEmail: false,
       };
 
       const mockRegisterResponse = {
@@ -348,7 +347,6 @@ describe('AuthController', () => {
         firstName: 'Existing',
         lastName: 'User',
         email: 'existing@example.com',
-        sendEmail: false,
       };
 
       authService.registerUser.mockRejectedValue(

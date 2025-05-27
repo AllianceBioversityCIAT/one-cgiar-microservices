@@ -147,11 +147,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Authenticates a user using username and password
-   * @param customAuthDto Custom auth credentials
-   * @returns Authentication result with tokens or password challenge
-   */
   async authenticateWithCustomPassword(customAuthDto: CustomAuthDto) {
     try {
       const { username, password } = customAuthDto;
@@ -161,7 +156,7 @@ export class AuthService {
         password,
       );
 
-      if (authResult.challengeName === 'NEW_PASSWORD_REQUIRED') {
+      if (authResult?.challengeName === 'NEW_PASSWORD_REQUIRED') {
         this.logger.log(`User ${username} needs to set a new password`);
 
         return {
@@ -275,7 +270,6 @@ export class AuthService {
         registerUserDto.firstName,
         registerUserDto.lastName,
         registerUserDto.email,
-        registerUserDto.sendEmail || false,
       );
 
       return {

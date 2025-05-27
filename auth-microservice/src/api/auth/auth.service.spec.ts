@@ -342,8 +342,6 @@ describe('AuthService', () => {
     });
   });
 
-  // NUEVOS TESTS AGREGADOS A PARTIR DE AQUÍ
-
   describe('registerUser', () => {
     it('should register user successfully', async () => {
       const registerUserDto: RegisterUserDto = {
@@ -352,7 +350,6 @@ describe('AuthService', () => {
         firstName: 'New',
         lastName: 'User',
         email: 'newuser@example.com',
-        sendEmail: false,
       };
 
       const mockCreateUserResult = {
@@ -379,7 +376,6 @@ describe('AuthService', () => {
         registerUserDto.firstName,
         registerUserDto.lastName,
         registerUserDto.email,
-        false,
       );
     });
 
@@ -390,7 +386,6 @@ describe('AuthService', () => {
         firstName: 'New',
         lastName: 'User',
         email: 'newuser@example.com',
-        sendEmail: true,
       };
 
       const mockCreateUserResult = {
@@ -411,7 +406,6 @@ describe('AuthService', () => {
         registerUserDto.firstName,
         registerUserDto.lastName,
         registerUserDto.email,
-        true,
       );
     });
 
@@ -733,7 +727,7 @@ describe('AuthService', () => {
       const mockNewTokens = {
         accessToken: 'new-access-token',
         idToken: 'new-id-token',
-        refreshToken: null, // Cognito didn't return new refresh token
+        refreshToken: null,
         expiresIn: 3600,
         tokenType: 'Bearer',
       };
@@ -750,7 +744,7 @@ describe('AuthService', () => {
         mockRequest,
       );
 
-      expect(result.refreshToken).toBe(refreshToken); // Should use original refresh token
+      expect(result.refreshToken).toBe(refreshToken);
     });
 
     it('should handle HTTP response errors', async () => {

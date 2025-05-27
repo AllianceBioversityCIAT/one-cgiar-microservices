@@ -286,7 +286,6 @@ describe('CognitoService', () => {
       firstName: 'New',
       lastName: 'User',
       email: 'newuser@example.com',
-      sendEmail: false,
     };
 
     it('should create user successfully', async () => {
@@ -298,7 +297,6 @@ describe('CognitoService', () => {
         userData.firstName,
         userData.lastName,
         userData.email,
-        userData.sendEmail,
       );
 
       expect(result).toEqual({
@@ -321,14 +319,12 @@ describe('CognitoService', () => {
         userData.firstName,
         userData.lastName,
         userData.email,
-        true,
       );
 
       expect(AdminCreateUserCommand).toHaveBeenCalledWith({
         UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
         Username: userData.username,
         TemporaryPassword: userData.temporaryPassword,
-        MessageAction: 'RESEND',
         UserAttributes: [
           { Name: 'email', Value: userData.email },
           { Name: 'given_name', Value: userData.firstName },
@@ -347,14 +343,12 @@ describe('CognitoService', () => {
         userData.firstName,
         userData.lastName,
         userData.email,
-        false,
       );
 
       expect(AdminCreateUserCommand).toHaveBeenCalledWith({
         UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
         Username: userData.username,
         TemporaryPassword: userData.temporaryPassword,
-        MessageAction: 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: userData.email },
           { Name: 'given_name', Value: userData.firstName },
@@ -377,7 +371,6 @@ describe('CognitoService', () => {
           userData.firstName,
           userData.lastName,
           userData.email,
-          userData.sendEmail,
         ),
       ).rejects.toThrow(
         new HttpException('User already exists', HttpStatus.BAD_REQUEST),
@@ -397,7 +390,6 @@ describe('CognitoService', () => {
           userData.firstName,
           userData.lastName,
           userData.email,
-          userData.sendEmail,
         ),
       ).rejects.toThrow(
         new HttpException(
@@ -416,7 +408,6 @@ describe('CognitoService', () => {
         userData.firstName,
         userData.lastName,
         userData.email,
-        userData.sendEmail,
       );
 
       expect(AdminCreateUserCommand).toHaveBeenCalledWith(
@@ -965,7 +956,6 @@ describe('CognitoService', () => {
           'Test',
           'User',
           'test@example.com',
-          false,
         ),
       ).rejects.toThrow(
         new HttpException('AWS Service Unavailable', HttpStatus.BAD_REQUEST),
@@ -986,7 +976,6 @@ describe('CognitoService', () => {
         'Test',
         'User',
         'test@example.com',
-        false,
       );
 
       expect(AdminCreateUserCommand).toHaveBeenCalledWith(
@@ -1000,7 +989,7 @@ describe('CognitoService', () => {
       cognitoClient.send.mockResolvedValue(mockUserResponse);
 
       await expect(
-        service.createUser('', '', '', '', '', false),
+        service.createUser('', '', '', '', ''),
       ).resolves.toBeDefined();
 
       expect(AdminCreateUserCommand).toHaveBeenCalledWith(
@@ -1033,7 +1022,6 @@ describe('CognitoService', () => {
         maliciousData.firstName,
         maliciousData.lastName,
         maliciousData.email,
-        false,
       );
 
       expect(AdminCreateUserCommand).toHaveBeenCalledWith(
@@ -1244,7 +1232,6 @@ describe('CognitoService', () => {
         'María José',
         'García-López',
         'maria.garcia@cgiar.org',
-        true,
       );
 
       expect(result).toEqual({
@@ -1257,7 +1244,6 @@ describe('CognitoService', () => {
         UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
         Username: 'newuser@cgiar.org',
         TemporaryPassword: 'TemporaryPass123!',
-        MessageAction: 'RESEND',
         UserAttributes: [
           { Name: 'email', Value: 'maria.garcia@cgiar.org' },
           { Name: 'given_name', Value: 'María José' },
