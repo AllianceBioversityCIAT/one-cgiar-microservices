@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { CognitoService } from './cognito/cognito.service';
 import { ProviderAuthDto } from './dto/provider-auth.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
 import { CustomAuthDto } from './dto/custom-auth.dto';
@@ -13,6 +12,7 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
+import { CognitoService } from './services/cognito/cognito.service';
 
 const createMockRequest = () => {
   const req = {

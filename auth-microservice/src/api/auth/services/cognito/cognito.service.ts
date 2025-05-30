@@ -10,7 +10,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import { UpdateUserDto } from '../../dto/update-user.dto';
 
 @Injectable()
 export class CognitoService {

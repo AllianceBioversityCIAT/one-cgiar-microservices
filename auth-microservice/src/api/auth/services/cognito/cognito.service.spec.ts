@@ -10,7 +10,7 @@ import {
   GetUserCommand,
   InitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import { UpdateUserDto } from '../../dto/update-user.dto';
 
 global.fetch = jest.fn();
 
