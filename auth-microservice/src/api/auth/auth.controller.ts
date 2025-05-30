@@ -22,11 +22,19 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
+import {
+  BulkCreateUsersDto,
+  BulkCreationResponse,
+} from './dto/bulk-user-registration.dto';
+import { BulkUserService } from './services/bulk-registration/bulk-registration.service';
 
 @ApiTags('Authetication and Authorization')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly bulkUserService: BulkUserService,
+  ) {}
 
   @Post('login/provider')
   @ApiClarisaAuth('Authenticate with OAuth provider')
@@ -326,5 +334,126 @@ export class AuthController {
       body.refreshToken,
       request,
     );
+  }
+
+  @Post('bulk-create-users')
+  @ApiClarisaAuth('Create users in bulk')
+  @ApiOperation({
+    summary: 'Create multiple users in AWS Cognito',
+    description: `
+    Creates multiple users in AWS Cognito in bulk.
+    
+    **Features:**
+    - Automatically generates secure temporary passwords
+    - Creates users in AWS Cognito with email validation
+    - Sends welcome emails with temporary passwords
+    - Returns detailed process report
+    
+    **Process:**
+    1. Validates input data
+    2. Generates temporary password for each user
+    3. Creates user in Cognito with MessageAction SUPPRESS
+    4. Sends personalized email via microservice
+    5. Returns complete process statistics
+    
+    **Note:** Temporary passwords expire on first login and require immediate change.
+  `,
+  })
+  @ApiBody({
+    type: BulkCreateUsersDto,
+    description: 'Array of users to create',
+    examples: {
+      'Basic example': {
+        summary: 'Creating 3 users',
+        description: 'Example with 3 different users',
+        value: {
+          users: [
+            {
+              email: 'john.doe@cgiar.org',
+              username: 'john.doe',
+              firstName: 'John',
+              lastName: 'Doe',
+            },
+            {
+              email: 'jane.smith@cgiar.org',
+              username: 'jane.smith',
+              firstName: 'Jane',
+              lastName: 'Smith',
+            },
+            {
+              email: 'bob.johnson@cgiar.org',
+              username: 'bob.johnson',
+              firstName: 'Bob',
+              lastName: 'Johnson',
+            },
+          ],
+        },
+      },
+      'Single user': {
+        summary: 'Creating single user',
+        description: 'Minimal example with one user',
+        value: {
+          users: [
+            {
+              email: 'admin@cgiar.org',
+              username: 'admin',
+              firstName: 'Administrator',
+              lastName: 'User',
+            },
+          ],
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Users created successfully',
+    type: BulkCreationResponse,
+    schema: {
+      example: {
+        totalUsers: 3,
+        successCount: 2,
+        failedCount: 1,
+        emailsSent: 2,
+        emailsFailed: 0,
+        results: [
+          {
+            email: 'john.doe@cgiar.org',
+            username: 'john.doe',
+            success: true,
+            tempPassword: 'TempPass123!',
+            emailSent: true,
+          },
+          {
+            email: 'jane.smith@cgiar.org',
+            username: 'jane.smith',
+            success: true,
+            tempPassword: 'SecureP@ss456',
+            emailSent: true,
+          },
+          {
+            email: 'existing@cgiar.org',
+            username: 'existing',
+            success: false,
+            error: 'User already exists',
+            emailSent: false,
+          },
+        ],
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data',
+    type: ErrorResponse,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponse,
+  })
+  async bulkCreateUsers(
+    @Body() bulkCreateUsersDto: BulkCreateUsersDto,
+    @Req() request: RequestWithCustomAttrs,
+  ): Promise<BulkCreationResponse> {
+    return this.bulkUserService.bulkCreateUsers(bulkCreateUsersDto);
   }
 }

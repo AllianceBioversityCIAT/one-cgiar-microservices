@@ -12,11 +12,11 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { CustomAuthDto } from './dto/custom-auth.dto';
-import { CognitoService } from './cognito/cognito.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
+import { CognitoService } from './services/cognito/cognito.service';
 
 @Injectable()
 export class AuthService {

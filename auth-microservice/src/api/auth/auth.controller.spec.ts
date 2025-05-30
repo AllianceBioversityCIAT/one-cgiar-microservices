@@ -9,10 +9,16 @@ import { ProviderAuthDto, AuthProvider } from './dto/provider-auth.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
+import {
+  BulkCreateUsersDto,
+  BulkCreationResponse,
+} from './dto/bulk-user-registration.dto';
+import { BulkUserService } from './services/bulk-registration/bulk-registration.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
+  let bulkUserService: jest.Mocked<BulkUserService>;
 
   const mockRequest: Partial<RequestWithCustomAttrs> = {
     senderMisMetadata: {
@@ -82,6 +88,30 @@ describe('AuthController', () => {
     clientId: 'test-client-id',
   };
 
+  const mockBulkCreateResponse: BulkCreationResponse = {
+    totalUsers: 2,
+    successCount: 2,
+    failedCount: 0,
+    emailsSent: 2,
+    emailsFailed: 0,
+    results: [
+      {
+        email: 'user1@example.com',
+        username: 'user1',
+        success: true,
+        tempPassword: 'TempPass123!',
+        emailSent: true,
+      },
+      {
+        email: 'user2@example.com',
+        username: 'user2',
+        success: true,
+        tempPassword: 'SecureP@ss456',
+        emailSent: true,
+      },
+    ],
+  };
+
   beforeEach(async () => {
     const mockAuthService = {
       authenticateWithProvider: jest.fn(),
@@ -93,6 +123,11 @@ describe('AuthController', () => {
       changePassword: jest.fn(),
       validateToken: jest.fn(),
       refreshAuthenticationTokens: jest.fn(),
+      completeNewPasswordChallenge: jest.fn(),
+    };
+
+    const mockBulkUserService = {
+      bulkCreateUsers: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -102,15 +137,223 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: mockAuthService,
         },
+        {
+          provide: BulkUserService,
+          useValue: mockBulkUserService,
+        },
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
     authService = module.get(AuthService);
+    bulkUserService = module.get(BulkUserService);
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('bulkCreateUsers', () => {
+    it('should create users in bulk successfully', async () => {
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: [
+          {
+            email: 'user1@example.com',
+            username: 'user1',
+            firstName: 'User',
+            lastName: 'One',
+          },
+          {
+            email: 'user2@example.com',
+            username: 'user2',
+            firstName: 'User',
+            lastName: 'Two',
+          },
+        ],
+      };
+
+      bulkUserService.bulkCreateUsers.mockResolvedValue(mockBulkCreateResponse);
+
+      const result = await controller.bulkCreateUsers(
+        bulkCreateUsersDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result).toEqual(mockBulkCreateResponse);
+      expect(bulkUserService.bulkCreateUsers).toHaveBeenCalledWith(
+        bulkCreateUsersDto,
+      );
+    });
+
+    it('should handle partial failures in bulk creation', async () => {
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: [
+          {
+            email: 'user1@example.com',
+            username: 'user1',
+            firstName: 'User',
+            lastName: 'One',
+          },
+          {
+            email: 'existing@example.com',
+            username: 'existing',
+            firstName: 'Existing',
+            lastName: 'User',
+          },
+        ],
+      };
+
+      const partialFailureResponse: BulkCreationResponse = {
+        totalUsers: 2,
+        successCount: 1,
+        failedCount: 1,
+        emailsSent: 1,
+        emailsFailed: 0,
+        results: [
+          {
+            email: 'user1@example.com',
+            username: 'user1',
+            success: true,
+            tempPassword: 'TempPass123!',
+            emailSent: true,
+          },
+          {
+            email: 'existing@example.com',
+            username: 'existing',
+            success: false,
+            error: 'User already exists',
+            emailSent: false,
+          },
+        ],
+      };
+
+      bulkUserService.bulkCreateUsers.mockResolvedValue(partialFailureResponse);
+
+      const result = await controller.bulkCreateUsers(
+        bulkCreateUsersDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result).toEqual(partialFailureResponse);
+      expect(result.successCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+    });
+
+    it('should handle empty users array', async () => {
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: [],
+      };
+
+      const emptyResponse: BulkCreationResponse = {
+        totalUsers: 0,
+        successCount: 0,
+        failedCount: 0,
+        emailsSent: 0,
+        emailsFailed: 0,
+        results: [],
+      };
+
+      bulkUserService.bulkCreateUsers.mockResolvedValue(emptyResponse);
+
+      const result = await controller.bulkCreateUsers(
+        bulkCreateUsersDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result).toEqual(emptyResponse);
+      expect(result.totalUsers).toBe(0);
+    });
+
+    it('should handle service errors during bulk creation', async () => {
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: [
+          {
+            email: 'user1@example.com',
+            username: 'user1',
+            firstName: 'User',
+            lastName: 'One',
+          },
+        ],
+      };
+
+      bulkUserService.bulkCreateUsers.mockRejectedValue(
+        new HttpException(
+          'AWS Cognito service unavailable',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+
+      await expect(
+        controller.bulkCreateUsers(
+          bulkCreateUsersDto,
+          mockRequest as RequestWithCustomAttrs,
+        ),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should handle validation errors for bulk users', async () => {
+      const invalidBulkCreateDto: BulkCreateUsersDto = {
+        users: [
+          {
+            email: 'invalid-email',
+            username: 'user1',
+            firstName: '',
+            lastName: 'One',
+          },
+        ],
+      };
+
+      bulkUserService.bulkCreateUsers.mockRejectedValue(
+        new HttpException('Validation failed', HttpStatus.BAD_REQUEST),
+      );
+
+      await expect(
+        controller.bulkCreateUsers(
+          invalidBulkCreateDto,
+          mockRequest as RequestWithCustomAttrs,
+        ),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should handle large batch of users', async () => {
+      const largeUsersList = Array.from({ length: 100 }, (_, i) => ({
+        email: `user${i}@example.com`,
+        username: `user${i}`,
+        firstName: `User`,
+        lastName: `${i}`,
+      }));
+
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: largeUsersList,
+      };
+
+      const largeBatchResponse: BulkCreationResponse = {
+        totalUsers: 100,
+        successCount: 95,
+        failedCount: 5,
+        emailsSent: 95,
+        emailsFailed: 0,
+        results: largeUsersList.map((user, index) => ({
+          email: user.email,
+          username: user.username,
+          success: index < 95,
+          tempPassword: index < 95 ? `TempPass${index}!` : undefined,
+          error: index >= 95 ? 'Creation failed' : undefined,
+          emailSent: index < 95,
+        })),
+      };
+
+      bulkUserService.bulkCreateUsers.mockResolvedValue(largeBatchResponse);
+
+      const result = await controller.bulkCreateUsers(
+        bulkCreateUsersDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result).toEqual(largeBatchResponse);
+      expect(result.totalUsers).toBe(100);
+      expect(result.successCount).toBe(95);
+    });
   });
 
   describe('loginWithProvider', () => {
@@ -765,6 +1008,115 @@ describe('AuthController', () => {
       await expect(controller.getUserInfo(bodyWithNull)).rejects.toThrow(
         HttpException,
       );
+    });
+  });
+
+  describe('Bulk Creation Edge Cases', () => {
+    it('should handle duplicate emails in same request', async () => {
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: [
+          {
+            email: 'duplicate@example.com',
+            username: 'user1',
+            firstName: 'User',
+            lastName: 'One',
+          },
+          {
+            email: 'duplicate@example.com',
+            username: 'user2',
+            firstName: 'User',
+            lastName: 'Two',
+          },
+        ],
+      };
+
+      const duplicateResponse: BulkCreationResponse = {
+        totalUsers: 2,
+        successCount: 1,
+        failedCount: 1,
+        emailsSent: 1,
+        emailsFailed: 0,
+        results: [
+          {
+            email: 'duplicate@example.com',
+            username: 'user1',
+            success: true,
+            tempPassword: 'TempPass123!',
+            emailSent: true,
+          },
+          {
+            email: 'duplicate@example.com',
+            username: 'user2',
+            success: false,
+            error: 'User already exists',
+            emailSent: false,
+          },
+        ],
+      };
+
+      bulkUserService.bulkCreateUsers.mockResolvedValue(duplicateResponse);
+
+      const result = await controller.bulkCreateUsers(
+        bulkCreateUsersDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result.failedCount).toBe(1);
+      expect(result.results[1].error).toBe('User already exists');
+    });
+
+    it('should handle mixed success and email failures', async () => {
+      const bulkCreateUsersDto: BulkCreateUsersDto = {
+        users: [
+          {
+            email: 'user1@example.com',
+            username: 'user1',
+            firstName: 'User',
+            lastName: 'One',
+          },
+          {
+            email: 'user2@example.com',
+            username: 'user2',
+            firstName: 'User',
+            lastName: 'Two',
+          },
+        ],
+      };
+
+      const mixedResponse: BulkCreationResponse = {
+        totalUsers: 2,
+        successCount: 2,
+        failedCount: 0,
+        emailsSent: 1,
+        emailsFailed: 1,
+        results: [
+          {
+            email: 'user1@example.com',
+            username: 'user1',
+            success: true,
+            tempPassword: 'TempPass123!',
+            emailSent: true,
+          },
+          {
+            email: 'user2@example.com',
+            username: 'user2',
+            success: true,
+            tempPassword: 'SecureP@ss456',
+            emailSent: false,
+          },
+        ],
+      };
+
+      bulkUserService.bulkCreateUsers.mockResolvedValue(mixedResponse);
+
+      const result = await controller.bulkCreateUsers(
+        bulkCreateUsersDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result.successCount).toBe(2);
+      expect(result.emailsSent).toBe(1);
+      expect(result.emailsFailed).toBe(1);
     });
   });
 });
