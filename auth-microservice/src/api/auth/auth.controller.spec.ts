@@ -174,10 +174,7 @@ describe('AuthController', () => {
 
       bulkUserService.bulkCreateUsers.mockResolvedValue(mockBulkCreateResponse);
 
-      const result = await controller.bulkCreateUsers(
-        bulkCreateUsersDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.bulkCreateUsers(bulkCreateUsersDto);
 
       expect(result).toEqual(mockBulkCreateResponse);
       expect(bulkUserService.bulkCreateUsers).toHaveBeenCalledWith(
@@ -229,10 +226,7 @@ describe('AuthController', () => {
 
       bulkUserService.bulkCreateUsers.mockResolvedValue(partialFailureResponse);
 
-      const result = await controller.bulkCreateUsers(
-        bulkCreateUsersDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.bulkCreateUsers(bulkCreateUsersDto);
 
       expect(result).toEqual(partialFailureResponse);
       expect(result.successCount).toBe(1);
@@ -255,10 +249,7 @@ describe('AuthController', () => {
 
       bulkUserService.bulkCreateUsers.mockResolvedValue(emptyResponse);
 
-      const result = await controller.bulkCreateUsers(
-        bulkCreateUsersDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.bulkCreateUsers(bulkCreateUsersDto);
 
       expect(result).toEqual(emptyResponse);
       expect(result.totalUsers).toBe(0);
@@ -284,10 +275,7 @@ describe('AuthController', () => {
       );
 
       await expect(
-        controller.bulkCreateUsers(
-          bulkCreateUsersDto,
-          mockRequest as RequestWithCustomAttrs,
-        ),
+        controller.bulkCreateUsers(bulkCreateUsersDto),
       ).rejects.toThrow(HttpException);
     });
 
@@ -308,10 +296,7 @@ describe('AuthController', () => {
       );
 
       await expect(
-        controller.bulkCreateUsers(
-          invalidBulkCreateDto,
-          mockRequest as RequestWithCustomAttrs,
-        ),
+        controller.bulkCreateUsers(invalidBulkCreateDto),
       ).rejects.toThrow(HttpException);
     });
 
@@ -345,10 +330,7 @@ describe('AuthController', () => {
 
       bulkUserService.bulkCreateUsers.mockResolvedValue(largeBatchResponse);
 
-      const result = await controller.bulkCreateUsers(
-        bulkCreateUsersDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.bulkCreateUsers(bulkCreateUsersDto);
 
       expect(result).toEqual(largeBatchResponse);
       expect(result.totalUsers).toBe(100);
@@ -1056,10 +1038,7 @@ describe('AuthController', () => {
 
       bulkUserService.bulkCreateUsers.mockResolvedValue(duplicateResponse);
 
-      const result = await controller.bulkCreateUsers(
-        bulkCreateUsersDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.bulkCreateUsers(bulkCreateUsersDto);
 
       expect(result.failedCount).toBe(1);
       expect(result.results[1].error).toBe('User already exists');
@@ -1109,10 +1088,7 @@ describe('AuthController', () => {
 
       bulkUserService.bulkCreateUsers.mockResolvedValue(mixedResponse);
 
-      const result = await controller.bulkCreateUsers(
-        bulkCreateUsersDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
+      const result = await controller.bulkCreateUsers(bulkCreateUsersDto);
 
       expect(result.successCount).toBe(2);
       expect(result.emailsSent).toBe(1);
