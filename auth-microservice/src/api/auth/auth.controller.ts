@@ -452,7 +452,6 @@ export class AuthController {
   })
   async bulkCreateUsers(
     @Body() bulkCreateUsersDto: BulkCreateUsersDto,
-    @Req() request: RequestWithCustomAttrs,
   ): Promise<BulkCreationResponse> {
     return this.bulkUserService.bulkCreateUsers(bulkCreateUsersDto);
   }
