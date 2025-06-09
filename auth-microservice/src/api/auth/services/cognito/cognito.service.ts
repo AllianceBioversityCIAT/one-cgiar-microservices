@@ -50,9 +50,9 @@ export class CognitoService {
     password: string,
   ): Promise<any> {
     try {
-      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID_USER');
+      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID');
       const clientSecret = this.configService.get<string>(
-        'COGNITO_CLIENT_SECRET_USER_PASS',
+        'COGNITO_CLIENT_SECRET',
       );
       const secretHash = this.calculateSecretHash(
         username,
@@ -125,9 +125,9 @@ export class CognitoService {
     session: string,
   ): Promise<any> {
     try {
-      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID_USER');
+      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID');
       const clientSecret = this.configService.get<string>(
-        'COGNITO_CLIENT_SECRET_USER_PASS',
+        'COGNITO_CLIENT_SECRET',
       );
       const secretHash = this.calculateSecretHash(
         username,
@@ -285,7 +285,6 @@ export class CognitoService {
           SECRET_HASH: secretHash,
         },
       });
-      console.log('🚀 ~ CognitoService ~ authCommand:', authCommand);
 
       const authResponse = await this.cognitoClient.send(authCommand);
 
@@ -301,10 +300,6 @@ export class CognitoService {
         PreviousPassword: currentPassword,
         ProposedPassword: newPassword,
       });
-      console.log(
-        '🚀 ~ CognitoService ~ changePasswordCommand:',
-        changePasswordCommand,
-      );
 
       await this.cognitoClient.send(changePasswordCommand);
     } catch (error) {
@@ -421,7 +416,7 @@ export class CognitoService {
       return JSON.parse(payload);
     } catch (error) {
       console.error('Error decoding JWT token:', error);
-      throw new Error('Invalid token format');
+      throw new Error(`Invalid token format`);
     }
   }
 }

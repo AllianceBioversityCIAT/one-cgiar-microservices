@@ -115,8 +115,8 @@ describe('AuthService', () => {
                 AWS_REGION: 'us-east-1',
                 AWS_ACCESS_KEY_ID: 'mock-access-key',
                 AWS_SECRET_ACCESS_KEY: 'mock-secret-key',
-                COGNITO_CLIENT_ID_USER: 'mock-client-id',
-                COGNITO_CLIENT_SECRET_USER_PASS: 'mock-client-secret',
+                COGNITO_CLIENT_ID: 'mock-client-id',
+                COGNITO_CLIENT_SECRET: 'mock-client-secret',
               };
               return config[key];
             }),

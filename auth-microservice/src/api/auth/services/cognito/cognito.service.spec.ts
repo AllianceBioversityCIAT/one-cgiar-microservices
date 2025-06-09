@@ -50,8 +50,8 @@ describe('CognitoService', () => {
     AWS_REGION: 'us-east-1',
     AWS_ACCESS_KEY_ID: 'mock-access-key',
     AWS_SECRET_ACCESS_KEY: 'mock-secret-key',
-    COGNITO_CLIENT_ID_USER: 'mock-client-id',
-    COGNITO_CLIENT_SECRET_USER_PASS: 'mock-client-secret',
+    COGNITO_CLIENT_ID: 'mock-client-id',
+    COGNITO_CLIENT_SECRET: 'mock-client-secret',
     COGNITO_USER_POOL_URL: 'https://cognito-idp.us-east-1.amazonaws.com/',
     COGNITO_USER_POOL_ID: 'us-east-1_TEST123',
   };
@@ -204,8 +204,8 @@ describe('CognitoService', () => {
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
         const config = {
           ...mockConfig,
-          COGNITO_CLIENT_ID_USER: clientId,
-          COGNITO_CLIENT_SECRET_USER_PASS: clientSecret,
+          COGNITO_CLIENT_ID: clientId,
+          COGNITO_CLIENT_SECRET: clientSecret,
         };
         return config[key];
       });
@@ -683,7 +683,7 @@ describe('CognitoService', () => {
       const malformedToken = 'invalid.token.format';
 
       await expect(service.validateAccessToken(malformedToken)).rejects.toThrow(
-        new HttpException('Invalid token format', HttpStatus.UNAUTHORIZED),
+        new HttpException(`Invalid token format`, HttpStatus.UNAUTHORIZED),
       );
     });
 
