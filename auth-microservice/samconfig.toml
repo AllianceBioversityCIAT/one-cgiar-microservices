@@ -1,0 +1,36 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "cgiar-auth-microservice-dev"
+s3_bucket = ""  # Será generado automáticamente por SAM
+s3_prefix = "cgiar-auth-microservice"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+    "Stage=dev",
+    "CognitoRegion=us-east-1",
+    "ClarisaApiUrl=https://api.clarisa.cgiar.org",
+    "CognitoUserPoolId=your-user-pool-id",
+    "CognitoClientId=your-client-id"
+]
+image_repositories = []
+
+[prod]
+[prod.deploy]
+[prod.deploy.parameters]
+stack_name = "cgiar-auth-microservice-prod"
+s3_bucket = ""
+s3_prefix = "cgiar-auth-microservice"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+    "Stage=prod",
+    "CognitoRegion=us-east-1",
+    "ClarisaApiUrl=https://api.clarisa.cgiar.org",
+    "CognitoUserPoolId=your-prod-user-pool-id",
+    "CognitoClientId=your-prod-client-id"
+]
+image_repositories = []

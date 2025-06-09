@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'CGIAR Auth Microservice - NestJS Lambda Deployment'
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs20.x
+    MemorySize: 1024
+    Environment:
+      Variables:
+        NODE_ENV: production
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    Description: Stage for the deployment (dev, staging, prod)
+  
+  CognitoRegion:
+    Type: String
+    Default: us-east-1
+    Description: AWS Cognito region
+    
+  ClarisaApiUrl:
+    Type: String
+    Description: CLARISA API base URL
+    
+  CognitoUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID
+    
+  CognitoClientId:
+    Type: String
+    Description: Cognito Client ID
+
+Resources:
+  AuthMicroserviceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'cgiar-auth-microservice-${Stage}'
+      CodeUri: dist/
+      Handler: lambda.handler
+      Description: 'CGIAR Authentication Microservice'
+      Environment:
+        Variables:
+          STAGE: !Ref Stage
+          COGNITO_REGION: !Ref CognitoRegion
+          CLARISA_API_URL: !Ref ClarisaApiUrl
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
+          COGNITO_CLIENT_ID: !Ref CognitoClientId
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref AuthApiGateway
+        RootApiEvent:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref AuthApiGateway
+      
+  AuthApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'cgiar-auth-api-${Stage}'
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,auth'"
+        AllowOrigin: "'*'"
+      BinaryMediaTypes:
+        - '*/*'
+
+  # CloudWatch Log Group
+  AuthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/cgiar-auth-microservice-${Stage}'
+      RetentionInDays: 14
+
+  # IAM Role for Lambda execution
+  AuthFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'cgiar-auth-lambda-role-${Stage}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:*
+                Resource: '*'
+
+Outputs:
+  AuthApiUrl:
+    Description: 'API Gateway endpoint URL for Auth Microservice'
+    Value: !Sub 'https://${AuthApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/'
+    Export:
+      Name: !Sub '${AWS::StackName}-AuthApiUrl'
+      
+  AuthFunctionName:
+    Description: 'Auth Lambda Function Name'
+    Value: !Ref AuthMicroserviceFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-AuthFunctionName'

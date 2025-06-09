@@ -1,0 +1,57 @@
+# SAM ignore file - exclude these files from deployment package
+
+# Source files (only built dist/ is needed)
+src/
+test/
+coverage/
+
+# Development files
+*.spec.ts
+*.test.ts
+*.e2e-spec.ts
+jest.config.js
+jest-e2e.json
+
+# Node modules in root (dist has its own production modules)
+node_modules/
+
+# Build tools
+webpack.config.js
+tsconfig*.json
+nest-cli.json
+
+# Development and docs
+README.md
+LAMBDA_DEPLOYMENT.md
+.git/
+.gitignore
+.env*
+.vscode/
+
+# Deployment scripts
+deploy.sh
+Dockerfile
+docker-compose.yml
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
