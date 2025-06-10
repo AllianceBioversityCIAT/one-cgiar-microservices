@@ -504,4 +504,29 @@ export class AuthService {
       );
     }
   }
+
+  /**
+   * Search users by email, name or other criteria
+   * @param searchParams Search parameters
+   * @returns Array of users matching the criteria
+   */
+  async searchUsers(searchParams: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<any[]> {
+    try {
+      this.logger.log(`Searching users with params:`, searchParams);
+
+      return await this.cognitoService.searchUsers(searchParams);
+    } catch (error) {
+      this.logger.error(`Error searching users: ${error.message}`, error.stack);
+      throw new HttpException(
+        error.message || 'User search failed',
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 }

@@ -6,6 +6,7 @@ import {
   CognitoIdentityProviderClient,
   GetUserCommand,
   InitiateAuthCommand,
+  ListUsersCommand,
   RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
@@ -417,6 +418,75 @@ export class CognitoService {
     } catch (error) {
       console.error('Error decoding JWT token:', error);
       throw new Error(`Invalid token format`);
+    }
+  }
+
+  /**
+   * Advanced user search with multiple criteria
+   * @param searchParams Search parameters
+   * @returns Array of users matching the criteria
+   */
+  async searchUsers(searchParams: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<any[]> {
+    try {
+      const { email, firstName, lastName, status, limit = 60 } = searchParams;
+      let filter = '';
+
+      if (email) {
+        filter = `email ^= "${email}"`;
+      } else if (firstName && lastName) {
+        // Note: Cognito doesn't support AND operations in filters
+        // So we'll search by firstName and filter results
+        filter = `given_name ^= "${firstName}"`;
+      } else if (firstName) {
+        filter = `given_name ^= "${firstName}"`;
+      } else if (lastName) {
+        filter = `family_name ^= "${lastName}"`;
+      }
+
+      if (status) {
+        filter += filter
+          ? ` AND cognito:user_status = "${status}"`
+          : `cognito:user_status = "${status}"`;
+      }
+
+      const command = new ListUsersCommand({
+        UserPoolId: this.configService.get<string>('COGNITO_USER_POOL_ID'),
+        Filter: filter || undefined,
+        Limit: limit,
+      });
+
+      const result = await this.cognitoClient.send(command);
+      let users = result.Users || [];
+
+      // Additional filtering if needed
+      if (lastName && firstName) {
+        users = users.filter((user) => {
+          const familyName = user.Attributes?.find(
+            (attr) => attr.Name === 'family_name',
+          )?.Value;
+          return familyName?.toLowerCase().includes(lastName.toLowerCase());
+        });
+      }
+
+      return users.map((user) => ({
+        username: user.Username,
+        enabled: user.Enabled,
+        userStatus: user.UserStatus,
+        userCreateDate: user.UserCreateDate,
+        userLastModifiedDate: user.UserLastModifiedDate,
+        attributes: user.Attributes,
+      }));
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to search users',
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 }

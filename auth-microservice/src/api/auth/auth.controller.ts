@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Body, Req, Get, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ProviderAuthDto } from './dto/provider-auth.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
@@ -9,6 +9,7 @@ import {
   ApiBadRequestResponse,
   ApiInternalServerErrorResponse,
   ApiOperation,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { ApiClarisaAuth } from '../../shared/decorator/clarisa-auth.decorator';
@@ -454,5 +455,56 @@ export class AuthController {
     @Body() bulkCreateUsersDto: BulkCreateUsersDto,
   ): Promise<BulkCreationResponse> {
     return this.bulkUserService.bulkCreateUsers(bulkCreateUsersDto);
+  }
+
+  @Get('users/search')
+  @ApiClarisaAuth('Search users by multiple criteria')
+  @ApiOperation({ summary: 'Search users by multiple criteria' })
+  @ApiQuery({
+    name: 'email',
+    required: false,
+    description: 'Email to search for',
+  })
+  @ApiQuery({
+    name: 'firstName',
+    required: false,
+    description: 'First name to search for',
+  })
+  @ApiQuery({
+    name: 'lastName',
+    required: false,
+    description: 'Last name to search for',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'User status to filter by',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Maximum number of results (default: 60)',
+  })
+  async searchUsers(
+    @Query('email') email?: string,
+    @Query('firstName') firstName?: string,
+    @Query('lastName') lastName?: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: number,
+  ): Promise<any[]> {
+    const searchParams = {
+      email,
+      firstName,
+      lastName,
+      status,
+      limit: limit || 60,
+    };
+
+    // Remove undefined values
+    Object.keys(searchParams).forEach(
+      (key) => searchParams[key] === undefined && delete searchParams[key],
+    );
+
+    return this.authService.searchUsers(searchParams);
   }
 }
