@@ -179,6 +179,7 @@ export class CognitoService {
         UserPoolId: this.configService.get<string>('COGNITO_USER_POOL_ID'),
         Username: username,
         TemporaryPassword: temporaryPassword,
+        MessageAction: 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: email },
           { Name: 'given_name', Value: firstName },

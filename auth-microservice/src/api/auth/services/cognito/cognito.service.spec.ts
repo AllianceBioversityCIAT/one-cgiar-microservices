@@ -325,6 +325,7 @@ describe('CognitoService', () => {
         UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
         Username: userData.username,
         TemporaryPassword: userData.temporaryPassword,
+        MessageAction: 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: userData.email },
           { Name: 'given_name', Value: userData.firstName },
@@ -349,6 +350,7 @@ describe('CognitoService', () => {
         UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
         Username: userData.username,
         TemporaryPassword: userData.temporaryPassword,
+        MessageAction: 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: userData.email },
           { Name: 'given_name', Value: userData.firstName },
@@ -1244,6 +1246,7 @@ describe('CognitoService', () => {
         UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
         Username: 'newuser@cgiar.org',
         TemporaryPassword: 'TemporaryPass123!',
+        MessageAction: 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: 'maria.garcia@cgiar.org' },
           { Name: 'given_name', Value: 'María José' },

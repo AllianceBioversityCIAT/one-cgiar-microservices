@@ -129,29 +129,209 @@ export class AuthController {
   }
 
   @Post('register')
-  @ApiClarisaAuth('Register new user with custom password')
-  @ApiOperation({ summary: 'Register new user in Cognito User Pool' })
+  @ApiClarisaAuth(
+    'Register new user with auto-generated password and custom email',
+  )
+  @ApiOperation({
+    summary: 'Register new user with auto-generated password and custom email',
+    description: `Creates a new user in AWS Cognito with automatically generated secure password and sends personalized welcome email using RabbitMQ.`,
+  })
   @ApiResponse({
     status: 201,
-    description: 'User registered successfully',
+    description: 'User registered successfully and email queued',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'User registered successfully' },
-        userSub: { type: 'string', example: 'abc123-def456-ghi789' },
-        temporaryPassword: { type: 'boolean', example: true },
+        message: {
+          type: 'string',
+          example: 'User registered successfully',
+          description: 'Success message',
+        },
+        userSub: {
+          type: 'string',
+          example: 'abc123-def456-ghi789',
+          description: 'User unique identifier from Cognito',
+        },
+        temporaryPassword: {
+          type: 'boolean',
+          example: true,
+          description: 'Indicates if a temporary password was generated',
+        },
+        emailSent: {
+          type: 'boolean',
+          example: true,
+          description: 'Indicates if welcome email was queued successfully',
+        },
+        emailConfig: {
+          type: 'object',
+          properties: {
+            appName: { type: 'string', example: 'PRMS Reporting Tool' },
+            senderEmail: { type: 'string', example: 'noreply@prms.cgiar.org' },
+            templateProcessed: { type: 'boolean', example: true },
+            variablesUsed: { type: 'number', example: 8 },
+            templateSize: { type: 'number', example: 2048 },
+          },
+          description: 'Email configuration processing summary',
+        },
+      },
+    },
+    examples: {
+      'Success with email queued': {
+        summary: 'User created and email queued successfully',
+        value: {
+          message: 'User registered successfully',
+          userSub: 'abc123-def456-ghi789',
+          temporaryPassword: true,
+          emailSent: true,
+          emailConfig: {
+            appName: 'PRMS Reporting Tool',
+            senderEmail: 'noreply@prms.cgiar.org',
+            templateProcessed: true,
+            variablesUsed: 8,
+            templateSize: 2048,
+          },
+        },
+      },
+      'Success with email queue failure': {
+        summary: 'User created but email queueing failed',
+        value: {
+          message: 'User registered successfully',
+          userSub: 'abc123-def456-ghi789',
+          temporaryPassword: true,
+          emailSent: false,
+          emailError: 'RabbitMQ connection failed',
+          emailConfig: {
+            appName: 'PRMS Reporting Tool',
+            senderEmail: 'noreply@prms.cgiar.org',
+            templateProcessed: true,
+            variablesUsed: 8,
+            templateSize: 2048,
+          },
+        },
       },
     },
   })
   @ApiBadRequestResponse({
-    description: 'Invalid request parameters or user already exists',
+    description:
+      'Invalid request parameters, user already exists, email config invalid, or password generation failed',
     type: ErrorResponse,
+    examples: {
+      'User already exists': {
+        summary: 'User already exists in Cognito',
+        value: {
+          statusCode: 400,
+          message: 'User already exists in the system',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+      'Invalid email config': {
+        summary: 'Email configuration validation failed',
+        value: {
+          statusCode: 400,
+          message:
+            'Email configuration is invalid: sender_email es requerido, welcome_html_template debe contener la variable {{tempPassword}}',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+      'Invalid user data': {
+        summary: 'User data validation failed',
+        value: {
+          statusCode: 400,
+          message: 'firstName should not be empty',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+      'Password generation failed': {
+        summary: 'Auto-generated password validation failed',
+        value: {
+          statusCode: 500,
+          message:
+            'Generated password is invalid: Must contain at least one symbol',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+      'XSS prevention': {
+        summary: 'HTML template contains forbidden elements',
+        value: {
+          statusCode: 400,
+          message:
+            'Email configuration is invalid: welcome_html_template no debe contener etiquetas <script>',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+    },
   })
   @ApiInternalServerErrorResponse({
-    description: 'Internal server error',
+    description:
+      'Password generation failed, Cognito service error, or RabbitMQ unavailable',
     type: ErrorResponse,
+    examples: {
+      'Cognito error': {
+        summary: 'AWS Cognito service error',
+        value: {
+          statusCode: 500,
+          message: 'User creation failed in Cognito User Pool',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+      'Password generation error': {
+        summary: 'Secure password generation failed',
+        value: {
+          statusCode: 500,
+          message:
+            'Failed to generate secure password meeting Cognito requirements',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+      'RabbitMQ error': {
+        summary: 'Email notification service unavailable',
+        value: {
+          statusCode: 500,
+          message:
+            'User created successfully but email notification service is unavailable',
+          path: '/auth/register',
+          timestamp: '2025-06-10T12:34:56.789Z',
+        },
+      },
+    },
   })
-  @ApiBody({ type: RegisterUserDto })
+  @ApiBody({
+    type: RegisterUserDto,
+    description:
+      'User registration data with email configuration - password will be auto-generated',
+    examples: {
+      'PRMS Registration': {
+        summary: 'Complete PRMS user registration',
+        description: 'Registration with full PRMS branding and custom template',
+        value: {
+          username: 'john.doe@cgiar.org',
+          email: 'john.doe@cgiar.org',
+          firstName: 'John',
+          lastName: 'Doe',
+          emailConfig: {
+            sender_email: 'noreply@prms.cgiar.org',
+            sender_name: 'PRMS Team',
+            welcome_subject:
+              '🔐 Welcome to {{appName}} - Your Account is Ready!',
+            app_name: 'PRMS Reporting Tool',
+            app_url: 'https://prms.ciat.cgiar.org',
+            support_email: 'support@prms.cgiar.org',
+            logo_url:
+              'https://prms-file-storage.s3.amazonaws.com/email-images/prms-logo.png',
+            welcome_html_template:
+              '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{text-align:center;border-bottom:2px solid #1976d2;padding-bottom:20px}.password-box{background:#e3f2fd;border:2px solid #1976d2;padding:20px;border-radius:8px;text-align:center;margin:20px 0}.password{font-family:monospace;font-size:18px;font-weight:bold;color:#1976d2}</style></head><body><div class="container"><div class="header"><img src="{{logoUrl}}" alt="{{appName}}" style="max-height:80px"><h1>Welcome to {{appName}}</h1></div><h2>Hello {{firstName}} {{lastName}},</h2><p>Your account has been created successfully! Here are your login credentials:</p><div class="password-box"><p><strong>Username:</strong> {{username}}</p><p><strong>Temporary Password:</strong></p><div class="password">{{tempPassword}}</div></div><p><strong>⚠️ Important:</strong> This is a temporary password. You will be required to change it on your first login for security.</p><p>Access your account: <a href="{{appUrl}}" style="color:#1976d2">{{appUrl}}</a></p><p>Need assistance? Contact: <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p><hr><p style="text-align:center;color:#666;font-size:12px">Best regards,<br>{{senderName}}<br><em>This is an automated message. Please do not reply.</em></p></div></body></html>',
+          },
+        },
+      },
+    },
+  })
   async registerUser(
     @Body() registerUserDto: RegisterUserDto,
     @Req() request: RequestWithCustomAttrs,
