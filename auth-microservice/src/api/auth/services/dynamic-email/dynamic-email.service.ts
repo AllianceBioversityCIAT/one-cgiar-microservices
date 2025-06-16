@@ -177,7 +177,10 @@ export class DynamicEmailService {
       }
     }
 
-    if (emailConfig.welcome_html_template && emailConfig.welcome_html_template.includes('<script')) {
+    if (
+      emailConfig.welcome_html_template &&
+      emailConfig.welcome_html_template.includes('<script')
+    ) {
       errors.push('welcome_html_template must not contain <script> tags');
     }
 
@@ -210,7 +213,7 @@ export class DynamicEmailService {
   /**
    * Generates a default HTML template if needed
    */
-  generateDefaultTemplate(appName: string, appUrl: string): string {
+  generateDefaultTemplate(): string {
     return `
     <!DOCTYPE html>
     <html lang="en">

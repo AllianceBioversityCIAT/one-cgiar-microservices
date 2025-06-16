@@ -440,10 +440,7 @@ describe('DynamicEmailService', () => {
 
   describe('generateDefaultTemplate', () => {
     it('should generate default template with app name and URL', () => {
-      const appName = 'Test Application';
-      const appUrl = 'https://test.example.com';
-
-      const result = service.generateDefaultTemplate(appName, appUrl);
+      const result = service.generateDefaultTemplate();
 
       expect(result).toContain('{{firstName}}');
       expect(result).toContain('{{tempPassword}}');
@@ -457,7 +454,7 @@ describe('DynamicEmailService', () => {
     });
 
     it('should generate valid HTML structure', () => {
-      const result = service.generateDefaultTemplate('App', 'https://app.com');
+      const result = service.generateDefaultTemplate();
 
       expect(result).toMatch(/<html[^>]*>/);
       expect(result).toMatch(/<head[^>]*>/);
@@ -468,10 +465,7 @@ describe('DynamicEmailService', () => {
     });
 
     it('should include all essential template variables', () => {
-      const result = service.generateDefaultTemplate(
-        'Test',
-        'https://test.com',
-      );
+      const result = service.generateDefaultTemplate();
 
       const essentialVars = [
         '{{firstName}}',
