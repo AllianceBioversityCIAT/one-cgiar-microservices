@@ -76,7 +76,7 @@ export class ClarisaService {
       this.logger.debug(`Validation result:`, validationResult);
 
       const data = validationResult.data as ResClarisaValidateConectioDto;
-      const senderId = data.sender_mis.id;
+      const senderId = data.sender_mis.code || data.sender_mis.id;
 
       this.logger.log(`Getting metadata for MIS ID: ${senderId}`);
 

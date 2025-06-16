@@ -17,6 +17,8 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
 import { CognitoService } from './services/cognito/cognito.service';
+import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
+import { PasswordGeneratorService } from './services/password/password.service';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +28,8 @@ export class AuthService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly cognitoService: CognitoService,
+    private readonly dynamicEmailService: DynamicEmailService,
+    private readonly passwordGenerator: PasswordGeneratorService,
   ) {}
 
   /**
@@ -240,10 +244,10 @@ export class AuthService {
   }
 
   /**
-   * Register a new user in Cognito
-   * @param registerUserDto User registration data
+   * Register a new user in Cognito with auto-generated password and dynamic email
+   * @param registerUserDto User registration data including email config
    * @param request Express request with MIS metadata
-   * @returns Registration result
+   * @returns Registration result with email status
    */
   async registerUser(
     registerUserDto: RegisterUserDto,
@@ -262,29 +266,131 @@ export class AuthService {
         );
       }
 
-      this.logger.log(`Registering new user: ${registerUserDto.username}`);
+      this.logger.log(
+        `🚀 Starting registration for user: ${registerUserDto.username}`,
+      );
+
+      const emailConfigValidation =
+        this.dynamicEmailService.validateEmailConfig(
+          registerUserDto.emailConfig,
+        );
+
+      if (!emailConfigValidation.isValid) {
+        this.logger.error(
+          `❌ Email configuration validation failed: ${emailConfigValidation.errors.join(', ')}`,
+        );
+        throw new HttpException(
+          `Email configuration is invalid: ${emailConfigValidation.errors.join(', ')}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log(
+        `✅ Email configuration validated for: ${registerUserDto.emailConfig.app_name}`,
+      );
+
+      const temporaryPassword = this.passwordGenerator.generateSecurePassword(
+        12,
+        true,
+        true,
+      );
+
+      const passwordValidation =
+        this.passwordGenerator.validateCognitoPassword(temporaryPassword);
+      if (!passwordValidation.isValid) {
+        this.logger.error(
+          `❌ Generated password validation failed: ${passwordValidation.errors.join(', ')}`,
+        );
+        throw new HttpException(
+          `Generated password is invalid: ${passwordValidation.errors.join(', ')}`,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      this.logger.log(
+        `✅ Secure password generated for user: ${registerUserDto.username}`,
+      );
 
       const result = await this.cognitoService.createUser(
         registerUserDto.username,
-        registerUserDto.temporaryPassword,
+        temporaryPassword,
         registerUserDto.firstName,
         registerUserDto.lastName,
         registerUserDto.email,
       );
 
-      return {
+      this.logger.log(
+        `✅ User created in Cognito: ${registerUserDto.username} (${result.userSub})`,
+      );
+
+      let emailSent = false;
+      let emailError = null;
+
+      try {
+        emailSent = await this.dynamicEmailService.sendWelcomeEmail(
+          registerUserDto,
+          temporaryPassword,
+          registerUserDto.emailConfig,
+        );
+
+        if (emailSent) {
+          this.logger.log(
+            `✅ Welcome email queued successfully for: ${registerUserDto.email}`,
+          );
+        } else {
+          this.logger.warn(
+            `⚠️ Failed to queue welcome email for: ${registerUserDto.email}`,
+          );
+        }
+      } catch (error) {
+        emailError = error.message;
+        this.logger.error(
+          `❌ Email queueing failed: ${error.message}`,
+          error.stack,
+        );
+
+        emailSent = false;
+      }
+
+      const templateStats = this.dynamicEmailService.getEmailStats(
+        registerUserDto.emailConfig.welcome_html_template,
+      );
+
+      const response = {
         message: 'User registered successfully',
         userSub: result.userSub,
         temporaryPassword: true,
+        emailSent: emailSent,
+        emailConfig: {
+          appName: registerUserDto.emailConfig.app_name,
+          senderEmail: registerUserDto.emailConfig.sender_email,
+          templateProcessed: true,
+          variablesUsed: templateStats.variableCount,
+          templateSize: templateStats.templateSize,
+        },
       };
+
+      if (emailError) {
+        response['emailError'] = emailError;
+      }
+
+      this.logger.log(
+        `🎉 Registration completed successfully for: ${registerUserDto.username}`,
+      );
+      return response;
     } catch (error) {
       this.logger.error(
-        `Error registering user: ${error.message}`,
+        `❌ Error registering user: ${error.message}`,
         error.stack,
       );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new HttpException(
         error.message || 'User registration failed',
-        error.status || HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -501,6 +607,31 @@ export class AuthService {
       throw new HttpException(
         error.message || 'Error refreshing authentication tokens',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Search users by email, name or other criteria
+   * @param searchParams Search parameters
+   * @returns Array of users matching the criteria
+   */
+  async searchUsers(searchParams: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<any[]> {
+    try {
+      this.logger.log(`Searching users with params:`, searchParams);
+
+      return await this.cognitoService.searchUsers(searchParams);
+    } catch (error) {
+      this.logger.error(`Error searching users: ${error.message}`, error.stack);
+      throw new HttpException(
+        error.message || 'User search failed',
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }

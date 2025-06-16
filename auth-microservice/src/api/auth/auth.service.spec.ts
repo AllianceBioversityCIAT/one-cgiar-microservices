@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { ProviderAuthDto } from './dto/provider-auth.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
 import { CustomAuthDto } from './dto/custom-auth.dto';
-import { RegisterUserDto } from './dto/register-user.dto';
+import { EmailConfigDto, RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { HttpException, HttpStatus } from '@nestjs/common';
@@ -13,6 +13,8 @@ import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { CognitoService } from './services/cognito/cognito.service';
+import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
+import { PasswordGeneratorService } from './services/password/password.service';
 
 const createMockRequest = () => {
   const req = {
@@ -89,11 +91,25 @@ const mockUserInfoResponse: AxiosResponse = {
   },
 };
 
+const mockEmailConfig: EmailConfigDto = {
+  sender_email: 'noreply@test.cgiar.org',
+  sender_name: 'Test Team',
+  welcome_subject: 'Welcome to {{appName}}, {{firstName}}!',
+  app_name: 'Test Application',
+  app_url: 'https://test.cgiar.org',
+  support_email: 'support@test.cgiar.org',
+  logo_url: 'https://test.cgiar.org/logo.png',
+  welcome_html_template:
+    '<html><body><h1>Welcome {{firstName}}!</h1><p>Password: {{tempPassword}}</p></body></html>',
+};
+
 describe('AuthService', () => {
   let service: AuthService;
   let httpService: HttpService;
   let configService: ConfigService;
   let cognitoService: CognitoService;
+  let dynamicEmailService: DynamicEmailService;
+  let passwordGeneratorService: PasswordGeneratorService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -115,8 +131,8 @@ describe('AuthService', () => {
                 AWS_REGION: 'us-east-1',
                 AWS_ACCESS_KEY_ID: 'mock-access-key',
                 AWS_SECRET_ACCESS_KEY: 'mock-secret-key',
-                COGNITO_CLIENT_ID_USER: 'mock-client-id',
-                COGNITO_CLIENT_SECRET_USER_PASS: 'mock-client-secret',
+                COGNITO_CLIENT_ID: 'mock-client-id',
+                COGNITO_CLIENT_SECRET: 'mock-client-secret',
               };
               return config[key];
             }),
@@ -133,6 +149,21 @@ describe('AuthService', () => {
             refreshAccessToken: jest.fn(),
           },
         },
+        {
+          provide: DynamicEmailService,
+          useValue: {
+            validateEmailConfig: jest.fn(),
+            sendWelcomeEmail: jest.fn(),
+            getEmailStats: jest.fn(),
+          },
+        },
+        {
+          provide: PasswordGeneratorService,
+          useValue: {
+            generateSecurePassword: jest.fn(),
+            validateCognitoPassword: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -140,6 +171,10 @@ describe('AuthService', () => {
     httpService = module.get<HttpService>(HttpService);
     configService = module.get<ConfigService>(ConfigService);
     cognitoService = module.get<CognitoService>(CognitoService);
+    dynamicEmailService = module.get<DynamicEmailService>(DynamicEmailService);
+    passwordGeneratorService = module.get<PasswordGeneratorService>(
+      PasswordGeneratorService,
+    );
   });
 
   it('should be defined', () => {
@@ -342,80 +377,244 @@ describe('AuthService', () => {
     });
   });
 
-  describe('registerUser', () => {
-    it('should register user successfully', async () => {
-      const registerUserDto: RegisterUserDto = {
-        username: 'newuser@example.com',
-        temporaryPassword: 'TempPass123!',
+  describe('registerUser - Dynamic Email Registration', () => {
+    const mockDynamicRegisterResponse = {
+      message: 'User registered successfully',
+      userSub: 'new-user-123',
+      temporaryPassword: true,
+      emailSent: true,
+      emailConfig: {
+        appName: 'Test Application',
+        senderEmail: 'noreply@test.cgiar.org',
+        templateProcessed: true,
+        variablesUsed: 6,
+        templateSize: 256,
+      },
+    };
+
+    const mockCreateUserResult = {
+      userSub: 'new-user-123',
+      enabled: true,
+      userStatus: 'FORCE_CHANGE_PASSWORD',
+    };
+
+    beforeEach(() => {
+      // Reset mocks
+      jest.clearAllMocks();
+    });
+
+    it('should register user with auto-generated password and send dynamic email', async () => {
+      const registerUserDto = {
+        username: 'newuser@test.cgiar.org',
         firstName: 'New',
         lastName: 'User',
-        email: 'newuser@example.com',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
       };
 
-      const mockCreateUserResult = {
-        userSub: 'new-user-123',
-        enabled: true,
-        userStatus: 'FORCE_CHANGE_PASSWORD',
-      };
-
+      // Mock validaciones y servicios
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      jest
+        .spyOn(passwordGeneratorService, 'generateSecurePassword')
+        .mockReturnValue('TempPass123!');
+      jest
+        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
+        .mockReturnValue({
+          isValid: true,
+          errors: [],
+        });
       jest
         .spyOn(cognitoService, 'createUser')
-        .mockResolvedValueOnce(mockCreateUserResult);
+        .mockResolvedValue(mockCreateUserResult);
+      jest
+        .spyOn(dynamicEmailService, 'sendWelcomeEmail')
+        .mockResolvedValue(true);
+      jest.spyOn(dynamicEmailService, 'getEmailStats').mockReturnValue({
+        variableCount: 6,
+        variables: [
+          'firstName',
+          'lastName',
+          'username',
+          'email',
+          'tempPassword',
+          'appName',
+        ],
+        templateSize: 256,
+      });
 
       const result = await service.registerUser(registerUserDto, mockRequest);
+
+      expect(dynamicEmailService.validateEmailConfig).toHaveBeenCalledWith(
+        mockEmailConfig,
+      );
+      expect(
+        passwordGeneratorService.generateSecurePassword,
+      ).toHaveBeenCalledWith(12, true, true);
+      expect(
+        passwordGeneratorService.validateCognitoPassword,
+      ).toHaveBeenCalledWith('TempPass123!');
+      expect(cognitoService.createUser).toHaveBeenCalledWith(
+        'newuser@test.cgiar.org',
+        'TempPass123!',
+        'New',
+        'User',
+        'newuser@test.cgiar.org',
+      );
+      expect(dynamicEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        registerUserDto,
+        'TempPass123!',
+        mockEmailConfig,
+      );
 
       expect(result).toEqual({
         message: 'User registered successfully',
         userSub: 'new-user-123',
         temporaryPassword: true,
+        emailSent: true,
+        emailConfig: {
+          appName: 'Test Application',
+          senderEmail: 'noreply@test.cgiar.org',
+          templateProcessed: true,
+          variablesUsed: 6,
+          templateSize: 256,
+        },
+      });
+    });
+
+    it('should register user successfully even if email fails', async () => {
+      const registerUserDto = {
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
+        lastName: 'User',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
+      };
+
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      jest
+        .spyOn(passwordGeneratorService, 'generateSecurePassword')
+        .mockReturnValue('TempPass123!');
+      jest
+        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
+        .mockReturnValue({
+          isValid: true,
+          errors: [],
+        });
+      jest
+        .spyOn(cognitoService, 'createUser')
+        .mockResolvedValue(mockCreateUserResult);
+      jest
+        .spyOn(dynamicEmailService, 'sendWelcomeEmail')
+        .mockRejectedValue(new Error('RabbitMQ connection failed'));
+      jest.spyOn(dynamicEmailService, 'getEmailStats').mockReturnValue({
+        variableCount: 6,
+        variables: [
+          'firstName',
+          'lastName',
+          'username',
+          'email',
+          'tempPassword',
+          'appName',
+        ],
+        templateSize: 256,
       });
 
-      expect(cognitoService.createUser).toHaveBeenCalledWith(
-        registerUserDto.username,
-        registerUserDto.temporaryPassword,
-        registerUserDto.firstName,
-        registerUserDto.lastName,
-        registerUserDto.email,
+      const result = await service.registerUser(registerUserDto, mockRequest);
+
+      expect(result.message).toBe('User registered successfully');
+      expect(result.userSub).toBe('new-user-123');
+      expect(result.emailSent).toBe(false);
+      expect(result.emailError).toBe('RabbitMQ connection failed');
+    });
+
+    it('should throw error for invalid email configuration', async () => {
+      const registerUserDto = {
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
+        lastName: 'User',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: {
+          ...mockEmailConfig,
+          sender_email: 'invalid-email',
+          welcome_html_template: 'No password variable',
+        },
+      };
+
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: false,
+        errors: [
+          'sender_email debe tener formato válido',
+          'welcome_html_template debe contener la variable {{tempPassword}}',
+        ],
+      });
+
+      await expect(
+        service.registerUser(registerUserDto, mockRequest),
+      ).rejects.toThrow(
+        new HttpException(
+          'Email configuration is invalid: sender_email debe tener formato válido, welcome_html_template debe contener la variable {{tempPassword}}',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+
+      expect(dynamicEmailService.validateEmailConfig).toHaveBeenCalledWith(
+        registerUserDto.emailConfig,
       );
     });
 
-    it('should register user with sendEmail enabled', async () => {
-      const registerUserDto: RegisterUserDto = {
-        username: 'newuser@example.com',
-        temporaryPassword: 'TempPass123!',
+    it('should throw error for invalid generated password', async () => {
+      const registerUserDto = {
+        username: 'newuser@test.cgiar.org',
         firstName: 'New',
         lastName: 'User',
-        email: 'newuser@example.com',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
       };
 
-      const mockCreateUserResult = {
-        userSub: 'new-user-123',
-        enabled: true,
-        userStatus: 'FORCE_CHANGE_PASSWORD',
-      };
-
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
       jest
-        .spyOn(cognitoService, 'createUser')
-        .mockResolvedValueOnce(mockCreateUserResult);
+        .spyOn(passwordGeneratorService, 'generateSecurePassword')
+        .mockReturnValue('weakpass');
+      jest
+        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
+        .mockReturnValue({
+          isValid: false,
+          errors: [
+            'Debe contener al menos una mayúscula',
+            'Debe contener al menos un símbolo especial',
+          ],
+        });
 
-      await service.registerUser(registerUserDto, mockRequest);
-
-      expect(cognitoService.createUser).toHaveBeenCalledWith(
-        registerUserDto.username,
-        registerUserDto.temporaryPassword,
-        registerUserDto.firstName,
-        registerUserDto.lastName,
-        registerUserDto.email,
+      await expect(
+        service.registerUser(registerUserDto, mockRequest),
+      ).rejects.toThrow(
+        new HttpException(
+          'Generated password is invalid: Debe contener al menos una mayúscula, Debe contener al menos un símbolo especial',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
       );
+
+      expect(
+        passwordGeneratorService.validateCognitoPassword,
+      ).toHaveBeenCalledWith('weakpass');
     });
 
     it('should throw error when MIS metadata is missing', async () => {
-      const registerUserDto: RegisterUserDto = {
-        username: 'newuser@example.com',
-        temporaryPassword: 'TempPass123!',
+      const registerUserDto = {
+        username: 'newuser@test.cgiar.org',
         firstName: 'New',
         lastName: 'User',
-        email: 'newuser@example.com',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
       };
 
       const requestWithoutMis = createMockRequest();
@@ -423,30 +622,145 @@ describe('AuthService', () => {
 
       await expect(
         service.registerUser(registerUserDto, requestWithoutMis),
-      ).rejects.toThrow(HttpException);
+      ).rejects.toThrow(
+        new HttpException(
+          'MIS authentication information not found',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
     });
 
-    it('should handle Cognito errors', async () => {
-      const registerUserDto: RegisterUserDto = {
-        username: 'existing@example.com',
-        temporaryPassword: 'TempPass123!',
+    it('should handle Cognito creation failure after password generation', async () => {
+      const registerUserDto = {
+        username: 'existing@test.cgiar.org',
         firstName: 'Existing',
         lastName: 'User',
-        email: 'existing@example.com',
+        email: 'existing@test.cgiar.org',
+        emailConfig: mockEmailConfig,
       };
 
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      jest
+        .spyOn(passwordGeneratorService, 'generateSecurePassword')
+        .mockReturnValue('TempPass123!');
+      jest
+        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
+        .mockReturnValue({
+          isValid: true,
+          errors: [],
+        });
       jest
         .spyOn(cognitoService, 'createUser')
-        .mockRejectedValueOnce(
+        .mockRejectedValue(
           new HttpException('User already exists', HttpStatus.BAD_REQUEST),
         );
 
       await expect(
         service.registerUser(registerUserDto, mockRequest),
-      ).rejects.toThrow(HttpException);
+      ).rejects.toThrow(
+        new HttpException('User already exists', HttpStatus.BAD_REQUEST),
+      );
+
+      expect(cognitoService.createUser).toHaveBeenCalled();
+    });
+
+    it('should handle XSS validation in email template', async () => {
+      const registerUserDto = {
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
+        lastName: 'User',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: {
+          ...mockEmailConfig,
+          welcome_html_template:
+            '<html><body><script>alert("xss")</script><h1>Welcome {{firstName}}!</h1></body></html>',
+        },
+      };
+
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: false,
+        errors: ['welcome_html_template no debe contener etiquetas <script>'],
+      });
+
+      await expect(
+        service.registerUser(registerUserDto, mockRequest),
+      ).rejects.toThrow(
+        new HttpException(
+          'Email configuration is invalid: welcome_html_template no debe contener etiquetas <script>',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should handle complex email configuration with all fields', async () => {
+      const complexEmailConfig: EmailConfigDto = {
+        sender_email: 'complex@test.cgiar.org',
+        sender_name: 'Complex Test Team',
+        welcome_subject: '🔐 Welcome {{firstName}} to {{appName}}!',
+        app_name: 'Complex Test Application',
+        app_url: 'https://complex.test.cgiar.org',
+        support_email: 'support@complex.test.cgiar.org',
+        logo_url: 'https://complex.test.cgiar.org/logo.png',
+        welcome_html_template:
+          '<html><body><img src="{{logoUrl}}"><h1>Welcome {{firstName}} {{lastName}}!</h1><p>App: {{appName}}</p><p>Password: {{tempPassword}}</p><p>Support: {{supportEmail}}</p></body></html>',
+        custom_styles: '.custom { color: blue; }',
+      };
+
+      const registerUserDto = {
+        username: 'complex@test.cgiar.org',
+        firstName: 'Complex',
+        lastName: 'User',
+        email: 'complex@test.cgiar.org',
+        emailConfig: complexEmailConfig,
+      };
+
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      jest
+        .spyOn(passwordGeneratorService, 'generateSecurePassword')
+        .mockReturnValue('ComplexPass123!');
+      jest
+        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
+        .mockReturnValue({
+          isValid: true,
+          errors: [],
+        });
+      jest
+        .spyOn(cognitoService, 'createUser')
+        .mockResolvedValue(mockCreateUserResult);
+      jest
+        .spyOn(dynamicEmailService, 'sendWelcomeEmail')
+        .mockResolvedValue(true);
+      jest.spyOn(dynamicEmailService, 'getEmailStats').mockReturnValue({
+        variableCount: 8,
+        variables: [
+          'firstName',
+          'lastName',
+          'logoUrl',
+          'appName',
+          'tempPassword',
+          'supportEmail',
+        ],
+        templateSize: 512,
+      });
+
+      const result = await service.registerUser(registerUserDto, mockRequest);
+
+      expect(result.emailConfig.variablesUsed).toBe(8);
+      expect(result.emailConfig.templateSize).toBe(512);
+      expect(dynamicEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        registerUserDto,
+        'ComplexPass123!',
+        complexEmailConfig,
+      );
     });
   });
-
+  
   describe('updateUser', () => {
     it('should update user successfully', async () => {
       const updateUserDto: UpdateUserDto = {
