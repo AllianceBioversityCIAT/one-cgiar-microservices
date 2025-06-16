@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - "main-auth"
+      - "dev-auth"
   pull_request:
     branches:
       - "main-auth"
+      - "dev-auth"
   workflow_dispatch:
 
 jobs:
@@ -17,7 +19,8 @@ jobs:
       # Step 1: Build Jenkins URL
       - name: Build Jenkins URL
         run: |
-          JENKINS_URL="https://automation.prms.cgiar.org/job/auth-microservice/build"
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}  # Remove 'refs/heads/' from GITHUB_REF
+          JENKINS_URL="https://automation.prms.cgiar.org/job/auth-microservice-${BRANCH_NAME}/build"
           echo "Jenkins job URL: $JENKINS_URL"
           echo "JENKINS_URL=${JENKINS_URL}" >> $GITHUB_ENV
 
