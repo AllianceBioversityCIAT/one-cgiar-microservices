@@ -177,7 +177,7 @@ export class DynamicEmailService {
       }
     }
 
-    if (emailConfig.welcome_html_template.includes('<script')) {
+    if (emailConfig.welcome_html_template && emailConfig.welcome_html_template.includes('<script')) {
       errors.push('welcome_html_template must not contain <script> tags');
     }
 

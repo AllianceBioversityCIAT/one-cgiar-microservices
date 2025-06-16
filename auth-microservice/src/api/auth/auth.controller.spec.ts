@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CustomAuthDto } from './dto/custom-auth.dto';
 import { ProviderAuthDto, AuthProvider } from './dto/provider-auth.dto';
-import { RegisterUserDto } from './dto/register-user.dto';
+import { EmailConfigDto, RegisterUserDto } from './dto/register-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
 import {
@@ -110,6 +110,32 @@ describe('AuthController', () => {
         emailSent: true,
       },
     ],
+  };
+
+  const mockEmailConfig: EmailConfigDto = {
+    sender_email: 'noreply@test.cgiar.org',
+    sender_name: 'Test Team',
+    welcome_subject: 'Welcome to {{appName}}, {{firstName}}!',
+    app_name: 'Test Application',
+    app_url: 'https://test.cgiar.org',
+    support_email: 'support@test.cgiar.org',
+    logo_url: 'https://test.cgiar.org/logo.png',
+    welcome_html_template:
+      '<html><body><h1>Welcome {{firstName}}!</h1><p>Username: {{username}}</p><p>Password: {{tempPassword}}</p><p><a href="{{appUrl}}">Login</a></p></body></html>',
+  };
+
+  const mockDynamicRegisterResponse = {
+    message: 'User registered successfully',
+    userSub: 'new-user-123',
+    temporaryPassword: true,
+    emailSent: true,
+    emailConfig: {
+      appName: 'Test Application',
+      senderEmail: 'noreply@test.cgiar.org',
+      templateProcessed: true,
+      variablesUsed: 6,
+      templateSize: 256,
+    },
   };
 
   beforeEach(async () => {
@@ -535,47 +561,182 @@ describe('AuthController', () => {
     });
   });
 
-  describe('registerUser', () => {
-    it('should register new user successfully', async () => {
+  describe('registerUser - Dynamic Email Registration', () => {
+    it('should register new user with custom email configuration successfully', async () => {
       const registerUserDto: RegisterUserDto = {
-        username: 'newuser@example.com',
-        temporaryPassword: 'TempPass123!',
+        username: 'newuser@test.cgiar.org',
         firstName: 'New',
         lastName: 'User',
-        email: 'newuser@example.com',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
       };
 
-      const mockRegisterResponse = {
-        message: 'User registered successfully',
-        userSub: 'new-user-123',
-        temporaryPassword: true,
-      };
-
-      authService.registerUser.mockResolvedValue(mockRegisterResponse);
+      authService.registerUser.mockResolvedValue(mockDynamicRegisterResponse);
 
       const result = await controller.registerUser(
         registerUserDto,
         mockRequest as RequestWithCustomAttrs,
       );
 
-      expect(result).toEqual(mockRegisterResponse);
+      expect(result).toEqual(mockDynamicRegisterResponse);
       expect(authService.registerUser).toHaveBeenCalledWith(
         registerUserDto,
         mockRequest,
       );
+      expect(result.emailSent).toBe(true);
+      expect(result.emailConfig.templateProcessed).toBe(true);
     });
 
-    it('should throw error when user already exists', async () => {
+    it('should register user successfully even if email queueing fails', async () => {
       const registerUserDto: RegisterUserDto = {
-        username: 'existing@example.com',
-        temporaryPassword: 'TempPass123!',
-        firstName: 'Existing',
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
         lastName: 'User',
-        email: 'existing@example.com',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
+      };
+
+      const responseWithEmailFailure = {
+        ...mockDynamicRegisterResponse,
+        emailSent: false,
+        emailError: 'RabbitMQ connection failed',
+      };
+
+      authService.registerUser.mockResolvedValue(responseWithEmailFailure);
+
+      const result = await controller.registerUser(
+        registerUserDto,
+        mockRequest as RequestWithCustomAttrs,
+      );
+
+      expect(result.message).toBe('User registered successfully');
+      expect(result.emailSent).toBe(false);
+      expect(result.emailError).toBe('RabbitMQ connection failed');
+      expect(result.userSub).toBe('new-user-123');
+    });
+
+    it('should throw error for invalid email configuration', async () => {
+      const invalidEmailConfig: EmailConfigDto = {
+        ...mockEmailConfig,
+        sender_email: 'invalid-email',
+        welcome_html_template: 'Missing password variable',
+      };
+
+      const registerUserDto: RegisterUserDto = {
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
+        lastName: 'User',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: invalidEmailConfig,
       };
 
       authService.registerUser.mockRejectedValue(
-        new HttpException('User already exists', HttpStatus.BAD_REQUEST),
+        new HttpException(
+          'Email configuration is invalid: sender_email debe tener formato válido, welcome_html_template debe contener la variable {{tempPassword}}',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+
+      await expect(
+        controller.registerUser(
+          registerUserDto,
+          mockRequest as RequestWithCustomAttrs,
+        ),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should throw error for XSS attempt in email template', async () => {
+      const maliciousEmailConfig: EmailConfigDto = {
+        ...mockEmailConfig,
+        welcome_html_template:
+          '<html><body><script>alert("xss")</script><h1>Welcome {{firstName}}!</h1></body></html>',
+      };
+
+      const registerUserDto: RegisterUserDto = {
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
+        lastName: 'User',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: maliciousEmailConfig,
+      };
+
+      authService.registerUser.mockRejectedValue(
+        new HttpException(
+          'Email configuration is invalid: welcome_html_template no debe contener etiquetas <script>',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+
+      await expect(
+        controller.registerUser(
+          registerUserDto,
+          mockRequest as RequestWithCustomAttrs,
+        ),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should handle password generation failure', async () => {
+      const registerUserDto: RegisterUserDto = {
+        username: 'newuser@test.cgiar.org',
+        firstName: 'New',
+        lastName: 'User',
+        email: 'newuser@test.cgiar.org',
+        emailConfig: mockEmailConfig,
+      };
+
+      authService.registerUser.mockRejectedValue(
+        new HttpException(
+          'Generated password is invalid: Must contain at least one symbol',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+
+      await expect(
+        controller.registerUser(
+          registerUserDto,
+          mockRequest as RequestWithCustomAttrs,
+        ),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should handle user already exists error', async () => {
+      const registerUserDto: RegisterUserDto = {
+        username: 'existing@test.cgiar.org',
+        firstName: 'Existing',
+        lastName: 'User',
+        email: 'existing@test.cgiar.org',
+        emailConfig: mockEmailConfig,
+      };
+
+      authService.registerUser.mockRejectedValue(
+        new HttpException(
+          'User already exists in the system',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+
+      await expect(
+        controller.registerUser(
+          registerUserDto,
+          mockRequest as RequestWithCustomAttrs,
+        ),
+      ).rejects.toThrow('User already exists in the system');
+    });
+
+    it('should handle Cognito service errors during registration', async () => {
+      const registerUserDto: RegisterUserDto = {
+        username: 'cognito-error@test.com',
+        firstName: 'Cognito',
+        lastName: 'Error',
+        email: 'cognito-error@test.com',
+        emailConfig: mockEmailConfig,
+      };
+
+      authService.registerUser.mockRejectedValue(
+        new HttpException(
+          'User creation failed in Cognito User Pool',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
       );
 
       await expect(
