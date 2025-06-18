@@ -54,7 +54,7 @@ export class RoomList {
 
     room.removeUser(socketId);
 
-    // Si la sala está vacía, la eliminamos
+    // If room is empty, delete it
     if (room.isEmpty()) {
       this.deleteRoom(roomId, platform);
       return null;
@@ -74,7 +74,7 @@ export class RoomList {
       }
     });
 
-    // Eliminar salas vacías
+    // Remove empty rooms
     this.rooms = this.rooms.filter(room => !room.isEmpty());
 
     return modifiedRooms;

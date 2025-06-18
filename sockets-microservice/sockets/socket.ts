@@ -23,14 +23,14 @@ export const disconnectSocketIO = (client: Socket, io: socketIO.Server) => {
     if (user) {
       io.emit(`all-connected-users-${user.platform}`, userList.getListByPlatform(user.platform));
 
-      // Funcionalidad original de salas
+      // Original room functionality
       const rooms = Array.from(client.rooms);
       rooms.forEach(room => {
         client.leave(room);
         io.to(room).emit(`room-users-${user.platform}`, getRoomUsers(io, room, user.platform));
       });
 
-      // Nueva funcionalidad: limpiar salas con permisos
+      // New functionality: clean up rooms with permissions
       const modifiedRooms = roomList.removeUserFromAllRooms(client.id);
       modifiedRooms.forEach(room => {
         const roomData = {
@@ -90,7 +90,7 @@ function getRoomUsers(io: socketIO.Server, roomId: string, platform: string) {
   return userList.getUsersBySocketIds(socketsIds, platform);
 }
 
-// Nuevas funciones para gestión de salas con permisos
+// New functions for room management with permissions
 interface RoomResponse {
   ok: boolean;
   message: string;
@@ -115,10 +115,10 @@ export const joinRoomWithPermissions = (client: Socket, io: socketIO.Server) => 
         return;
       }
 
-      // Unirse al room de Socket.IO
+      // Join the Socket.IO room
       client.join(roomId);
 
-      // Agregar usuario a nuestra gestión de salas
+      // Add user to our room management system
       const room = roomList.addUserToRoom(
         roomId,
         platform,
@@ -127,7 +127,7 @@ export const joinRoomWithPermissions = (client: Socket, io: socketIO.Server) => 
         user.name
       );
 
-      // Emitir la información actualizada de la sala a todos los usuarios
+      // Emit updated room information to all users
       const roomData = {
         roomId: room.roomId,
         users: room.getUsersArray(),
@@ -152,14 +152,14 @@ export const leaveRoomWithPermissions = (client: Socket, io: socketIO.Server) =>
     (payload: { roomId: string; platform: string }, callback: (response: RoomResponse) => void) => {
       const { roomId, platform } = payload;
 
-      // Salir del room de Socket.IO
+      // Leave the Socket.IO room
       client.leave(roomId);
 
-      // Remover usuario de nuestra gestión de salas
+      // Remove user from our room management system
       const room = roomList.removeUserFromRoom(roomId, platform, client.id);
 
       if (room) {
-        // Emitir la información actualizada de la sala
+        // Emit updated room information
         const roomData = {
           roomId: room.roomId,
           users: room.getUsersArray(),
@@ -194,21 +194,21 @@ export const updateRoomData = (client: Socket, io: socketIO.Server) => {
         return;
       }
 
-      // Verificar si el usuario puede editar
+      // Check if user has edit permissions
       if (!room.canUserEdit(client.id)) {
         callback({ ok: false, message: 'User does not have edit permissions' });
         return;
       }
 
-      // Actualizar datos de la sala
+      // Update room data
       room.updateData(data);
 
-      // Establecer ID del evento si se proporciona
+      // Set event ID if provided
       if (eventId) {
         room.setEventId(eventId);
       }
 
-      // Emitir cambios a todos los usuarios en la sala
+      // Emit changes to all users in the room
       const roomData = {
         roomId: room.roomId,
         users: room.getUsersArray(),
@@ -218,7 +218,7 @@ export const updateRoomData = (client: Socket, io: socketIO.Server) => {
 
       io.to(roomId).emit(`room-updated-${platform}`, roomData);
 
-      // Emitir evento específico de cambio si se proporciona eventId
+      // Emit specific change event if eventId is provided
       if (eventId) {
         io.to(roomId).emit(`room-event-${platform}`, {
           roomId: room.roomId,

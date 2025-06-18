@@ -1,197 +1,148 @@
-# Vanilla Example - Sistema de Salas Socket.IO
+# Socket.IO Rooms with Permissions - Vanilla Example
 
-## Descripción
+This vanilla JavaScript example demonstrates how to use the Socket.IO rooms system with edit permissions and custom events.
 
-Este es un ejemplo funcional completo del sistema de salas con permisos implementado con HTML, CSS y JavaScript vanilla. Demuestra todas las funcionalidades del microservicio de salas.
+## Main Concept 🎯
 
-## Estructura de Archivos
+**Only the first user to join a room gets EDIT permissions**. All other users are **OBSERVERS** until the editor leaves.
+
+## Quick Start ⚡
+
+1. **Start the server**: Make sure the Socket.IO server is running on port 3005
+2. **Open `index.html`** in your browser
+3. **Configure your user** with platform, user ID, and name
+4. **Choose a room** to test the functionality
+
+## Directory Structure 📁
 
 ```
 vanilla-example/
-├── index.html          # Página principal con navegación
-├── room1.html          # Sala 1
-├── room2.html          # Sala 2
-├── room3.html          # Sala 3
+├── index.html          # Main page - user configuration
+├── room1.html          # Room 1 - Documents
+├── room2.html          # Room 2 - Tasks
+├── room3.html          # Room 3 - Announcements
 ├── js/
-│   └── socket-client.js # Cliente de Socket.IO
-└── README.md           # Este archivo
+│   └── socket-client.js # Documented client library
+├── README.md           # This file
+└── QUICK-GUIDE.md      # 5-minute quick guide
 ```
 
-## Cómo Usar
+## How to Use 📚
 
-### 1. Iniciar el Servidor
+### Step 1: User Configuration
 
-Primero, asegúrate de que el microservicio esté corriendo:
+1. Fill out the form on `index.html`
+2. **Platform**: Groups users who can interact (e.g., 'room1', 'documents')
+3. **User ID**: Optional numeric identifier
+4. **Name**: Display name in rooms
+5. Click "Configure User"
 
-```bash
-# En la carpeta raíz del proyecto
-npm start
+### Step 2: Choose a Room
+
+Click on any of the 3 available rooms:
+
+- **Room 1**: Document collaboration
+- **Room 2**: Task management
+- **Room 3**: Announcements board
+
+### Step 3: Test Permissions
+
+- **Editor**: Can modify content and send custom events
+- **Observer**: Read-only access until editor leaves
+
+## Key Features ✨
+
+### Real-time Permissions
+
+- First user = **EDITOR** (can modify content)
+- Other users = **OBSERVERS** (read-only)
+- When editor leaves, next user automatically becomes editor
+
+### Custom Events
+
+- Editors can send custom events with eventId
+- All users receive events in real-time
+- Event log shows all activity
+
+### Multiple Rooms
+
+- Each room operates independently
+- Different content and user lists per room
+- Seamless navigation between rooms
+
+## Technical Implementation 🔧
+
+### Client-Side Functions
+
+```javascript
+// Step 1: Connect (automatic)
+// Step 2: Configure user
+configUser(platform, userId, name);
+
+// Step 3: Join room
+joinRoomWithPermissions(roomId, callback);
+
+// Step 4: Update data (editors only)
+updateRoomData(roomId, data, eventId, callback);
+
+// Step 5: Get room info
+getRoomInfo(roomId, callback);
 ```
 
-El servidor debería estar corriendo en `http://localhost:3005`
+### Server Events
 
-### 2. Abrir el Ejemplo
+- `room-updated-{platform}`: General room updates
+- `room-event-{platform}`: Custom events with eventId
 
-Abre `index.html` en tu navegador web.
+## Example Usage Flow 🔄
 
-### 3. Configurar Usuario
+1. **User A** joins Room 1 → Becomes **EDITOR**
+2. **User B** joins Room 1 → Becomes **OBSERVER**
+3. **User A** edits content → **User B** sees changes
+4. **User A** leaves → **User B** becomes **EDITOR**
+5. **User C** joins → Becomes **OBSERVER**
 
-1. Completa los campos de configuración:
-   - **Nombre**: Tu nombre de usuario
-   - **ID**: Un número único (se genera automáticamente)
-   - **Plataforma**: El identificador de la plataforma (por defecto: "vanilla-example")
-2. Haz clic en "Configurar Usuario"
+## Testing with Multiple Users 👥
 
-### 4. Navegar a las Salas
+1. Open multiple browser tabs/windows
+2. Use different user names/IDs
+3. Configure all with same platform (e.g., 'room1')
+4. Join same room to test permissions
+5. Try editing from different tabs
 
-- Haz clic en "Sala 1", "Sala 2" o "Sala 3"
-- Cada sala es independiente y tiene su propio contenido
+## Debugging 🔍
 
-## Funcionalidades Disponibles
+Check browser console for detailed logs:
 
-### En Cada Sala:
+- Connection status
+- User configuration
+- Room join/leave events
+- Permission changes
+- Custom events
 
-#### 📊 **Estado de la Sala**
+## Compatible with Angular 18+ 🅰️
 
-- **Estado de conexión**: Muestra si estás conectado
-- **Información de sala**: ID de sala y número de usuarios
-- **Permisos**: Indica si puedes EDITAR o solo OBSERVAR
+This vanilla example shows the same concepts that work in Angular:
 
-#### 👥 **Usuarios en la Sala**
+```typescript
+// Angular service example
+export class SocketRoomService {
+  configUser(platform: string, userId?: number, name: string = 'nameless') {
+    // Same API as vanilla example
+  }
 
-- Lista de todos los usuarios conectados
-- Indica quién es el editor (✏️) y quién es observador (👁️)
-
-#### 📝 **Contenido de la Sala**
-
-- Área de texto para escribir contenido
-- Solo el editor puede modificar el contenido
-- Botón "Guardar Contenido" para sincronizar cambios
-
-#### 📡 **Eventos Personalizados**
-
-- Campo para el ID del evento
-- Área JSON para datos personalizados
-- Botón "Enviar Evento a Todos" (solo editor)
-
-#### 📋 **Log de Eventos**
-
-- Muestra todos los eventos en tiempo real
-- Incluye timestamps y datos del evento
-- Botón para limpiar el log
-
-## Ejemplos de Uso
-
-### Probar Permisos de Edición:
-
-1. Abre la Sala 1 en una pestaña → Serás el editor
-2. Abre la Sala 1 en otra pestaña → Serás observador
-3. Cierra la primera pestaña → El observador se convierte en editor
-
-### Enviar Eventos Personalizados:
-
-```json
-{
-  "message": "Hola a todos",
-  "type": "announcement",
-  "priority": "high"
+  joinRoomWithPermissions(roomId: string) {
+    // Same API as vanilla example
+  }
 }
 ```
 
-### Probar Sincronización:
+## Need Help? 📖
 
-1. Escribe contenido en el textarea
-2. Haz clic en "Guardar Contenido"
-3. Ve a otra pestaña de la misma sala
-4. El contenido aparecerá automáticamente
+- Read `QUICK-GUIDE.md` for a 5-minute tutorial
+- Check the main project documentation
+- Review `socket-client.js` for detailed function comments
 
-## Navegación
+---
 
-- **← Volver al Inicio**: Regresa a la página principal
-- **Ir a Sala X**: Cambia entre salas manteniendo la configuración
-- Los botones de navegación disabled están reservados para futuras funcionalidades
-
-## Eventos de Socket.IO Utilizados
-
-### Enviados por el Cliente:
-
-- `config-user`: Configurar usuario
-- `join-room-with-permissions`: Unirse a sala
-- `leave-room-with-permissions`: Salir de sala
-- `update-room-data`: Actualizar datos (solo editor)
-- `get-room-info`: Obtener información de sala
-
-### Recibidos del Servidor:
-
-- `room-updated-{platform}`: Actualización de sala
-- `room-event-{platform}`: Eventos personalizados
-
-## Datos de Ejemplo por Sala
-
-### Sala 1:
-
-- Enfoque: Documentos generales
-- Evento por defecto: "custom-event"
-- JSON ejemplo: Información básica
-
-### Sala 2:
-
-- Enfoque: Tareas y actualizaciones
-- Evento por defecto: "task-update"
-- JSON ejemplo: Estados de tareas
-
-### Sala 3:
-
-- Enfoque: Anuncios y broadcasts
-- Evento por defecto: "announcement"
-- JSON ejemplo: Mensajes importantes
-
-## Desarrollo y Debug
-
-### Consola del Navegador
-
-Abre las herramientas de desarrollador (F12) para ver:
-
-- Logs de conexión/desconexión
-- Eventos enviados y recibidos
-- Errores de parsing JSON
-
-### Logs Visuales
-
-Cada sala tiene un log visual que muestra:
-
-- Eventos en tiempo real
-- Datos recibidos en formato JSON
-- Timestamps de cada acción
-
-## Personalización
-
-### Cambiar el Servidor
-
-Modifica `socket-client.js` línea de conexión:
-
-```javascript
-connect(serverUrl = 'http://localhost:3005') {
-```
-
-### Agregar Nuevas Salas
-
-1. Copia cualquier `roomX.html`
-2. Cambia el `roomId` en el script
-3. Actualiza la navegación en `index.html`
-
-## Consideraciones
-
-- **Múltiples Pestañas**: Cada pestaña es un usuario diferente
-- **Conexión**: Requiere que el servidor esté corriendo
-- **Permisos**: Solo el primer usuario puede editar
-- **Datos**: Los datos se pierden al cerrar todas las pestañas
-
-## Próximas Funcionalidades
-
-Los botones disabled en la navegación están reservados para:
-
-- Sistema de Alertas
-- Sistema de Notificaciones
-
-Estas funcionalidades se implementarán en futuras versiones.
+**Note**: This example is designed for testing and learning. For production, add proper error handling, authentication, and validation.

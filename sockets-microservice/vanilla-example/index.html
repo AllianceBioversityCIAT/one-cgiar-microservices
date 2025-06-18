@@ -1,113 +1,304 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Socket.IO Microservice - Vanilla Example</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <title>🏠 Socket.IO Rooms - User Configuration</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 10px;
+        font-size: 2.5em;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #7f8c8d;
+        margin-bottom: 40px;
+        font-style: italic;
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #34495e;
+        font-size: 1.1em;
+      }
+
+      .description {
+        font-size: 0.9em;
+        color: #7f8c8d;
+        margin-bottom: 8px;
+        font-style: italic;
+      }
+
+      input[type='text'],
+      input[type='number'] {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e1e8ed;
+        border-radius: 10px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+      }
+
+      input[type='text']:focus,
+      input[type='number']:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .btn {
+        width: 100%;
+        padding: 18px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .steps {
+        background: #f8f9ff;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        border-left: 5px solid #667eea;
+      }
+
+      .steps h3 {
+        color: #2c3e50;
+        margin-top: 0;
+        font-size: 1.3em;
+      }
+
+      .steps ul {
+        color: #5a6c7d;
+        padding-left: 20px;
+      }
+
+      .steps li {
+        margin-bottom: 8px;
+        line-height: 1.5;
+      }
+
+      .navigation {
+        margin-top: 40px;
+        padding-top: 25px;
+        border-top: 2px solid #ecf0f1;
+      }
+
+      .nav-title {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-size: 1.4em;
+        font-weight: 600;
+      }
+
+      .room-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .room-btn {
+        padding: 15px 20px;
+        background: white;
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+      }
+
+      .room-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+      }
+
+      .status {
+        text-align: center;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        font-weight: 600;
+      }
+
+      .success {
+        background: #d5f4e6;
+        color: #22c55e;
+        border: 2px solid #22c55e;
+      }
+
+      .error {
+        background: #fef2f2;
+        color: #ef4444;
+        border: 2px solid #ef4444;
+      }
+
+      .recommendation {
+        background: #fff7ed;
+        color: #f59e0b;
+        border: 2px solid #f59e0b;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-weight: 500;
+      }
+    </style>
   </head>
   <body>
-    <div id="app">
-      <h1>Socket.IO Microservice - Vanilla Example</h1>
+    <div class="container">
+      <h1>🏠 Socket.IO Rooms</h1>
+      <p class="subtitle">User Configuration and Room Navigation</p>
 
-      <div id="user-config">
-        <h2>Configuración de Usuario</h2>
-        <input type="text" id="userName" placeholder="Nombre de usuario" value="Usuario Test" />
-        <input type="number" id="userId" placeholder="ID de usuario" value="123" />
-        <input type="text" id="platform" placeholder="Plataforma" value="vanilla-example" />
-        <button onclick="configureUser()">Configurar Usuario</button>
-        <div id="userStatus"></div>
+      <div class="steps">
+        <h3>📋 How to use this system:</h3>
+        <ul>
+          <li><strong>Step 1:</strong> Fill the fields below to configure your user</li>
+          <li><strong>Step 2:</strong> Click "Configure User" to connect to the server</li>
+          <li><strong>Step 3:</strong> Choose a room from the options below</li>
+          <li><strong>Important:</strong> First user in each room can EDIT the content</li>
+          <li><strong>Note:</strong> Other users can only OBSERVE until editor leaves</li>
+        </ul>
       </div>
 
-      <hr />
-
-      <div id="navigation">
-        <h2>Navegación</h2>
-
-        <div id="rooms-section">
-          <h3>Salas (Rooms)</h3>
-          <button onclick="goToRoom('room1')">Sala 1</button>
-          <button onclick="goToRoom('room2')">Sala 2</button>
-          <button onclick="goToRoom('room3')">Sala 3</button>
-        </div>
-
-        <div id="other-features">
-          <h3>Otras Funcionalidades</h3>
-          <button disabled onclick="goToAlerts()">Alertas (Próximamente)</button>
-          <button disabled onclick="goToNotifications()">Notificaciones (Próximamente)</button>
-        </div>
+      <div class="recommendation">
+        💡 <strong>Recommendation:</strong> Use "room1" as platform, "user123" as userId, and your
+        real name for better testing.
       </div>
 
-      <hr />
+      <form id="userForm">
+        <div class="form-group">
+          <label for="platform">🏷️ Platform (required)</label>
+          <div class="description">
+            Identifies your application or module (e.g: room1, documents, tasks)
+          </div>
+          <input type="text" id="platform" value="room1" required />
+        </div>
 
-      <div id="connection-status">
-        <h3>Estado de Conexión</h3>
-        <div id="socketStatus">Desconectado</div>
+        <div class="form-group">
+          <label for="userId">👤 User ID (optional)</label>
+          <div class="description">Your unique user identifier (number)</div>
+          <input type="number" id="userId" value="123" />
+        </div>
+
+        <div class="form-group">
+          <label for="name">📝 User Name (optional)</label>
+          <div class="description">Your display name in the room</div>
+          <input type="text" id="name" value="Example User" />
+        </div>
+
+        <button type="submit" class="btn">🚀 Configure User</button>
+      </form>
+
+      <div id="status"></div>
+
+      <div class="navigation">
+        <h3 class="nav-title">🚪 Choose a Room to Test</h3>
+        <div class="room-buttons">
+          <a href="#" class="room-btn" onclick="goToRoom('room1')">
+            📄 Room 1<br /><small>Documents</small>
+          </a>
+          <a href="#" class="room-btn" onclick="goToRoom('room2')">
+            ✅ Room 2<br /><small>Tasks</small>
+          </a>
+          <a href="#" class="room-btn" onclick="goToRoom('room3')">
+            📢 Room 3<br /><small>Announcements</small>
+          </a>
+        </div>
       </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="js/socket-client.js"></script>
     <script>
-      let socket;
-      let isUserConfigured = false;
+      document.getElementById('userForm').addEventListener('submit', function (e) {
+        e.preventDefault();
 
-      // Inicializar conexión
-      window.onload = function () {
-        initializeSocket();
-      };
+        const platform = document.getElementById('platform').value.trim();
+        const userId = document.getElementById('userId').value.trim();
+        const name = document.getElementById('name').value.trim();
 
-      function initializeSocket() {
-        socket = io('http://localhost:3005');
-
-        socket.on('connect', () => {
-          document.getElementById('socketStatus').textContent = 'Conectado - ID: ' + socket.id;
-        });
-
-        socket.on('disconnect', () => {
-          document.getElementById('socketStatus').textContent = 'Desconectado';
-        });
-      }
-
-      function configureUser() {
-        const name = document.getElementById('userName').value;
-        const userId = parseInt(document.getElementById('userId').value);
-        const platform = document.getElementById('platform').value;
-
-        if (!name || !userId || !platform) {
-          alert('Por favor completa todos los campos');
+        if (!platform) {
+          showStatus('❌ Platform is required', 'error');
           return;
         }
 
-        socket.emit('config-user', { name, userId, platform }, response => {
-          if (response.ok) {
-            isUserConfigured = true;
-            document.getElementById(
-              'userStatus'
-            ).innerHTML = `<span style="color: green;">✓ Usuario configurado: ${name} (${userId}) - ${platform}</span>`;
-          } else {
-            document.getElementById(
-              'userStatus'
-            ).innerHTML = `<span style="color: red;">✗ Error: ${response.message}</span>`;
-          }
-        });
+        // Configure user using the socket client
+        configUser(platform, userId ? parseInt(userId) : undefined, name || 'Nameless User');
+
+        showStatus('✅ User configured successfully. Now you can go to a room.', 'success');
+        isUserConfigured = true;
+      });
+
+      function showStatus(message, type) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
       }
 
       function goToRoom(roomName) {
         if (!isUserConfigured) {
-          alert('Primero debes configurar tu usuario');
+          showStatus('❌ You must configure your user first before going to a room', 'error');
           return;
         }
 
-        const platform = document.getElementById('platform').value;
-        window.location.href = `${roomName}.html?platform=${platform}`;
-      }
+        const platform = document.getElementById('platform').value.trim();
+        const userId = document.getElementById('userId').value.trim();
+        const name = document.getElementById('name').value.trim();
 
-      function goToAlerts() {
-        alert('Funcionalidad de Alertas próximamente...');
-      }
+        // Navigate to room with parameters in URL
+        const params = new URLSearchParams({
+          platform: platform,
+          userId: userId || '',
+          name: name || 'Nameless User'
+        });
 
-      function goToNotifications() {
-        alert('Funcionalidad de Notificaciones próximamente...');
+        window.location.href = `${roomName}.html?${params.toString()}`;
       }
     </script>
   </body>

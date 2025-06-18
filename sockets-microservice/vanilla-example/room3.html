@@ -1,287 +1,520 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sala 3 - Socket.IO Microservice</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <title>📢 Room 3 - Announcements Room</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 30px;
+        font-size: 2.2em;
+      }
+
+      .status-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .status-card {
+        padding: 20px;
+        border-radius: 15px;
+        border: 2px solid #e1e8ed;
+      }
+
+      .status-card h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #2c3e50;
+      }
+
+      .editor-status {
+        font-size: 1.1em;
+        font-weight: bold;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .can-edit {
+        background: #dbeafe;
+        color: #3b82f6;
+        border: 2px solid #3b82f6;
+      }
+
+      .observer {
+        background: #fff7ed;
+        color: #f59e0b;
+        border: 2px solid #f59e0b;
+      }
+
+      .content-section {
+        margin-bottom: 30px;
+      }
+
+      .content-section h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 1.3em;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 150px;
+        padding: 15px;
+        border: 2px solid #e1e8ed;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 16px;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .btn {
+        padding: 12px 25px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-right: 10px;
+        margin-bottom: 10px;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .event-section {
+        background: #eff6ff;
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 5px solid #3b82f6;
+      }
+
+      .event-section h3 {
+        margin-top: 0;
+        color: #2c3e50;
+      }
+
+      .form-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+
+      input[type='text'] {
+        padding: 8px 12px;
+        border: 2px solid #e1e8ed;
+        border-radius: 6px;
+        font-size: 14px;
+        min-width: 150px;
+      }
+
+      input[type='text']:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
+
+      .navigation {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #ecf0f1;
+        text-align: center;
+      }
+
+      .nav-btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background: white;
+        border: 2px solid #3b82f6;
+        color: #3b82f6;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        margin: 0 10px;
+        transition: all 0.3s ease;
+      }
+
+      .nav-btn:hover {
+        background: #3b82f6;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      .users-list {
+        max-height: 150px;
+        overflow-y: auto;
+      }
+
+      .user-item {
+        padding: 8px;
+        border-bottom: 1px solid #ecf0f1;
+        font-size: 14px;
+      }
+
+      .user-item:last-child {
+        border-bottom: none;
+      }
+
+      .event-log {
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 15px;
+      }
+
+      .event-entry {
+        padding: 5px 0;
+        border-bottom: 1px solid #f1f3f4;
+        font-size: 13px;
+      }
+
+      .event-entry:last-child {
+        border-bottom: none;
+      }
+
+      .announcement-item {
+        background: white;
+        border: 2px solid #3b82f6;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+
+      .announcement-priority {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .priority-high {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .priority-medium {
+        background: #fef3c7;
+        color: #d97706;
+      }
+
+      .priority-low {
+        background: #dcfce7;
+        color: #16a34a;
+      }
+    </style>
   </head>
   <body>
-    <div id="app">
-      <div id="header">
-        <h1>🏛️ Sala 3</h1>
-        <button onclick="goBack()">← Volver al Inicio</button>
-        <button onclick="goToRoom('room1')">Ir a Sala 1</button>
-        <button onclick="goToRoom('room2')">Ir a Sala 2</button>
-      </div>
+    <div class="container">
+      <h1>📢 Room 3 - Announcements Room</h1>
 
-      <hr />
-
-      <div id="room-status">
-        <h2>Estado de la Sala</h2>
-        <div id="connectionStatus">Desconectado</div>
-        <div id="roomInfo">No conectado a la sala</div>
-        <div id="editPermissions">Permisos: Desconocido</div>
-      </div>
-
-      <hr />
-
-      <div id="users-section">
-        <h2>Usuarios en la Sala</h2>
-        <ul id="usersList">
-          <li>Cargando...</li>
-        </ul>
-      </div>
-
-      <hr />
-
-      <div id="room-content">
-        <h2>Contenido de la Sala</h2>
-        <textarea
-          id="roomTextarea"
-          rows="8"
-          cols="80"
-          placeholder="Escribe aquí el contenido de la sala..."
-          disabled></textarea>
-        <br /><br />
-        <button id="saveContentBtn" onclick="saveContent()" disabled>💾 Guardar Contenido</button>
-      </div>
-
-      <hr />
-
-      <div id="custom-event">
-        <h2>Enviar Evento Personalizado</h2>
-        <input
-          type="text"
-          id="eventId"
-          placeholder="ID del evento (ej: broadcast-message)"
-          value="announcement" />
-        <br /><br />
-        <textarea
-          id="eventDataJson"
-          rows="4"
-          cols="80"
-          placeholder='{"announcement": "Mensaje importante", "level": "info"}'>
-{
-  "message": "Anuncio desde Sala 3",
-  "level": "warning",
-  "broadcast": true,
-  "timestamp": "2024-01-15"
-}</textarea
-        >
-        <br /><br />
-        <button id="sendEventBtn" onclick="sendCustomEvent()" disabled>
-          📡 Enviar Evento a Todos
-        </button>
-      </div>
-
-      <hr />
-
-      <div id="events-log">
-        <h2>Log de Eventos</h2>
-        <div id="eventsContainer">
-          <p>No hay eventos aún...</p>
+      <div class="status-panel">
+        <div class="status-card">
+          <h3>👤 Users in Room</h3>
+          <div id="roomUsers" class="users-list">
+            <div class="user-item">Loading users...</div>
+          </div>
         </div>
-        <button onclick="clearLog()">🗑️ Limpiar Log</button>
+
+        <div class="status-card">
+          <h3>✏️ Your Permission Status</h3>
+          <div id="editorStatus" class="editor-status observer">🔄 Checking permissions...</div>
+        </div>
+      </div>
+
+      <div class="content-section">
+        <h3>📢 Announcements Board</h3>
+        <p>
+          <em
+            >First user to join can edit these announcements. Other users can only observe until the
+            editor leaves.</em
+          >
+        </p>
+        <textarea id="roomData" placeholder="Write important announcements here...">
+Loading announcements...
+        </textarea>
+        <br />
+        <button id="saveBtn" class="btn" onclick="saveContent()" disabled>
+          💾 Save Announcements
+        </button>
+        <button class="btn" onclick="refreshRoom()">🔄 Refresh</button>
+      </div>
+
+      <div class="event-section">
+        <h3>⚡ Announcement Events</h3>
+        <p>
+          <em>Editors can send announcement events like urgent notifications or board updates.</em>
+        </p>
+
+        <div class="form-group">
+          <label>Event Type:</label>
+          <input
+            type="text"
+            id="eventId"
+            placeholder="urgent-announcement"
+            value="urgent-announcement" />
+          <button id="sendEventBtn" class="btn" onclick="sendCustomEvent()" disabled>
+            📡 Send Event
+          </button>
+        </div>
+
+        <h4>📊 Event Log:</h4>
+        <div id="eventLog" class="event-log">
+          <div class="event-entry">No events yet...</div>
+        </div>
+      </div>
+
+      <div class="navigation">
+        <a href="index.html" class="nav-btn">🏠 Home</a>
+        <a href="room1.html" class="nav-btn" onclick="return navigateWithConfig('room1.html')"
+          >📄 Room 1</a
+        >
+        <a href="room2.html" class="nav-btn" onclick="return navigateWithConfig('room2.html')"
+          >✅ Room 2</a
+        >
       </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="js/socket-client.js"></script>
     <script>
-      let platform = 'vanilla-example';
-      let roomId = 'room3';
-      let updateTimeout;
+      const ROOM_ID = 'room3';
+      let currentConfig = {};
 
-      // Obtener parámetros de la URL
-      function getUrlParams() {
-        const urlParams = new URLSearchParams(window.location.search);
-        platform = urlParams.get('platform') || 'vanilla-example';
+      // Initialize room when DOM is ready
+      document.addEventListener('DOMContentLoaded', function () {
+        // Get configuration from URL
+        const params = new URLSearchParams(window.location.search);
+        currentConfig = {
+          platform: params.get('platform') || 'room1',
+          userId: params.get('userId') || '',
+          name: params.get('name') || 'Nameless User'
+        };
+
+        console.log('📢 Initializing Room 3 with config:', currentConfig);
+
+        // Wait for socket to be ready then configure user
+        function initializeRoom() {
+          if (socket && socket.connected) {
+            console.log('🔌 Socket ready, configuring user...');
+
+            // Configure user automatically
+            configUser(
+              currentConfig.platform,
+              currentConfig.userId ? parseInt(currentConfig.userId) : undefined,
+              currentConfig.name
+            );
+
+            // Wait a moment and join the room
+            setTimeout(() => {
+              joinRoomWithPermissions(ROOM_ID, response => {
+                if (response.ok) {
+                  console.log('✅ Joined room successfully');
+                  updateInterface(response.room);
+                } else {
+                  console.error('❌ Failed to join room:', response.message);
+                  alert('Error joining room: ' + response.message);
+                }
+              });
+            }, 1000);
+          } else {
+            console.log('⏳ Waiting for socket connection...');
+            setTimeout(initializeRoom, 100);
+          }
+        }
+
+        // Start initialization
+        initializeRoom();
+      });
+
+      // Handle room updates from server
+      function handleRoomUpdate(roomData) {
+        console.log('🔄 Room update received:', roomData);
+        updateInterface(roomData);
       }
 
-      // Inicializar cuando carga la página
-      window.onload = async function () {
-        getUrlParams();
-        await initializeRoom();
-      };
+      // Handle custom events
+      function handleRoomEvent(eventData) {
+        console.log('⚡ Custom event received:', eventData);
+        addEventToLog(
+          `Announcement Event: ${eventData.eventId} at ${new Date(
+            eventData.timestamp
+          ).toLocaleTimeString()}`
+        );
+      }
 
-      async function initializeRoom() {
-        // Conectar al socket
-        socketClient.connect();
-
-        // Configurar usuario por defecto
-        await socketClient.configUser('Usuario Test', Math.floor(Math.random() * 1000), platform);
-
-        // Unirse a la sala
-        const response = await socketClient.joinRoomWithPermissions(roomId, platform);
-
-        if (response.ok) {
-          updateRoomInfo(response.room);
-          logEvent('✅ Te has unido a la sala exitosamente');
+      function updateInterface(roomData) {
+        // Update users list
+        const usersElement = document.getElementById('roomUsers');
+        if (roomData.users && roomData.users.length > 0) {
+          usersElement.innerHTML = roomData.users
+            .map(user => {
+              const permission = user.canEdit ? '✏️ EDITOR' : '👀 OBSERVER';
+              const userId = user.userId ? ` (${user.userId})` : '';
+              return `<div class="user-item"><strong>${user.name}</strong>${userId} - ${permission}</div>`;
+            })
+            .join('');
         } else {
-          logEvent('❌ Error al unirse a la sala: ' + response.message);
+          usersElement.innerHTML = '<div class="user-item">No users in room</div>';
         }
 
-        // Escuchar actualizaciones de la sala
-        socketClient.onRoomUpdated(platform, data => {
-          updateRoomInfo(data);
-          logEvent('🔄 Sala actualizada');
-        });
-
-        // Escuchar eventos personalizados
-        socketClient.onRoomEvent(platform, event => {
-          logEvent(`📨 Evento recibido: ${event.eventId}`, event);
-        });
-      }
-
-      function updateRoomInfo(roomData) {
-        // Actualizar estado de conexión
-        document.getElementById('connectionStatus').textContent = 'Conectado a la sala';
-        document.getElementById(
-          'roomInfo'
-        ).textContent = `Sala: ${roomData.roomId} | Usuarios: ${roomData.users.length}`;
-
-        // Actualizar permisos
-        const canEdit = socketClient.canUserEdit();
-        document.getElementById('editPermissions').innerHTML = canEdit
-          ? '<span style="color: green;">✏️ Puedes EDITAR</span>'
-          : '<span style="color: orange;">👁️ Solo puedes OBSERVAR</span>';
-
-        // Habilitar/deshabilitar controles
-        document.getElementById('roomTextarea').disabled = !canEdit;
-        document.getElementById('saveContentBtn').disabled = !canEdit;
-        document.getElementById('sendEventBtn').disabled = !canEdit;
-
-        // Actualizar lista de usuarios
-        updateUsersList(roomData.users);
-
-        // Actualizar contenido
-        if (roomData.data && roomData.data.content) {
-          document.getElementById('roomTextarea').value = roomData.data.content;
+        // Update content
+        const contentElement = document.getElementById('roomData');
+        if (roomData.data && roomData.data.content !== undefined) {
+          contentElement.value = roomData.data.content;
         }
-      }
 
-      function updateUsersList(users) {
-        const usersList = document.getElementById('usersList');
-        usersList.innerHTML = '';
+        // Update permission status
+        const currentUser = roomData.users
+          ? roomData.users.find(user => user.socketId === socket.id)
+          : null;
+        const statusElement = document.getElementById('editorStatus');
+        const saveBtn = document.getElementById('saveBtn');
+        const sendEventBtn = document.getElementById('sendEventBtn');
+        const contentTextarea = document.getElementById('roomData');
 
-        users.forEach(user => {
-          const li = document.createElement('li');
-          li.innerHTML = `
-                    <strong>${user.name}</strong> (ID: ${user.userId || 'N/A'}) 
-                    ${
-                      user.canEdit
-                        ? '<span style="color: green;">✏️ Editor</span>'
-                        : '<span style="color: gray;">👁️ Observador</span>'
-                    }
-                `;
-          usersList.appendChild(li);
-        });
+        if (currentUser && currentUser.canEdit) {
+          statusElement.innerHTML = '✏️ You can EDIT these announcements';
+          statusElement.className = 'editor-status can-edit';
+          saveBtn.disabled = false;
+          sendEventBtn.disabled = false;
+          contentTextarea.readOnly = false;
+          contentTextarea.placeholder = 'Write important announcements here...';
+        } else {
+          statusElement.innerHTML = '👀 You can only OBSERVE (read-only)';
+          statusElement.className = 'editor-status observer';
+          saveBtn.disabled = true;
+          sendEventBtn.disabled = true;
+          contentTextarea.readOnly = true;
+          contentTextarea.placeholder = 'These announcements are read-only for you';
+        }
       }
 
       function saveContent() {
-        if (!socketClient.canUserEdit()) {
-          alert('No tienes permisos para editar');
-          return;
-        }
+        const content = document.getElementById('roomData').value;
+        console.log('💾 Saving announcements:', content);
 
-        const content = document.getElementById('roomTextarea').value;
-
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(async () => {
-          const response = await socketClient.updateRoomData(
-            roomId,
-            platform,
-            { content: content },
-            'content-updated'
-          );
-
+        updateRoomData(ROOM_ID, { content: content }, 'announcements-updated', response => {
           if (response.ok) {
-            logEvent('💾 Contenido guardado exitosamente');
+            console.log('✅ Announcements saved successfully');
+            addEventToLog('Announcements saved successfully');
           } else {
-            logEvent('❌ Error al guardar: ' + response.message);
+            console.error('❌ Error saving announcements:', response.message);
+            alert('Error saving: ' + response.message);
           }
-        }, 300);
+        });
       }
 
-      async function sendCustomEvent() {
-        if (!socketClient.canUserEdit()) {
-          alert('No tienes permisos para enviar eventos');
-          return;
-        }
-
-        const eventId = document.getElementById('eventId').value;
-        const jsonData = document.getElementById('eventDataJson').value;
-
+      function sendCustomEvent() {
+        const eventId = document.getElementById('eventId').value.trim();
         if (!eventId) {
-          alert('Por favor ingresa un ID de evento');
+          alert('Please enter an Event Type');
           return;
         }
 
-        let eventData;
-        try {
-          eventData = JSON.parse(jsonData);
-        } catch (e) {
-          alert('JSON inválido: ' + e.message);
-          return;
-        }
+        const eventData = {
+          message: 'Announcement event triggered from Room 3',
+          timestamp: new Date().toISOString(),
+          eventType: 'announcement',
+          roomId: ROOM_ID,
+          priority: 'high',
+          action: eventId
+        };
 
-        const response = await socketClient.updateRoomData(roomId, platform, eventData, eventId);
+        console.log('📡 Sending announcement event:', eventId, eventData);
 
-        if (response.ok) {
-          logEvent(`📡 Evento "${eventId}" enviado exitosamente`);
+        updateRoomData(ROOM_ID, eventData, eventId, response => {
+          if (response.ok) {
+            console.log('✅ Announcement event sent successfully');
+            addEventToLog(`Announcement event sent: ${eventId}`);
+          } else {
+            console.error('❌ Error sending event:', response.message);
+            alert('Error sending event: ' + response.message);
+          }
+        });
+      }
+
+      function refreshRoom() {
+        console.log('🔄 Refreshing room information');
+        getRoomInfo(ROOM_ID, response => {
+          if (response.ok) {
+            console.log('✅ Room info refreshed');
+            updateInterface(response.room);
+          } else {
+            console.error('❌ Error refreshing room:', response.message);
+          }
+        });
+      }
+
+      function addEventToLog(message) {
+        const logElement = document.getElementById('eventLog');
+        const timestamp = new Date().toLocaleTimeString();
+        const eventEntry = `<div class="event-entry"><strong>[${timestamp}]</strong> ${message}</div>`;
+
+        if (logElement.innerHTML.includes('No events yet')) {
+          logElement.innerHTML = eventEntry;
         } else {
-          logEvent('❌ Error al enviar evento: ' + response.message);
+          logElement.innerHTML = eventEntry + logElement.innerHTML;
         }
       }
 
-      function logEvent(message, data = null) {
-        const container = document.getElementById('eventsContainer');
-        const time = new Date().toLocaleTimeString();
+      function navigateWithConfig(page) {
+        const params = new URLSearchParams(currentConfig);
+        window.location.href = `${page}?${params.toString()}`;
+        return false;
+      }
 
-        const eventDiv = document.createElement('div');
-        eventDiv.style.marginBottom = '10px';
-        eventDiv.style.padding = '5px';
-        eventDiv.style.backgroundColor = '#f0f0f0';
-        eventDiv.style.borderLeft = '3px solid #dc3545';
-
-        let content = `<strong>[${time}]</strong> ${message}`;
-        if (data) {
-          content += `<br><pre style="margin: 5px 0; font-size: 12px;">${JSON.stringify(
-            data,
-            null,
-            2
-          )}</pre>`;
+      // Leave room when page is closed
+      window.addEventListener('beforeunload', function () {
+        if (socket && socket.connected) {
+          leaveRoomWithPermissions(ROOM_ID);
         }
-
-        eventDiv.innerHTML = content;
-
-        // Insertar al principio
-        if (container.firstChild && container.firstChild.tagName !== 'P') {
-          container.insertBefore(eventDiv, container.firstChild);
-        } else {
-          container.innerHTML = '';
-          container.appendChild(eventDiv);
-        }
-      }
-
-      function clearLog() {
-        document.getElementById('eventsContainer').innerHTML = '<p>Log limpiado...</p>';
-      }
-
-      function goBack() {
-        window.location.href = 'index.html';
-      }
-
-      function goToRoom(room) {
-        window.location.href = `${room}.html?platform=${platform}`;
-      }
-
-      // Limpiar al salir
-      window.onbeforeunload = function () {
-        if (socketClient.currentRoom) {
-          socketClient.leaveRoomWithPermissions(roomId, platform);
-        }
-      };
+      });
     </script>
   </body>
 </html>

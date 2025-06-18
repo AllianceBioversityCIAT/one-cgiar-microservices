@@ -32,7 +32,7 @@ export class Room {
     name: string = 'nameless',
     platform: string = 'general'
   ): RoomUser {
-    // El primer usuario que entra puede editar
+    // First user to join gets edit permissions
     const canEdit = this.users.length === 0;
 
     if (canEdit) {
@@ -60,7 +60,7 @@ export class Room {
     const removedUser = this.users[userIndex];
     this.users.splice(userIndex, 1);
 
-    // Si el editor se va, el siguiente usuario puede editar
+    // If editor leaves, next user gets edit permissions
     if (this.editorSocketId === socketId && this.users.length > 0) {
       this.users[0].canEdit = true;
       this.editorSocketId = this.users[0].socketId;
