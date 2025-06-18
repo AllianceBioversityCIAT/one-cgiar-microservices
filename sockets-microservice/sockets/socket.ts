@@ -2,8 +2,11 @@ import { Socket } from 'socket.io';
 import socketIO from 'socket.io';
 import { UserList } from '../classes/user-list';
 import { User } from '../classes/user';
+import { RoomList } from '../classes/room-list';
+import { RoomData } from '../classes/room';
 
 export const userList = new UserList();
+export const roomList = new RoomList();
 
 export const connectSocketIO = (client: Socket) => {
   const user = new User(client.id);
@@ -20,10 +23,24 @@ export const disconnectSocketIO = (client: Socket, io: socketIO.Server) => {
     if (user) {
       io.emit(`all-connected-users-${user.platform}`, userList.getListByPlatform(user.platform));
 
+      // Funcionalidad original de salas
       const rooms = Array.from(client.rooms);
       rooms.forEach(room => {
         client.leave(room);
         io.to(room).emit(`room-users-${user.platform}`, getRoomUsers(io, room, user.platform));
+      });
+
+      // Nueva funcionalidad: limpiar salas con permisos
+      const modifiedRooms = roomList.removeUserFromAllRooms(client.id);
+      modifiedRooms.forEach(room => {
+        const roomData = {
+          roomId: room.roomId,
+          users: room.getUsersArray(),
+          data: room.data,
+          lastEventId: room.lastEventId
+        };
+
+        io.to(room.roomId).emit(`room-updated-${user.platform}`, roomData);
       });
     }
   });
@@ -72,3 +89,180 @@ function getRoomUsers(io: socketIO.Server, roomId: string, platform: string) {
   const socketsIds = room ? Array.from(room) : [];
   return userList.getUsersBySocketIds(socketsIds, platform);
 }
+
+// Nuevas funciones para gestión de salas con permisos
+interface RoomResponse {
+  ok: boolean;
+  message: string;
+  room?: {
+    roomId: string;
+    users: Array<{ socketId: string; userId?: number; name: string; canEdit: boolean }>;
+    data: RoomData;
+    lastEventId: string;
+    canEdit?: boolean;
+  };
+}
+
+export const joinRoomWithPermissions = (client: Socket, io: socketIO.Server) => {
+  client.on(
+    'join-room-with-permissions',
+    (payload: { roomId: string; platform: string }, callback: (response: RoomResponse) => void) => {
+      const { roomId, platform } = payload;
+      const user = userList.getUser(client.id);
+
+      if (!user || !platform) {
+        callback({ ok: false, message: 'User not configured or platform missing' });
+        return;
+      }
+
+      // Unirse al room de Socket.IO
+      client.join(roomId);
+
+      // Agregar usuario a nuestra gestión de salas
+      const room = roomList.addUserToRoom(
+        roomId,
+        platform,
+        client.id,
+        user.userId || undefined,
+        user.name
+      );
+
+      // Emitir la información actualizada de la sala a todos los usuarios
+      const roomData = {
+        roomId: room.roomId,
+        users: room.getUsersArray(),
+        data: room.data,
+        lastEventId: room.lastEventId
+      };
+
+      io.to(roomId).emit(`room-updated-${platform}`, roomData);
+
+      callback({
+        ok: true,
+        message: 'Successfully joined room with permissions',
+        room: roomData
+      });
+    }
+  );
+};
+
+export const leaveRoomWithPermissions = (client: Socket, io: socketIO.Server) => {
+  client.on(
+    'leave-room-with-permissions',
+    (payload: { roomId: string; platform: string }, callback: (response: RoomResponse) => void) => {
+      const { roomId, platform } = payload;
+
+      // Salir del room de Socket.IO
+      client.leave(roomId);
+
+      // Remover usuario de nuestra gestión de salas
+      const room = roomList.removeUserFromRoom(roomId, platform, client.id);
+
+      if (room) {
+        // Emitir la información actualizada de la sala
+        const roomData = {
+          roomId: room.roomId,
+          users: room.getUsersArray(),
+          data: room.data,
+          lastEventId: room.lastEventId
+        };
+
+        io.to(roomId).emit(`room-updated-${platform}`, roomData);
+      }
+
+      callback({
+        ok: true,
+        message: 'Successfully left room'
+      });
+    }
+  );
+};
+
+export const updateRoomData = (client: Socket, io: socketIO.Server) => {
+  client.on(
+    'update-room-data',
+    (
+      payload: { roomId: string; platform: string; data: RoomData; eventId?: string },
+      callback: (response: RoomResponse) => void
+    ) => {
+      const { roomId, platform, data, eventId } = payload;
+
+      const room = roomList.getRoom(roomId, platform);
+
+      if (!room) {
+        callback({ ok: false, message: 'Room not found' });
+        return;
+      }
+
+      // Verificar si el usuario puede editar
+      if (!room.canUserEdit(client.id)) {
+        callback({ ok: false, message: 'User does not have edit permissions' });
+        return;
+      }
+
+      // Actualizar datos de la sala
+      room.updateData(data);
+
+      // Establecer ID del evento si se proporciona
+      if (eventId) {
+        room.setEventId(eventId);
+      }
+
+      // Emitir cambios a todos los usuarios en la sala
+      const roomData = {
+        roomId: room.roomId,
+        users: room.getUsersArray(),
+        data: room.data,
+        lastEventId: room.lastEventId
+      };
+
+      io.to(roomId).emit(`room-updated-${platform}`, roomData);
+
+      // Emitir evento específico de cambio si se proporciona eventId
+      if (eventId) {
+        io.to(roomId).emit(`room-event-${platform}`, {
+          roomId: room.roomId,
+          eventId: eventId,
+          data: data,
+          timestamp: new Date()
+        });
+      }
+
+      callback({
+        ok: true,
+        message: 'Room data updated successfully',
+        room: roomData
+      });
+    }
+  );
+};
+
+export const getRoomInfo = (client: Socket) => {
+  client.on(
+    'get-room-info',
+    (payload: { roomId: string; platform: string }, callback: (response: RoomResponse) => void) => {
+      const { roomId, platform } = payload;
+
+      const room = roomList.getRoom(roomId, platform);
+
+      if (!room) {
+        callback({ ok: false, message: 'Room not found' });
+        return;
+      }
+
+      const roomData = {
+        roomId: room.roomId,
+        users: room.getUsersArray(),
+        data: room.data,
+        lastEventId: room.lastEventId,
+        canEdit: room.canUserEdit(client.id)
+      };
+
+      callback({
+        ok: true,
+        message: 'Room info retrieved successfully',
+        room: roomData
+      });
+    }
+  );
+};

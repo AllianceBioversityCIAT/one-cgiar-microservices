@@ -41,9 +41,15 @@ export default class Server {
 
       socket.disconnectSocketIO(client, this.io);
 
+      // Funcionalidad original de salas (mantener para compatibilidad)
       socket.joinRoom(client, this.io);
-
       socket.leaveRoom(client, this.io);
+
+      // Nueva funcionalidad de salas con permisos
+      socket.joinRoomWithPermissions(client, this.io);
+      socket.leaveRoomWithPermissions(client, this.io);
+      socket.updateRoomData(client, this.io);
+      socket.getRoomInfo(client);
     });
   }
 

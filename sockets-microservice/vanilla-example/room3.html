@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sala 3 - Socket.IO Microservice</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div id="header">
+        <h1>🏛️ Sala 3</h1>
+        <button onclick="goBack()">← Volver al Inicio</button>
+        <button onclick="goToRoom('room1')">Ir a Sala 1</button>
+        <button onclick="goToRoom('room2')">Ir a Sala 2</button>
+      </div>
+
+      <hr />
+
+      <div id="room-status">
+        <h2>Estado de la Sala</h2>
+        <div id="connectionStatus">Desconectado</div>
+        <div id="roomInfo">No conectado a la sala</div>
+        <div id="editPermissions">Permisos: Desconocido</div>
+      </div>
+
+      <hr />
+
+      <div id="users-section">
+        <h2>Usuarios en la Sala</h2>
+        <ul id="usersList">
+          <li>Cargando...</li>
+        </ul>
+      </div>
+
+      <hr />
+
+      <div id="room-content">
+        <h2>Contenido de la Sala</h2>
+        <textarea
+          id="roomTextarea"
+          rows="8"
+          cols="80"
+          placeholder="Escribe aquí el contenido de la sala..."
+          disabled></textarea>
+        <br /><br />
+        <button id="saveContentBtn" onclick="saveContent()" disabled>💾 Guardar Contenido</button>
+      </div>
+
+      <hr />
+
+      <div id="custom-event">
+        <h2>Enviar Evento Personalizado</h2>
+        <input
+          type="text"
+          id="eventId"
+          placeholder="ID del evento (ej: broadcast-message)"
+          value="announcement" />
+        <br /><br />
+        <textarea
+          id="eventDataJson"
+          rows="4"
+          cols="80"
+          placeholder='{"announcement": "Mensaje importante", "level": "info"}'>
+{
+  "message": "Anuncio desde Sala 3",
+  "level": "warning",
+  "broadcast": true,
+  "timestamp": "2024-01-15"
+}</textarea
+        >
+        <br /><br />
+        <button id="sendEventBtn" onclick="sendCustomEvent()" disabled>
+          📡 Enviar Evento a Todos
+        </button>
+      </div>
+
+      <hr />
+
+      <div id="events-log">
+        <h2>Log de Eventos</h2>
+        <div id="eventsContainer">
+          <p>No hay eventos aún...</p>
+        </div>
+        <button onclick="clearLog()">🗑️ Limpiar Log</button>
+      </div>
+    </div>
+
+    <script src="js/socket-client.js"></script>
+    <script>
+      let platform = 'vanilla-example';
+      let roomId = 'room3';
+      let updateTimeout;
+
+      // Obtener parámetros de la URL
+      function getUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        platform = urlParams.get('platform') || 'vanilla-example';
+      }
+
+      // Inicializar cuando carga la página
+      window.onload = async function () {
+        getUrlParams();
+        await initializeRoom();
+      };
+
+      async function initializeRoom() {
+        // Conectar al socket
+        socketClient.connect();
+
+        // Configurar usuario por defecto
+        await socketClient.configUser('Usuario Test', Math.floor(Math.random() * 1000), platform);
+
+        // Unirse a la sala
+        const response = await socketClient.joinRoomWithPermissions(roomId, platform);
+
+        if (response.ok) {
+          updateRoomInfo(response.room);
+          logEvent('✅ Te has unido a la sala exitosamente');
+        } else {
+          logEvent('❌ Error al unirse a la sala: ' + response.message);
+        }
+
+        // Escuchar actualizaciones de la sala
+        socketClient.onRoomUpdated(platform, data => {
+          updateRoomInfo(data);
+          logEvent('🔄 Sala actualizada');
+        });
+
+        // Escuchar eventos personalizados
+        socketClient.onRoomEvent(platform, event => {
+          logEvent(`📨 Evento recibido: ${event.eventId}`, event);
+        });
+      }
+
+      function updateRoomInfo(roomData) {
+        // Actualizar estado de conexión
+        document.getElementById('connectionStatus').textContent = 'Conectado a la sala';
+        document.getElementById(
+          'roomInfo'
+        ).textContent = `Sala: ${roomData.roomId} | Usuarios: ${roomData.users.length}`;
+
+        // Actualizar permisos
+        const canEdit = socketClient.canUserEdit();
+        document.getElementById('editPermissions').innerHTML = canEdit
+          ? '<span style="color: green;">✏️ Puedes EDITAR</span>'
+          : '<span style="color: orange;">👁️ Solo puedes OBSERVAR</span>';
+
+        // Habilitar/deshabilitar controles
+        document.getElementById('roomTextarea').disabled = !canEdit;
+        document.getElementById('saveContentBtn').disabled = !canEdit;
+        document.getElementById('sendEventBtn').disabled = !canEdit;
+
+        // Actualizar lista de usuarios
+        updateUsersList(roomData.users);
+
+        // Actualizar contenido
+        if (roomData.data && roomData.data.content) {
+          document.getElementById('roomTextarea').value = roomData.data.content;
+        }
+      }
+
+      function updateUsersList(users) {
+        const usersList = document.getElementById('usersList');
+        usersList.innerHTML = '';
+
+        users.forEach(user => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+                    <strong>${user.name}</strong> (ID: ${user.userId || 'N/A'}) 
+                    ${
+                      user.canEdit
+                        ? '<span style="color: green;">✏️ Editor</span>'
+                        : '<span style="color: gray;">👁️ Observador</span>'
+                    }
+                `;
+          usersList.appendChild(li);
+        });
+      }
+
+      function saveContent() {
+        if (!socketClient.canUserEdit()) {
+          alert('No tienes permisos para editar');
+          return;
+        }
+
+        const content = document.getElementById('roomTextarea').value;
+
+        clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(async () => {
+          const response = await socketClient.updateRoomData(
+            roomId,
+            platform,
+            { content: content },
+            'content-updated'
+          );
+
+          if (response.ok) {
+            logEvent('💾 Contenido guardado exitosamente');
+          } else {
+            logEvent('❌ Error al guardar: ' + response.message);
+          }
+        }, 300);
+      }
+
+      async function sendCustomEvent() {
+        if (!socketClient.canUserEdit()) {
+          alert('No tienes permisos para enviar eventos');
+          return;
+        }
+
+        const eventId = document.getElementById('eventId').value;
+        const jsonData = document.getElementById('eventDataJson').value;
+
+        if (!eventId) {
+          alert('Por favor ingresa un ID de evento');
+          return;
+        }
+
+        let eventData;
+        try {
+          eventData = JSON.parse(jsonData);
+        } catch (e) {
+          alert('JSON inválido: ' + e.message);
+          return;
+        }
+
+        const response = await socketClient.updateRoomData(roomId, platform, eventData, eventId);
+
+        if (response.ok) {
+          logEvent(`📡 Evento "${eventId}" enviado exitosamente`);
+        } else {
+          logEvent('❌ Error al enviar evento: ' + response.message);
+        }
+      }
+
+      function logEvent(message, data = null) {
+        const container = document.getElementById('eventsContainer');
+        const time = new Date().toLocaleTimeString();
+
+        const eventDiv = document.createElement('div');
+        eventDiv.style.marginBottom = '10px';
+        eventDiv.style.padding = '5px';
+        eventDiv.style.backgroundColor = '#f0f0f0';
+        eventDiv.style.borderLeft = '3px solid #dc3545';
+
+        let content = `<strong>[${time}]</strong> ${message}`;
+        if (data) {
+          content += `<br><pre style="margin: 5px 0; font-size: 12px;">${JSON.stringify(
+            data,
+            null,
+            2
+          )}</pre>`;
+        }
+
+        eventDiv.innerHTML = content;
+
+        // Insertar al principio
+        if (container.firstChild && container.firstChild.tagName !== 'P') {
+          container.insertBefore(eventDiv, container.firstChild);
+        } else {
+          container.innerHTML = '';
+          container.appendChild(eventDiv);
+        }
+      }
+
+      function clearLog() {
+        document.getElementById('eventsContainer').innerHTML = '<p>Log limpiado...</p>';
+      }
+
+      function goBack() {
+        window.location.href = 'index.html';
+      }
+
+      function goToRoom(room) {
+        window.location.href = `${room}.html?platform=${platform}`;
+      }
+
+      // Limpiar al salir
+      window.onbeforeunload = function () {
+        if (socketClient.currentRoom) {
+          socketClient.leaveRoomWithPermissions(roomId, platform);
+        }
+      };
+    </script>
+  </body>
+</html>

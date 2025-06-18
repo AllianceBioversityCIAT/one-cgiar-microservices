@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.IO Microservice - Vanilla Example</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <h1>Socket.IO Microservice - Vanilla Example</h1>
+
+      <div id="user-config">
+        <h2>Configuración de Usuario</h2>
+        <input type="text" id="userName" placeholder="Nombre de usuario" value="Usuario Test" />
+        <input type="number" id="userId" placeholder="ID de usuario" value="123" />
+        <input type="text" id="platform" placeholder="Plataforma" value="vanilla-example" />
+        <button onclick="configureUser()">Configurar Usuario</button>
+        <div id="userStatus"></div>
+      </div>
+
+      <hr />
+
+      <div id="navigation">
+        <h2>Navegación</h2>
+
+        <div id="rooms-section">
+          <h3>Salas (Rooms)</h3>
+          <button onclick="goToRoom('room1')">Sala 1</button>
+          <button onclick="goToRoom('room2')">Sala 2</button>
+          <button onclick="goToRoom('room3')">Sala 3</button>
+        </div>
+
+        <div id="other-features">
+          <h3>Otras Funcionalidades</h3>
+          <button disabled onclick="goToAlerts()">Alertas (Próximamente)</button>
+          <button disabled onclick="goToNotifications()">Notificaciones (Próximamente)</button>
+        </div>
+      </div>
+
+      <hr />
+
+      <div id="connection-status">
+        <h3>Estado de Conexión</h3>
+        <div id="socketStatus">Desconectado</div>
+      </div>
+    </div>
+
+    <script src="js/socket-client.js"></script>
+    <script>
+      let socket;
+      let isUserConfigured = false;
+
+      // Inicializar conexión
+      window.onload = function () {
+        initializeSocket();
+      };
+
+      function initializeSocket() {
+        socket = io('http://localhost:3005');
+
+        socket.on('connect', () => {
+          document.getElementById('socketStatus').textContent = 'Conectado - ID: ' + socket.id;
+        });
+
+        socket.on('disconnect', () => {
+          document.getElementById('socketStatus').textContent = 'Desconectado';
+        });
+      }
+
+      function configureUser() {
+        const name = document.getElementById('userName').value;
+        const userId = parseInt(document.getElementById('userId').value);
+        const platform = document.getElementById('platform').value;
+
+        if (!name || !userId || !platform) {
+          alert('Por favor completa todos los campos');
+          return;
+        }
+
+        socket.emit('config-user', { name, userId, platform }, response => {
+          if (response.ok) {
+            isUserConfigured = true;
+            document.getElementById(
+              'userStatus'
+            ).innerHTML = `<span style="color: green;">✓ Usuario configurado: ${name} (${userId}) - ${platform}</span>`;
+          } else {
+            document.getElementById(
+              'userStatus'
+            ).innerHTML = `<span style="color: red;">✗ Error: ${response.message}</span>`;
+          }
+        });
+      }
+
+      function goToRoom(roomName) {
+        if (!isUserConfigured) {
+          alert('Primero debes configurar tu usuario');
+          return;
+        }
+
+        const platform = document.getElementById('platform').value;
+        window.location.href = `${roomName}.html?platform=${platform}`;
+      }
+
+      function goToAlerts() {
+        alert('Funcionalidad de Alertas próximamente...');
+      }
+
+      function goToNotifications() {
+        alert('Funcionalidad de Notificaciones próximamente...');
+      }
+    </script>
+  </body>
+</html>
