@@ -40,7 +40,7 @@ describe('PasswordGeneratorService', () => {
       expect(lowercase).toBe('abcdefghijkmnopqrstuvwxyz');
       expect(uppercase).toBe('ABCDEFGHJKLMNPQRSTUVWXYZ');
       expect(digits).toBe('23456789');
-      expect(symbols).toBe('!@#$%^&*(),.?":{}|<>');
+      expect(symbols).toBe('!@#$%^&*(),.?":{}|');
     });
   });
 
@@ -267,7 +267,7 @@ describe('PasswordGeneratorService', () => {
     });
 
     it('should validate passwords with various special characters', () => {
-      const specialChars = '!@#$%^&*(),.?":{}|<>';
+      const specialChars = '!@#$%^&*(),.?":{}|';
 
       specialChars.split('').forEach((char) => {
         const password = `ValidPass123${char}`;

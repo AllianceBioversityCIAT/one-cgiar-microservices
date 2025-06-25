@@ -441,8 +441,6 @@ export class CognitoService {
       if (email) {
         filter = `email ^= "${email}"`;
       } else if (firstName && lastName) {
-        // Note: Cognito doesn't support AND operations in filters
-        // So we'll search by firstName and filter results
         filter = `given_name ^= "${firstName}"`;
       } else if (firstName) {
         filter = `given_name ^= "${firstName}"`;
@@ -465,7 +463,6 @@ export class CognitoService {
       const result = await this.cognitoClient.send(command);
       let users = result.Users || [];
 
-      // Additional filtering if needed
       if (lastName && firstName) {
         users = users.filter((user) => {
           const familyName = user.Attributes?.find(
