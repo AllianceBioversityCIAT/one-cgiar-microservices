@@ -362,7 +362,7 @@ export class BulkUserService {
                       <ol style="margin: 0; padding-left: 20px">
                         <li class="step-item">
                           Go to the
-                          <a href="https://prms.ciat.cgiar.org" class="link fw-600"
+                          <a href="https://reporting.cgiar.org" class="link fw-600"
                             >PRMS Reporting Tool</a
                           >
                         </li>
