@@ -6,7 +6,6 @@ import {
   CognitoIdentityProviderClient,
   GetUserCommand,
   InitiateAuthCommand,
-  ListUsersCommand,
   RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
