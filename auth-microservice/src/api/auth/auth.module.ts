@@ -8,6 +8,7 @@ import { EmailNotificationManagementModule } from './services/notification/notif
 import { BulkUserService } from './services/bulk-registration/bulk-registration.service';
 import { PasswordGeneratorService } from './services/password/password.service';
 import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
+import { UserService } from './services/user/user.service';
 
 @Module({
   controllers: [AuthController],
@@ -19,6 +20,7 @@ import { DynamicEmailService } from './services/dynamic-email/dynamic-email.serv
     BulkUserService,
     PasswordGeneratorService,
     DynamicEmailService,
+    UserService,
   ],
 })
 export class AuthModule {}

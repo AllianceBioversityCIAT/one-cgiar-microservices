@@ -1,4 +1,5 @@
 import { Controller, Post, Body, Req, Get, Query } from '@nestjs/common';
+import { UserService } from './services/user/user.service';
 import { AuthService } from './auth.service';
 import { ProviderAuthDto } from './dto/provider-auth.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
@@ -35,6 +36,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly bulkUserService: BulkUserService,
+    private readonly userService: UserService,
   ) {}
 
   @Post('login/provider')
@@ -637,54 +639,20 @@ export class AuthController {
     return this.bulkUserService.bulkCreateUsers(bulkCreateUsersDto);
   }
 
-  @Get('users/search')
-  @ApiClarisaAuth('Search users by multiple criteria')
-  @ApiOperation({ summary: 'Search users by multiple criteria' })
-  @ApiQuery({
-    name: 'email',
-    required: false,
-    description: 'Email to search for',
+  @Post('users/search')
+  @ApiClarisaAuth('Search users by query string')
+  @ApiOperation({ summary: 'Search users by query string (AD/LDAP)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', example: 'john' },
+      },
+      required: ['query'],
+    },
+    description: 'Query string to search users by name, email o username',
   })
-  @ApiQuery({
-    name: 'firstName',
-    required: false,
-    description: 'First name to search for',
-  })
-  @ApiQuery({
-    name: 'lastName',
-    required: false,
-    description: 'Last name to search for',
-  })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    description: 'User status to filter by',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Maximum number of results (default: 60)',
-  })
-  async searchUsers(
-    @Query('email') email?: string,
-    @Query('firstName') firstName?: string,
-    @Query('lastName') lastName?: string,
-    @Query('status') status?: string,
-    @Query('limit') limit?: number,
-  ): Promise<any[]> {
-    const searchParams = {
-      email,
-      firstName,
-      lastName,
-      status,
-      limit: limit || 60,
-    };
-
-    // Remove undefined values
-    Object.keys(searchParams).forEach(
-      (key) => searchParams[key] === undefined && delete searchParams[key],
-    );
-
-    return this.authService.searchUsers(searchParams);
+  async searchUsers(@Body('query') query: string): Promise<any[]> {
+    return this.userService.searchUsers(query);
   }
 }
