@@ -3,6 +3,7 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { UserService } from './services/user/user.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CustomAuthDto } from './dto/custom-auth.dto';
 import { ProviderAuthDto, AuthProvider } from './dto/provider-auth.dto';
@@ -19,6 +20,7 @@ describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
   let bulkUserService: jest.Mocked<BulkUserService>;
+  let userService: jest.Mocked<UserService>;
 
   const mockRequest: Partial<RequestWithCustomAttrs> = {
     senderMisMetadata: {
@@ -156,6 +158,10 @@ describe('AuthController', () => {
       bulkCreateUsers: jest.fn(),
     };
 
+    const mockUserService = {
+      searchUsers: jest.fn().mockResolvedValue([{ cn: 'John Doe' }]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
@@ -167,12 +173,29 @@ describe('AuthController', () => {
           provide: BulkUserService,
           useValue: mockBulkUserService,
         },
+        {
+          provide: UserService,
+          useValue: mockUserService,
+        },
       ],
-    }).compile();
+    })
+      .overrideProvider(UserService)
+      .useValue(mockUserService)
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
     authService = module.get(AuthService);
     bulkUserService = module.get(BulkUserService);
+    userService = module.get(UserService);
+  });
+
+  describe('searchUsers', () => {
+    it('should call userService.searchUsers and return result', async () => {
+      const body = { query: 'john' };
+      const result = await controller.searchUsers(body as any);
+      expect(userService.searchUsers).toHaveBeenCalledWith(body);
+      expect(result).toEqual([{ cn: 'John Doe' }]);
+    });
   });
 
   it('should be defined', () => {
