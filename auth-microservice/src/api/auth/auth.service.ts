@@ -151,6 +151,11 @@ export class AuthService {
     }
   }
 
+  /**
+   * Authenticates user with custom password flow
+   * @param customAuthDto Custom authentication parameters
+   * @returns Authentication result with tokens or challenge information
+   */
   async authenticateWithCustomPassword(customAuthDto: CustomAuthDto) {
     try {
       const { username, password } = customAuthDto;
@@ -189,6 +194,11 @@ export class AuthService {
     }
   }
 
+  /**
+   * Completes the new password challenge for Cognito users
+   * @param challengeDto New password challenge data
+   * @returns Success message and authentication tokens
+   */
   async completeNewPasswordChallenge(
     challengeDto: NewPasswordChallengeDto,
   ): Promise<any> {
@@ -307,12 +317,18 @@ export class AuthService {
         );
       }
 
-      this.logger.log(
-        `✅ Secure password generated for user: ${registerUserDto.username}`,
-      );
+      const env = this.configService.get<string>('ENV')?.toLowerCase();
+      const email = registerUserDto.email;
+      let username = registerUserDto.username;
+
+      if (env === 'test') {
+        username = email;
+      } else if (env === 'prod') {
+        username = email.split('@')[0];
+      }
 
       const result = await this.cognitoService.createUser(
-        registerUserDto.username,
+        username,
         temporaryPassword,
         registerUserDto.firstName,
         registerUserDto.lastName,
