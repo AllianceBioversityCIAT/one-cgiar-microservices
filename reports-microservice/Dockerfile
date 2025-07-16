@@ -1,55 +1,56 @@
 #################### BASE STAGE ####################
-# Base image
-FROM --platform=linux/amd64 node:latest as base
+# Usar una versión específica y compatible de Node.js
+FROM --platform=linux/amd64 node:18 AS base
 
-# Create app directory
+# Crear el directorio de la app
 WORKDIR /app
 
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
+# Copiar los archivos de dependencias
 COPY package*.json ./
 
 #################### DEVELOPMENT STAGE ####################
-
-# Development stage
 FROM base AS development
 
-# Install app dependencies
+# Instalar dependencias de desarrollo
 RUN npm install
 
-# Bundle app source
+# Copiar todo el código fuente
 COPY . .
 
-# Creates a "dist" folder with the production build
+# Compilar el proyecto
 RUN npm run build
 
-# Expose the port on which the app will run
+# Exponer el puerto para desarrollo
 EXPOSE 3001
 
-# Start the server using the production build
+# Iniciar el servidor en desarrollo
 CMD ["npm", "run", "start"]
 
 #################### BUILD STAGE ####################
-
 FROM base AS build
+
+# Instalar solo las dependencias de producción
 RUN npm ci --only=production
+
+# Copiar el resto del código
 COPY . .
+
+# Compilar el proyecto
 RUN npm run build
 
 #################### PRODUCTION STAGE ####################
+FROM --platform=linux/amd64 node:18 AS production
 
-# Base image
-FROM --platform=linux/amd64 node:latest as production
-
-# Create app directory
+# Crear el directorio de la app
 WORKDIR /app
 
-# Copy the "dist" folder from the build stage
+# Copiar artefactos desde la etapa de build
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package*.json ./
 
-# Expose the port on which the app will run
+# Exponer el puerto en producción
 EXPOSE 3001
 
-# Start the server using the production build
+# Ejecutar el servidor en producción
 CMD ["node", "dist/main.js"]
