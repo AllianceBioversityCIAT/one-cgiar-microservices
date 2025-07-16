@@ -9,7 +9,8 @@ export class ClarisaCreateConenctionDto {
 }
 
 export class ResMisConfigDto {
-  id: number;
+  id?: number;
+  code?: number;
   name: string;
   acronym: string;
   environment: string;

@@ -7,6 +7,8 @@ import { CognitoService } from './services/cognito/cognito.service';
 import { EmailNotificationManagementModule } from './services/notification/notification.module';
 import { BulkUserService } from './services/bulk-registration/bulk-registration.service';
 import { PasswordGeneratorService } from './services/password/password.service';
+import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
+import { UserService } from './services/user/user.service';
 
 @Module({
   controllers: [AuthController],
@@ -17,6 +19,8 @@ import { PasswordGeneratorService } from './services/password/password.service';
     MisService,
     BulkUserService,
     PasswordGeneratorService,
+    DynamicEmailService,
+    UserService,
   ],
 })
 export class AuthModule {}

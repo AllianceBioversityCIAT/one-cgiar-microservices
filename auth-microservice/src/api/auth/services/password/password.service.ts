@@ -6,7 +6,7 @@ export class PasswordGeneratorService {
   private readonly lowercase = 'abcdefghijkmnopqrstuvwxyz';
   private readonly uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   private readonly digits = '23456789';
-  private readonly symbols = '!@#$%^&*(),.?":{}|<>';
+  private readonly symbols = '!@#$%^&*(),.?":{}|';
 
   generateSecurePassword(
     length: number = 12,
@@ -65,7 +65,7 @@ export class PasswordGeneratorService {
     if (!/\d/.test(password)) {
       errors.push('Debe contener al menos un número');
     }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    if (!/[!@#$%^&*(),.?":{}|]/.test(password)) {
       errors.push('Debe contener al menos un símbolo especial');
     }
 
