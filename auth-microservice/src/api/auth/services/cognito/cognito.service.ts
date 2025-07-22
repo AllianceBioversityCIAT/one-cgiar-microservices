@@ -362,11 +362,16 @@ export class CognitoService {
    */
   async refreshAccessToken(
     refreshToken: string,
+    userInfo: any,
     clientId: string,
     clientSecret: string,
   ): Promise<any> {
     try {
-      const secretHash = this.calculateSecretHash('', clientId, clientSecret);
+      const secretHash = this.calculateSecretHash(
+        userInfo.username,
+        clientId,
+        clientSecret,
+      );
 
       const command = new InitiateAuthCommand({
         AuthFlow: 'REFRESH_TOKEN_AUTH',

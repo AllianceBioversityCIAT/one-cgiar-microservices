@@ -733,6 +733,7 @@ describe('CognitoService', () => {
 
       const result = await service.refreshAccessToken(
         refreshData.refreshToken,
+        'user',
         refreshData.clientId,
         refreshData.clientSecret,
       );
@@ -759,6 +760,7 @@ describe('CognitoService', () => {
       await expect(
         service.refreshAccessToken(
           'expired-refresh-token',
+          'user',
           refreshData.clientId,
           refreshData.clientSecret,
         ),
@@ -777,6 +779,7 @@ describe('CognitoService', () => {
       await expect(
         service.refreshAccessToken(
           refreshData.refreshToken,
+          'user',
           refreshData.clientId,
           refreshData.clientSecret,
         ),
@@ -803,6 +806,7 @@ describe('CognitoService', () => {
 
       const result = await service.refreshAccessToken(
         refreshData.refreshToken,
+        'user',
         refreshData.clientId,
         refreshData.clientSecret,
       );
@@ -819,6 +823,7 @@ describe('CognitoService', () => {
 
       await service.refreshAccessToken(
         refreshData.refreshToken,
+        'user',
         refreshData.clientId,
         refreshData.clientSecret,
       );
@@ -1271,6 +1276,7 @@ describe('CognitoService', () => {
 
       const result = await service.refreshAccessToken(
         'existing-refresh-token',
+        'user',
         'test-client-id',
         'test-client-secret',
       );
