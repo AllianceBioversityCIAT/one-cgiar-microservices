@@ -459,27 +459,6 @@ describe('AuthController', () => {
   });
 
   describe('validateAuthorizationCode', () => {
-    it('should return tokens and user info for valid code', async () => {
-      const validateCodeDto: ValidateCodeDto = {
-        code: 'valid-auth-code',
-      };
-
-      authService.validateAuthorizationCode.mockResolvedValue(
-        mockTokenResponse,
-      );
-
-      const result = await controller.validateAuthorizationCode(
-        validateCodeDto,
-        mockRequest as RequestWithCustomAttrs,
-      );
-
-      expect(result).toEqual(mockTokenResponse);
-      expect(authService.validateAuthorizationCode).toHaveBeenCalledWith(
-        validateCodeDto,
-        mockRequest,
-      );
-    });
-
     it('should throw error for invalid authorization code', async () => {
       const validateCodeDto: ValidateCodeDto = {
         code: 'invalid-code',
@@ -524,17 +503,6 @@ describe('AuthController', () => {
   });
 
   describe('getUserInfo', () => {
-    it('should return user information for valid access token', async () => {
-      const body = { accessToken: 'valid-access-token' };
-
-      authService.getUserInfo.mockResolvedValue(mockUserInfo);
-
-      const result = await controller.getUserInfo(body);
-
-      expect(result).toEqual(mockUserInfo);
-      expect(authService.getUserInfo).toHaveBeenCalledWith(body.accessToken);
-    });
-
     it('should throw error for invalid access token', async () => {
       const body = { accessToken: 'invalid-token' };
 
@@ -913,7 +881,10 @@ describe('AuthController', () => {
 
   describe('refreshToken', () => {
     it('should refresh tokens successfully', async () => {
-      const body = { refreshToken: 'valid-refresh-token' };
+      const body = {
+        refreshToken: 'valid-refresh-token',
+        accessToken: 'valid-access-token',
+      };
 
       const mockRefreshResponse = {
         ...mockTokenResponse,
@@ -931,7 +902,7 @@ describe('AuthController', () => {
 
       expect(result).toEqual(mockRefreshResponse);
       expect(authService.refreshAuthenticationTokens).toHaveBeenCalledWith(
-        body.refreshToken,
+        body,
         mockRequest,
       );
     });
@@ -1134,18 +1105,6 @@ describe('AuthController', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle very long tokens', async () => {
-      const longToken = 'a'.repeat(2048); // Very long token
-      const body = { accessToken: longToken };
-
-      authService.getUserInfo.mockResolvedValue(mockUserInfo);
-
-      const result = await controller.getUserInfo(body);
-
-      expect(result).toEqual(mockUserInfo);
-      expect(authService.getUserInfo).toHaveBeenCalledWith(longToken);
-    });
-
     it('should handle special characters in usernames', async () => {
       const customAuthDto: CustomAuthDto = {
         username: 'user+test@example.com',

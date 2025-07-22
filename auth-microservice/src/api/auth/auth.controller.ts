@@ -504,18 +504,20 @@ export class AuthController {
             'eyJjdHk6IkpXVCIsImVuYyI6IkEyNTZHQ00iLCJhbGciOiJSU0EtT0FFUCJ9...',
           description: 'Valid refresh token obtained from login',
         },
+        accessToken: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          description: 'Valid access token obtained from login',
+        },
       },
       required: ['refreshToken'],
     },
   })
   async refreshToken(
-    @Body() body: { refreshToken: string },
+    @Body() body: { refreshToken: string; accessToken?: string },
     @Req() request: RequestWithCustomAttrs,
   ) {
-    return this.authService.refreshAuthenticationTokens(
-      body.refreshToken,
-      request,
-    );
+    return this.authService.refreshAuthenticationTokens(body, request);
   }
 
   @Post('bulk-create-users')

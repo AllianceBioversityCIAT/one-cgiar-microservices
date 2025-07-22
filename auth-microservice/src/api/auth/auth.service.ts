@@ -231,19 +231,11 @@ export class AuthService {
    */
   async getUserInfo(accessToken: string) {
     try {
-      const cognitoUrl = this.configService.get<string>('COGNITO_URL');
-      const userInfoEndpoint = `${cognitoUrl}/oauth2/userInfo`;
-
-      this.logger.debug(`Fetching user info from ${userInfoEndpoint}`);
-
-      const response = await firstValueFrom(
-        this.httpService.get(userInfoEndpoint, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-      );
-
-      this.logger.debug('User info fetched successfully');
-      return response.data;
+      const user = await this.cognitoService.validateAccessToken(accessToken);
+      return {
+        username: user.username,
+        attributes: user.userAttributes,
+      };
     } catch (error) {
       this.logger.error('Error getting user info:', error);
       throw new HttpException(
@@ -559,7 +551,7 @@ export class AuthService {
    * @returns New authentication tokens
    */
   async refreshAuthenticationTokens(
-    refreshToken: string,
+    data: { refreshToken: string; accessToken?: string },
     @Req() request: RequestWithCustomAttrs,
   ): Promise<any> {
     try {
@@ -575,7 +567,7 @@ export class AuthService {
         );
       }
 
-      if (!refreshToken) {
+      if (!data?.refreshToken) {
         throw new HttpException(
           'Refresh token is required',
           HttpStatus.BAD_REQUEST,
@@ -584,46 +576,33 @@ export class AuthService {
 
       this.logger.log('Refreshing authentication tokens');
 
+      let userInfo = await this.getUserInfo(data?.accessToken);
+
       const newTokens = await this.cognitoService.refreshAccessToken(
-        refreshToken,
+        data?.refreshToken,
+        userInfo,
         misMetadata.mis_auth.cognito_client_id,
         misMetadata.mis_auth.cognito_client_secret,
       );
 
-      const userInfo = await this.getUserInfo(newTokens.accessToken);
+      userInfo = await this.getUserInfo(newTokens.accessToken);
 
       return {
         accessToken: newTokens.accessToken,
         idToken: newTokens.idToken,
-        refreshToken: newTokens.refreshToken || refreshToken,
+        refreshToken: newTokens.refreshToken || data?.refreshToken,
         expiresIn: newTokens.expiresIn,
         tokenType: newTokens.tokenType || 'Bearer',
         userInfo,
       };
     } catch (error) {
       this.logger.error('Error refreshing authentication tokens:', error);
-
-      if (
-        error.name === 'NotAuthorizedException' ||
-        error.message?.includes('Refresh Token has expired')
-      ) {
-        throw new HttpException(
-          'Refresh token has expired. Please login again.',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
       if (error.response) {
         throw new HttpException(
-          `Token refresh failed: ${error.response.data.error_description || error.response.data.error}`,
+          `Token refresh failed: ${error}`,
           HttpStatus.UNAUTHORIZED,
         );
       }
-
-      throw new HttpException(
-        error.message || 'Error refreshing authentication tokens',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
     }
   }
 }
