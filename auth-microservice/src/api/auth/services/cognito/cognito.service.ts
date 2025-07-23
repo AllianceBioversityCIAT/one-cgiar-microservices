@@ -341,10 +341,7 @@ export class CognitoService {
       };
     } catch (error) {
       this._logger.error('Access token validation failed:', error);
-      throw new HttpException(
-        'Invalid access token',
-        HttpStatus.UNAUTHORIZED,
-      );
+      throw new HttpException('Invalid access token', HttpStatus.UNAUTHORIZED);
     }
   }
 

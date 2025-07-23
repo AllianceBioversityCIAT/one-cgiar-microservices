@@ -226,7 +226,9 @@ export class AuthService {
     try {
       this.logger.log(`Retrieving user info for access token: ${accessToken}`);
       const user = await this.cognitoService.validateAccessToken(accessToken);
-      this.logger.log(`User info retrieved successfully: ${JSON.stringify(user)}`);
+      this.logger.log(
+        `User info retrieved successfully: ${JSON.stringify(user)}`,
+      );
       return {
         username: user.username,
         attributes: user.userAttributes,

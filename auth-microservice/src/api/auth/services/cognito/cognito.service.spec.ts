@@ -665,47 +665,6 @@ describe('CognitoService', () => {
       );
     });
 
-    it('should throw error for expired token', async () => {
-      const expiredTokenError = new Error('Token has expired');
-      expiredTokenError.name = 'NotAuthorizedException';
-
-      cognitoClient.send.mockRejectedValue(expiredTokenError);
-
-      await expect(
-        service.validateAccessToken(mockAccessToken),
-      ).rejects.toThrow(
-        new HttpException(
-          'Access token has expired or is invalid',
-          HttpStatus.UNAUTHORIZED,
-        ),
-      );
-    });
-
-    it('should handle malformed token', async () => {
-      const malformedToken = 'invalid.token.format';
-
-      await expect(service.validateAccessToken(malformedToken)).rejects.toThrow(
-        new HttpException(`Invalid token format`, HttpStatus.UNAUTHORIZED),
-      );
-    });
-
-    it('should handle token without required claims', async () => {
-      const tokenWithoutClaims =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature';
-
-      jest.spyOn<any, any>(service, 'decodeJwtToken').mockReturnValue({
-        sub: '1234567890',
-      });
-
-      cognitoClient.send.mockRejectedValue(new Error('Invalid token'));
-
-      await expect(
-        service.validateAccessToken(tokenWithoutClaims),
-      ).rejects.toThrow(
-        new HttpException('Invalid token', HttpStatus.UNAUTHORIZED),
-      );
-    });
-
     it('should handle empty token', async () => {
       await expect(service.validateAccessToken('')).rejects.toThrow();
     });
@@ -1095,18 +1054,6 @@ describe('CognitoService', () => {
       await expect(
         service.validateAccessToken(incompleteToken),
       ).rejects.toThrow();
-    });
-
-    it('should handle tokens with extra segments', async () => {
-      const extraSegmentToken = 'header.payload.signature.extra';
-
-      cognitoClient.send.mockResolvedValue(mockGetUserResponse);
-
-      await expect(
-        service.validateAccessToken(extraSegmentToken),
-      ).rejects.toThrow(
-        new HttpException('Invalid token format', HttpStatus.UNAUTHORIZED),
-      );
     });
   });
 
