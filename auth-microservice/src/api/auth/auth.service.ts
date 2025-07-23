@@ -224,19 +224,23 @@ export class AuthService {
    */
   async getUserInfo(accessToken: string) {
     try {
-      this.logger.log(`Retrieving user info for access token: ${accessToken}`);
-      const user = await this.cognitoService.validateAccessToken(accessToken);
-      this.logger.log(
-        `User info retrieved successfully: ${JSON.stringify(user)}`,
+      const cognitoUrl = this.configService.get<string>('COGNITO_URL');
+      const userInfoEndpoint = `${cognitoUrl}/oauth2/userInfo`;
+
+      this.logger.debug(`Fetching user info from ${userInfoEndpoint}`);
+
+      const response = await firstValueFrom(
+        this.httpService.get(userInfoEndpoint, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
       );
-      return {
-        email: user?.username,
-        attributes: user?.userAttributes,
-      };
+
+      this.logger.debug('User info fetched successfully');
+      return response.data;
     } catch (error) {
       this.logger.error('Error getting user info:', error);
       throw new HttpException(
-        'Error retrieving user information',
+        'X Error retrieving user information',
         HttpStatus.UNAUTHORIZED,
       );
     }
