@@ -128,18 +128,15 @@ export class AuthService {
         tokenType: tokenResponse.data.token_type,
       };
 
-      const userInfo = await this.getUserInfo(tokens.accessToken);
-
       return {
         ...tokens,
-        userInfo,
       };
     } catch (error) {
       this.logger.error('Error validating authorization code:', error);
 
       if (error.response) {
         throw new HttpException(
-          `Authentication failed: ${error.response.data.error_description || error.response.data.error}`,
+          `Authentication failed: ${error || error.response.data.error}`,
           HttpStatus.UNAUTHORIZED,
         );
       }

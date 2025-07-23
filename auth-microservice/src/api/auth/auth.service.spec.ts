@@ -253,9 +253,7 @@ describe('AuthService', () => {
       );
 
       expect(httpService.post).toHaveBeenCalled();
-      expect(service.getUserInfo).toHaveBeenCalledWith('mock-access-token');
       expect(result).toHaveProperty('accessToken', 'mock-access-token');
-      expect(result).toHaveProperty('userInfo', mockUserInfoResponse.data);
     });
 
     it('should handle API error responses', async () => {
