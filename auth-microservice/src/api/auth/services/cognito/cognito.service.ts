@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import {
   AdminCreateUserCommand,
   AdminUpdateUserAttributesCommand,
@@ -14,6 +14,7 @@ import { UpdateUserDto } from '../../dto/update-user.dto';
 
 @Injectable()
 export class CognitoService {
+  private readonly _logger = new Logger(CognitoService.name);
   private readonly cognitoClient: CognitoIdentityProviderClient;
 
   constructor(private readonly configService: ConfigService) {
@@ -329,7 +330,6 @@ export class CognitoService {
       });
 
       const response = await this.cognitoClient.send(command);
-
       const tokenPayload = this.decodeJwtToken(accessToken);
 
       return {
@@ -340,14 +340,9 @@ export class CognitoService {
         client_id: tokenPayload.client_id,
       };
     } catch (error) {
-      if (error.name === 'NotAuthorizedException') {
-        throw new HttpException(
-          'Access token has expired or is invalid',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      this._logger.error('Access token validation failed:', error);
       throw new HttpException(
-        error.message || 'Token validation failed',
+        'Invalid access token',
         HttpStatus.UNAUTHORIZED,
       );
     }
