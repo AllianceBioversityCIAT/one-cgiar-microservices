@@ -230,8 +230,8 @@ export class AuthService {
         `User info retrieved successfully: ${JSON.stringify(user)}`,
       );
       return {
-        username: user.username,
-        attributes: user.userAttributes,
+        email: user?.username,
+        attributes: user?.userAttributes,
       };
     } catch (error) {
       this.logger.error('Error getting user info:', error);

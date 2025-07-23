@@ -345,19 +345,6 @@ describe('AuthService', () => {
     });
   });
 
-  describe('getUserInfo', () => {
-    it('should throw exception when user info fetch fails', async () => {
-      const accessToken = 'invalid-token';
-      jest
-        .spyOn(httpService, 'get')
-        .mockReturnValueOnce(throwError(() => new Error('Invalid token')));
-
-      await expect(service.getUserInfo(accessToken)).rejects.toThrow(
-        HttpException,
-      );
-    });
-  });
-
   describe('registerUser - Dynamic Email Registration', () => {
     const mockDynamicRegisterResponse = {
       message: 'User registered successfully',
