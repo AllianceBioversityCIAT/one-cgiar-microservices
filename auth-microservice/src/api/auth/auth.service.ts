@@ -127,23 +127,19 @@ export class AuthService {
         expiresIn: tokenResponse.data.expires_in,
         tokenType: tokenResponse.data.token_type,
       };
+      this.logger.log(`Authorization code validated successfully: ${tokens}`);
+
+      const userInfo = await this.getUserInfo(tokens.accessToken);
 
       return {
         ...tokens,
+        userInfo,
       };
     } catch (error) {
       this.logger.error('Error validating authorization code:', error);
-
-      if (error.response) {
-        throw new HttpException(
-          `Authentication failed: ${error || error.response.data.error}`,
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
       throw new HttpException(
-        error.message || 'Error validating authorization code',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        `Authentication failed: ${error}`,
+        HttpStatus.UNAUTHORIZED,
       );
     }
   }
@@ -228,7 +224,9 @@ export class AuthService {
    */
   async getUserInfo(accessToken: string) {
     try {
+      this.logger.log(`Retrieving user info for access token: ${accessToken}`);
       const user = await this.cognitoService.validateAccessToken(accessToken);
+      this.logger.log(`User info retrieved successfully: ${JSON.stringify(user)}`);
       return {
         username: user.username,
         attributes: user.userAttributes,
