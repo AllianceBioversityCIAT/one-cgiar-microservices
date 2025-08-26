@@ -14,7 +14,6 @@ import { GlobalExceptions } from './errors/global.exception';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
 import { JwtClarisaMiddleware } from './middleware/jwt-clarisa.middleware';
 import { NotificationsModule } from './api/notifications/notifications.module';
-import { PdfModule } from './api/pdf/pdf.module';
 import { ConfigModule } from '@nestjs/config';
 import { JwtStarMiddleware } from './middleware/jwt-star.middleware';
 import { StarModule } from './tools/star/star.module';
@@ -26,7 +25,6 @@ import { StarModule } from './tools/star/star.module';
     ClarisaModule,
     StarModule,
     NotificationsModule,
-    PdfModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
