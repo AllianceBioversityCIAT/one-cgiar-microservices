@@ -187,7 +187,74 @@ export class FileManagementController {
   })
   @Post('upload-file')
   @UseInterceptors(FileInterceptor('file'))
-  async upload(
+  async uploadStar(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() createFileManagmentDto: UploadFileDto,
+  ) {
+    return await this.fileManagementService.uploadFile(
+      file,
+      createFileManagmentDto,
+    );
+  }
+
+  @ApiOperation({ summary: 'Upload a file to S3 using PRMS authentication' })
+  @ApiHeader({
+    name: 'access-token',
+    description: 'PRMS access token for authentication and authorization',
+    required: true,
+  })
+  @ApiHeader({
+    name: 'environment-url',
+    description: 'URL of the PRMS environment',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'File successfully uploaded to S3.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bucket name and file are required.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired PRMS token.',
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload',
+        },
+        bucketName: {
+          type: 'string',
+          description: 'S3 bucket name',
+        },
+        fileName: {
+          type: 'string',
+          description:
+            'Custom name to save the file as (optional, defaults to original filename)',
+        },
+        pageLimit: {
+          type: 'number',
+          description: 'Maximum number of pages allowed for PDF/DOC/DOCX files',
+        },
+        weightLimit: {
+          type: 'number',
+          description: 'Maximum file size in bytes',
+        },
+      },
+      required: ['file', 'bucketName', 'environmentUrl'],
+    },
+  })
+  @Post('prms/upload-file')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPrms(
     @UploadedFile() file: Express.Multer.File,
     @Body() createFileManagmentDto: UploadFileDto,
   ) {

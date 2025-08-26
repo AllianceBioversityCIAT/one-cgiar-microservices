@@ -17,6 +17,8 @@ import { NotificationsModule } from './api/notifications/notifications.module';
 import { ConfigModule } from '@nestjs/config';
 import { JwtStarMiddleware } from './middleware/jwt-star.middleware';
 import { StarModule } from './tools/star/star.module';
+import { PrmsModule } from './tools/prms/prms.module';
+import { JwtPrmsMiddleware } from './middleware/jwt-prms.middleware';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { StarModule } from './tools/star/star.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    PrmsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -61,6 +64,11 @@ export class AppModule implements NestModule {
 
     consumer.apply(JwtStarMiddleware).forRoutes({
       path: 'api/file-management/upload-file',
+      method: RequestMethod.ALL,
+    });
+
+    consumer.apply(JwtPrmsMiddleware).forRoutes({
+      path: 'api/file-management/prms/upload-file',
       method: RequestMethod.ALL,
     });
   }

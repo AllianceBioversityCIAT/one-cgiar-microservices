@@ -47,14 +47,12 @@ export class FileManagementService {
     file: Express.Multer.File,
     uploadFileDto: UploadFileDto,
   ): Promise<ResponseUtils> {
-    const { bucketName, pageLimit, weightLimit, key } = uploadFileDto;
+    const { bucketName, pageLimit, weightLimit } = uploadFileDto;
     const fileName = uploadFileDto.fileName || file?.originalname;
 
     if (!file || !bucketName) {
       return this.badRequest('File and bucketName are required');
     }
-
-    const s3Key = key.endsWith('/') ? key + fileName : key + '/' + fileName;
 
     if (weightLimit && file.size > weightLimit) {
       return this.badRequest(
@@ -97,12 +95,12 @@ export class FileManagementService {
     }
 
     try {
-      const location = await this.uploadToS3(bucketName, s3Key, file);
+      const location = await this.uploadToS3(bucketName, fileName, file);
       const pageCountText = pageCount ? `, ${pageCount} pages` : '';
       await this.notifySlack(
         ':file_folder:',
         'File Upload Successful',
-        `File "${fileName}" (${file.size} bytes${pageCountText}) successfully uploaded to bucket "${bucketName}. ${s3Key}"`,
+        `File "${fileName}" (${file.size} bytes${pageCountText}) successfully uploaded to bucket "${bucketName}."`,
         'Low',
       );
 
@@ -114,7 +112,6 @@ export class FileManagementService {
           size: file.size,
           pageCount,
           location,
-          key: s3Key,
         },
         description: 'File uploaded successfully',
         status: HttpStatus.CREATED,
