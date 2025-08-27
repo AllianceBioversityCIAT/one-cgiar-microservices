@@ -95,7 +95,11 @@ export class FileManagementService {
     }
 
     try {
-      const s3Key = key || fileName;
+      const folder = (key ?? '')
+        .toString()
+        .trim()
+        .replace(/^\/+|\/+$/g, '');
+      const s3Key = folder ? `${folder}/${fileName}` : fileName;
       const location = await this.uploadToS3(bucketName, s3Key, file);
       const pageCountText = pageCount ? `, ${pageCount} pages` : '';
       await this.notifySlack(
