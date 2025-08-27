@@ -23,12 +23,12 @@ export class Prms {
     try {
       return await firstValueFrom(
         this.http
-          .patch(
+          .post(
             environmentUrl + 'auth/user/validate-token',
             {},
             {
               headers: {
-                'access-token': token,
+                'auth': token,
               },
             },
           )
@@ -46,6 +46,7 @@ export class Prms {
           ),
       );
     } catch (err) {
+      console.log("🚀 ~ Prms ~ validateToken ~ err:", err)
       this.logger.error(
         `Failed to validate PRMS token: ${err.message}`,
         err.stack,
