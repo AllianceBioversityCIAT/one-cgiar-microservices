@@ -81,14 +81,14 @@ export class MailerService {
       <p>To: ${emailsTo.join(', ')}</p>
       <p>CC: ${emailsCc.join(', ')}</p>
       <p>BCC: ${emailsBcc.join(', ')}</p>
-      ========================================================
+      ======================================================== <br/>
       ${htmlBody}
       `;
 
       emailConfig = {
         to: env.MS_DEFAULT_EMAIL,
         from: fromBody,
-        subject: `${this._getEnv(configMessage.environment)?.toUpperCase()} - ${subject}`,
+        subject: `${this._getEnv(env.MS_ENVIRONMENT)?.toUpperCase()} - ${subject}`,
         text: text,
         html: newHtmlBody,
       };
