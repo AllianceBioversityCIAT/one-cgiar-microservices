@@ -88,7 +88,7 @@ export class MailerService {
       emailConfig = {
         to: env.MS_DEFAULT_EMAIL,
         from: fromBody,
-        subject: `${this._getEnv(env.MS_ENVIRONMENT)?.toUpperCase()} - ${subject}`,
+        subject: `${this._getEnv(env.MS_ENVIRONMENT)?.toUpperCase()}${subject}`,
         text: text,
         html: newHtmlBody,
       };
