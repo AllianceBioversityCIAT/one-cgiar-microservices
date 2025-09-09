@@ -23,7 +23,7 @@ export class MailerService {
   }
 
   private _getEnv(environment: string): string {
-    if (environment !== 'PROD' && environment !== undefined)
+    if (environment !== 'production' && environment !== undefined)
       return `${environment} - `;
     return '';
   }
@@ -31,6 +31,7 @@ export class MailerService {
   async sendMail(
     configMessage: ConfigMessageDto,
   ): Promise<ServiceResponseDto<SMTPTransport.SentMessageInfo>> {
+    const isProduction = env.MS_ENVIRONMENT === 'production';
     const subject = configMessage?.emailBody.subject || '<No subject>';
     const emailsTo: string[] = this.formatEmails(configMessage?.emailBody?.to);
     const emailsCc: string[] = this.formatEmails(configMessage?.emailBody?.cc);
@@ -40,7 +41,7 @@ export class MailerService {
     const emailFrom: string =
       configMessage?.from?.email || `${env.MS_DEFAULT_EMAIL}`;
     const nameFrom: string = `${configMessage?.from?.name || 'One CGIAR Notification'} No reply`;
-    const fromBofy: Mail.Address = {
+    const fromBody: Mail.Address = {
       name: nameFrom,
       address: emailFrom,
     };
@@ -63,16 +64,38 @@ export class MailerService {
       );
     }
 
-    return this.transporter
-      .sendMail({
+    let emailConfig: Mail.Options = {};
+    if (isProduction) {
+      emailConfig = {
         to: emailsTo,
         cc: emailsCc,
         bcc: emailsBcc,
-        from: fromBofy,
-        subject: `${this._getEnv(configMessage.environment)}${subject}`,
+        from: fromBody,
+        subject: subject,
         text: text,
         html: htmlBody,
-      })
+      };
+    } else {
+      const newHtmlBody = `
+      <p>Subject: ${subject}</p>
+      <p>To: ${emailsTo.join(', ')}</p>
+      <p>CC: ${emailsCc.join(', ')}</p>
+      <p>BCC: ${emailsBcc.join(', ')}</p>
+      ========================================================
+      ${htmlBody}
+      `;
+
+      emailConfig = {
+        to: env.MS_DEFAULT_EMAIL,
+        from: fromBody,
+        subject: `${this._getEnv(configMessage.environment)?.toUpperCase()} - ${subject}`,
+        text: text,
+        html: newHtmlBody,
+      };
+    }
+
+    return this.transporter
+      .sendMail(emailConfig)
       .then((res) => {
         this.customLogger.emailStatus(configMessage.sender, configMessage);
         return ResponseUtils.format({
