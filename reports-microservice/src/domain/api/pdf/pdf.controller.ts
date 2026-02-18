@@ -1,5 +1,6 @@
 import { Body, Controller, Post, UseInterceptors } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import { HttpStatus } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { PdfService } from './pdf.service';
 import { CreatePdfDto } from './dto/create-pdf.dto';
@@ -8,6 +9,7 @@ import { PdfUrlResponseDto } from './dto/pdf-url-response.dto';
 import { SubscribeApplicationDto } from './dto/subscribe-application.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthInterceptor } from '../../shared/interceptors/microservice.intercetor';
+import { ResponseUtils } from '../../utils/response.utils';
 
 @ApiTags('Generate PDF')
 @Controller()
@@ -32,11 +34,13 @@ export class PdfController {
     description: 'Invalid input (template, URL, or validation error)',
   })
   @ApiResponse({ status: 500, description: 'Conversion or storage failure' })
-  async generatePdfFromUrlHttp(
-    @Body() dto: CreatePdfUrlDto,
-  ): Promise<PdfUrlResponseDto> {
+  async generatePdfFromUrlHttp(@Body() dto: CreatePdfUrlDto) {
     const url = await this.pdfService.generatePdfFromUrl(dto);
-    return { url };
+    return ResponseUtils.format({
+      description: 'PDF generated and uploaded successfully',
+      status: HttpStatus.OK,
+      data: { url },
+    });
   }
 
   @MessagePattern('pdf.generate')

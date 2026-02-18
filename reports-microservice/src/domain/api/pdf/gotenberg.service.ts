@@ -16,6 +16,8 @@ export class GotenbergService {
   private readonly marginLeft: string;
   private readonly marginRight: string;
   private readonly printBackground: string;
+  private readonly apiSecret: string;
+  private readonly adminSecret: string;
 
   constructor(private readonly configService: ConfigService) {
     this.baseUrl =
@@ -38,6 +40,8 @@ export class GotenbergService {
       this.configService.get<string>('GOTENBERG_MARGIN_RIGHT') ?? '0';
     this.printBackground =
       this.configService.get<string>('GOTENBERG_PRINT_BACKGROUND') ?? 'true';
+    this.apiSecret = this.configService.get<string>('API_SECRET') ?? '';
+    this.adminSecret = this.configService.get<string>('ADMIN_SECRET') ?? '';
   }
 
   async convertUrlToPdf(url: string): Promise<Buffer> {
@@ -118,7 +122,7 @@ export class GotenbergService {
 
     const response = await fetch(astroEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-secret': this.apiSecret},
       body: JSON.stringify(data),
       signal: controller.signal,
     });
