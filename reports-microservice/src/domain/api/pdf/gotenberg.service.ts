@@ -72,6 +72,7 @@ export class GotenbergService {
     form.append('marginLeft', this.marginLeft);
     form.append('marginRight', this.marginRight);
     form.append('printBackground', this.printBackground);
+    form.append('waitDelay', '1s');
 
     this._logger.debug(`Sending URL to Gotenberg: ${url}`);
 
