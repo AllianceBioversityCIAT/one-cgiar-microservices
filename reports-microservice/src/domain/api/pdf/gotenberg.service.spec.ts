@@ -33,7 +33,9 @@ describe('GotenbergService', () => {
 
   describe('getTemplateBaseUrl', () => {
     it('should return template base URL without trailing slash', () => {
-      expect(service.getTemplateBaseUrl()).toBe('https://templates.example.com');
+      expect(service.getTemplateBaseUrl()).toBe(
+        'https://templates.example.com',
+      );
     });
   });
 
@@ -82,8 +84,7 @@ describe('GotenbergService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         headers: new Headers({ 'content-type': 'text/html' }),
-        arrayBuffer: () =>
-          Promise.resolve(new ArrayBuffer(4)),
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
       });
 
       await expect(
@@ -117,10 +118,15 @@ describe('GotenbergService', () => {
         paperHeight: '1100px',
       });
 
-      const form = (mockFetch.mock.calls[0][1] as { body: FormData }).body as FormData;
+      const form = (mockFetch.mock.calls[0][1] as { body: FormData })
+        .body as FormData;
       const entries = Array.from((form as any).entries());
-      expect(entries.find((e: [string, string]) => e[0] === 'paperWidth')).toEqual(['paperWidth', '700px']);
-      expect(entries.find((e: [string, string]) => e[0] === 'paperHeight')).toEqual(['paperHeight', '1100px']);
+      expect(
+        entries.find((e: [string, string]) => e[0] === 'paperWidth'),
+      ).toEqual(['paperWidth', '700px']);
+      expect(
+        entries.find((e: [string, string]) => e[0] === 'paperHeight'),
+      ).toEqual(['paperHeight', '1100px']);
     });
   });
 
@@ -155,9 +161,9 @@ describe('GotenbergService', () => {
         text: () => Promise.resolve('Bad request'),
       });
 
-      await expect(
-        service.fetchAstroData({}),
-      ).rejects.toThrow('Astro API failed');
+      await expect(service.fetchAstroData({})).rejects.toThrow(
+        'Astro API failed',
+      );
     });
 
     it('should throw when response is not a JSON object', async () => {

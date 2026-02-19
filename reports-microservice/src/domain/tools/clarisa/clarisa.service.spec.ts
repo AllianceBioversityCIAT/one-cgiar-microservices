@@ -60,9 +60,7 @@ describe('ClarisaService', () => {
     it('should return invalid when API returns non-2xx', async () => {
       (httpService.post as jest.Mock)
         .mockReturnValueOnce(of({ data: { access_token: validToken } }))
-        .mockReturnValueOnce(
-          of({ data: { status: 401, response: null } }),
-        );
+        .mockReturnValueOnce(of({ data: { status: 401, response: null } }));
 
       const result = await service.authorization('user', 'secret');
 
@@ -86,8 +84,18 @@ describe('ClarisaService', () => {
       const mis: MisConfigDto = { acronym: 'APP', environment: 'dev' };
       const responseData = {
         client_id: 'c',
-        sender_mis: { acronym: 'APP', environment: 'dev', code: 1, name: 'App' },
-        receiver_mis: { acronym: 'MIS', environment: 'dev', code: 2, name: 'Mis' },
+        sender_mis: {
+          acronym: 'APP',
+          environment: 'dev',
+          code: 1,
+          name: 'App',
+        },
+        receiver_mis: {
+          acronym: 'MIS',
+          environment: 'dev',
+          code: 2,
+          name: 'Mis',
+        },
         secret: 's',
       };
       (httpService.post as jest.Mock)

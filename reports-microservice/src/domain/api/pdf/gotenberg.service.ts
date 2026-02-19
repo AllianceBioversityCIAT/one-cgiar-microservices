@@ -54,8 +54,10 @@ export class GotenbergService {
       ? this.baseUrl
       : `${this.baseUrl}/forms/chromium/convert/url`;
 
-    const paperWidth =
-      this.resolveDimension(overrides?.paperWidth, this.paperWidth);
+    const paperWidth = this.resolveDimension(
+      overrides?.paperWidth,
+      this.paperWidth,
+    );
     const paperHeight = this.resolveDimension(
       overrides?.paperHeight,
       this.paperHeight,
@@ -86,9 +88,7 @@ export class GotenbergService {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      this._logger.error(
-        `Gotenberg returned ${response.status}: ${errorBody}`,
-      );
+      this._logger.error(`Gotenberg returned ${response.status}: ${errorBody}`);
       throw new Error(
         `Gotenberg conversion failed: ${response.status} ${errorBody}`,
       );
@@ -132,7 +132,10 @@ export class GotenbergService {
 
     const response = await fetch(astroEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-secret': this.apiSecret },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-secret': this.apiSecret,
+      },
       body: JSON.stringify(data),
       signal: controller.signal,
     });
@@ -141,12 +144,8 @@ export class GotenbergService {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      this._logger.error(
-        `Astro API returned ${response.status}: ${errorBody}`,
-      );
-      throw new Error(
-        `Astro API failed: ${response.status} ${errorBody}`,
-      );
+      this._logger.error(`Astro API returned ${response.status}: ${errorBody}`);
+      throw new Error(`Astro API failed: ${response.status} ${errorBody}`);
     }
 
     const json = await response.json();
