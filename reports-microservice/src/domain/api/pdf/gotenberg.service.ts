@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 const MAX_URL_LENGTH = 2048;
 const PDF_CONTENT_TYPE = 'application/pdf';
 
+type AstroDataRecord = Record<string, string | number | boolean>;
+
 @Injectable()
 export class GotenbergService {
   private readonly _logger = new Logger(GotenbergService.name);
@@ -44,15 +46,25 @@ export class GotenbergService {
     this.adminSecret = this.configService.get<string>('ADMIN_SECRET') ?? '';
   }
 
-  async convertUrlToPdf(url: string): Promise<Buffer> {
+  async convertUrlToPdf(
+    url: string,
+    overrides?: { paperWidth?: string; paperHeight?: string },
+  ): Promise<Buffer> {
     const endpoint = this.baseUrl.endsWith('/forms/chromium/convert/url')
       ? this.baseUrl
       : `${this.baseUrl}/forms/chromium/convert/url`;
 
+    const paperWidth =
+      this.resolveDimension(overrides?.paperWidth, this.paperWidth);
+    const paperHeight = this.resolveDimension(
+      overrides?.paperHeight,
+      this.paperHeight,
+    );
+
     const form = new FormData();
     form.append('url', url);
-    form.append('paperWidth', this.paperWidth);
-    form.append('paperHeight', this.paperHeight);
+    form.append('paperWidth', paperWidth);
+    form.append('paperHeight', paperHeight);
     form.append('marginTop', this.marginTop);
     form.append('marginBottom', this.marginBottom);
     form.append('marginLeft', this.marginLeft);
@@ -111,9 +123,7 @@ export class GotenbergService {
    * Calls the Astro server /api/data endpoint with user data.
    * Returns the response object which becomes the query params for the Gotenberg URL.
    */
-  async fetchAstroData(
-    data: Record<string, string | number | boolean>,
-  ): Promise<Record<string, string | number | boolean>> {
+  async fetchAstroData(data: AstroDataRecord): Promise<AstroDataRecord> {
     const astroEndpoint = `${this.templateBaseUrl}/api/data`;
     this._logger.debug(`Fetching Astro data from: ${astroEndpoint}`);
 
@@ -122,7 +132,7 @@ export class GotenbergService {
 
     const response = await fetch(astroEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-secret': this.apiSecret},
+      headers: { 'Content-Type': 'application/json', 'x-api-secret': this.apiSecret },
       body: JSON.stringify(data),
       signal: controller.signal,
     });
@@ -143,7 +153,20 @@ export class GotenbergService {
     if (typeof json !== 'object' || json === null || Array.isArray(json)) {
       throw new Error('Astro API must return a JSON object');
     }
-    return json as Record<string, string | number | boolean>;
+    return json as AstroDataRecord;
+  }
+
+  /**
+   * Uses value if it is a non-empty string, otherwise falls back to envDefault.
+   */
+  private resolveDimension(
+    value: string | number | boolean | undefined | null,
+    envDefault: string,
+  ): string {
+    if (value === undefined || value === null) return envDefault;
+    const s = typeof value === 'string' ? value : String(value);
+    const trimmed = s.trim();
+    return trimmed === '' ? envDefault : trimmed;
   }
 
   static getMaxUrlLength(): number {
