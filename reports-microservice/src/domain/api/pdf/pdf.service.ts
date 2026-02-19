@@ -160,6 +160,24 @@ export class PdfService {
     }
   }
 
+  /**
+   * Prefer root-level value, then data value; return undefined if both missing or empty so Gotenberg uses env.
+   */
+  private resolvePaperDimension(
+    rootValue: string | undefined,
+    dataValue: string | number | boolean | undefined,
+  ): string | undefined {
+    if (rootValue !== undefined && rootValue !== null) {
+      const s = typeof rootValue === 'string' ? rootValue : String(rootValue);
+      if (s.trim() !== '') return s.trim();
+    }
+    if (dataValue !== undefined && dataValue !== null) {
+      const s = typeof dataValue === 'string' ? dataValue : String(dataValue);
+      if (s.trim() !== '') return s.trim();
+    }
+    return undefined;
+  }
+
   buildPdfUrl(
     templateBaseUrl: string,
     templateName: string,
@@ -225,12 +243,21 @@ export class PdfService {
       );
     }
 
+    const paperWidth = this.resolvePaperDimension(dto.paperWidth, data?.paperWidth);
+    const paperHeight = this.resolvePaperDimension(
+      dto.paperHeight,
+      data?.paperHeight,
+    );
+
     this._logger.debug(
       `generatePdfFromUrl request: templateName=${templateName} bucketName=${bucketName} fileName=${fileName}`,
     );
 
     try {
-      const pdfBuffer = await this._gotenbergService.convertUrlToPdf(url);
+      const pdfBuffer = await this._gotenbergService.convertUrlToPdf(url, {
+        paperWidth,
+        paperHeight,
+      });
 
       await this.s3Client.send(
         new PutObjectCommand({

@@ -102,6 +102,26 @@ describe('GotenbergService', () => {
         service.convertUrlToPdf('https://example.com'),
       ).rejects.toThrow('empty PDF');
     });
+
+    it('should use paper overrides when provided, else env defaults', async () => {
+      const pdfBytes = new Uint8Array([1, 2, 3]);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/pdf' }),
+        arrayBuffer: () =>
+          Promise.resolve(pdfBytes.buffer.slice(0, pdfBytes.length)),
+      });
+
+      await service.convertUrlToPdf('https://example.com', {
+        paperWidth: '700px',
+        paperHeight: '1100px',
+      });
+
+      const form = (mockFetch.mock.calls[0][1] as { body: FormData }).body as FormData;
+      const entries = Array.from((form as any).entries());
+      expect(entries.find((e: [string, string]) => e[0] === 'paperWidth')).toEqual(['paperWidth', '700px']);
+      expect(entries.find((e: [string, string]) => e[0] === 'paperHeight')).toEqual(['paperHeight', '1100px']);
+    });
   });
 
   describe('fetchAstroData', () => {
