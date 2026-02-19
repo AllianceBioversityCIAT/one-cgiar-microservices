@@ -63,8 +63,12 @@ export class GotenbergService {
       this.paperHeight,
     );
 
+    const w = this.dimensionToQueryValue(paperWidth);
+    const h = this.dimensionToQueryValue(paperHeight);
+    const urlWithParams = `${url}${url.includes('?') ? '&' : '?'}test=true&paperWidth=${w}&paperHeight=${h}`;
+
     const form = new FormData();
-    form.append('url', url);
+    form.append('url', urlWithParams);
     form.append('paperWidth', paperWidth);
     form.append('paperHeight', paperHeight);
     form.append('marginTop', this.marginTop);
@@ -74,7 +78,7 @@ export class GotenbergService {
     form.append('printBackground', this.printBackground);
     form.append('waitDelay', '1s');
 
-    this._logger.debug(`Sending URL to Gotenberg: ${url}`);
+    this._logger.debug(`Sending URL to Gotenberg: ${urlWithParams}`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -154,6 +158,14 @@ export class GotenbergService {
       throw new Error('Astro API must return a JSON object');
     }
     return json as AstroDataRecord;
+  }
+
+  /**
+   * Extracts numeric part from dimension string for URL query (e.g. "600px" -> "600").
+   */
+  private dimensionToQueryValue(dimension: string): string {
+    const match = /[\d.]+/.exec(dimension);
+    return match ? match[0] : dimension;
   }
 
   /**
