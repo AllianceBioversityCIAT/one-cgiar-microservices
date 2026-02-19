@@ -61,7 +61,9 @@ describe('PdfService', () => {
     } as unknown as jest.Mocked<NotificationsService>;
 
     gotenbergService = {
-      getTemplateBaseUrl: jest.fn().mockReturnValue('https://templates.example.com'),
+      getTemplateBaseUrl: jest
+        .fn()
+        .mockReturnValue('https://templates.example.com'),
       fetchAstroData: jest.fn().mockResolvedValue({ id: 1 }),
       convertUrlToPdf: jest.fn().mockResolvedValue(Buffer.from('pdf')),
     } as unknown as jest.Mocked<GotenbergService>;
@@ -144,9 +146,7 @@ describe('PdfService', () => {
         expect.any(String),
         'Low',
       );
-      expect(result).toBe(
-        'https://test-bucket.s3.amazonaws.com/test.pdf',
-      );
+      expect(result).toBe('https://test-bucket.s3.amazonaws.com/test.pdf');
     });
 
     it('should apply font style when font is provided', async () => {
@@ -233,11 +233,10 @@ describe('PdfService', () => {
 
   describe('buildPdfUrl', () => {
     it('should build URL with base, template name and query params', () => {
-      const url = service.buildPdfUrl(
-        'https://base.com/',
-        'template-1',
-        { a: 1, b: 'two' },
-      );
+      const url = service.buildPdfUrl('https://base.com/', 'template-1', {
+        a: 1,
+        b: 'two',
+      });
       expect(url).toContain('https://base.com');
       expect(url).toContain('template-1');
       expect(url).toContain('a=1');
@@ -353,9 +352,9 @@ describe('PdfService', () => {
         new Error('Gotenberg failed'),
       );
 
-      await expect(
-        service.generatePdfFromUrl(validUrlDto),
-      ).rejects.toThrow('Gotenberg failed');
+      await expect(service.generatePdfFromUrl(validUrlDto)).rejects.toThrow(
+        'Gotenberg failed',
+      );
       expect(notificationsService.sendSlackNotification).toHaveBeenCalledWith(
         ':report:',
         'Reports Microservice - PDF',

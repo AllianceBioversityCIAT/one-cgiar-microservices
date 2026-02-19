@@ -71,7 +71,9 @@ describe('PdfController', () => {
         bucketName: 'b',
         fileName: 'f.pdf',
       };
-      pdfService.generatePdf.mockResolvedValueOnce('https://b.s3.amazonaws.com/f.pdf');
+      pdfService.generatePdf.mockResolvedValueOnce(
+        'https://b.s3.amazonaws.com/f.pdf',
+      );
 
       const result = await controller.generatePdfNode(dto);
 
@@ -81,7 +83,7 @@ describe('PdfController', () => {
   });
 
   describe('generatePdfFromUrlNode', () => {
-    it('should call service.generatePdfFromUrl and return { url }', async () => {
+    it('should call service.generatePdfFromUrl and return formatted response', async () => {
       const dto: CreatePdfUrlDto = {
         data: {},
         templateName: '001',
@@ -94,7 +96,13 @@ describe('PdfController', () => {
       const result = await controller.generatePdfFromUrlNode(dto);
 
       expect(pdfService.generatePdfFromUrl).toHaveBeenCalledWith(dto);
-      expect(result).toEqual({ url: fileUrl });
+      expect(result).toEqual(
+        ResponseUtils.format({
+          description: 'PDF generated and uploaded successfully',
+          status: HttpStatus.OK,
+          data: { url: fileUrl },
+        }),
+      );
     });
   });
 

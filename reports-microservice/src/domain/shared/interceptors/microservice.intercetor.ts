@@ -7,7 +7,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { ClarisaService } from '../../tools/clarisa/clarisa.service';
 import { AuthorizationDto } from '../global-dto/auth.dto';
 import { ResClarisaValidateConectioDto } from '../../tools/clarisa/dto/clarisa-create-conection.dto';
@@ -62,6 +61,6 @@ export class AuthInterceptor implements NestInterceptor {
     this._logger.log(
       `The Client ${newData.user.sender.sender_mis.name} in the ${newData.user.sender.sender_mis.environment} environment is authorized to access the Reports Microservice`,
     );
-    return next.handle().pipe(map(() => newData));
+    return next.handle();
   }
 }

@@ -232,8 +232,7 @@ export class PdfService {
     }
 
     // 1. Call Astro /api/data with user data; response becomes query params for Gotenberg URL
-    const astroResponse =
-      await this._gotenbergService.fetchAstroData(data);
+    const astroResponse = await this._gotenbergService.fetchAstroData(data);
 
     // 2. Build URL: {baseUrl}/{templateName}?{astroResponse as query params}
     const url = this.buildPdfUrl(templateBaseUrl, templateName, astroResponse);
@@ -243,7 +242,10 @@ export class PdfService {
       );
     }
 
-    const paperWidth = this.resolvePaperDimension(dto.paperWidth, data?.paperWidth);
+    const paperWidth = this.resolvePaperDimension(
+      dto.paperWidth,
+      data?.paperWidth,
+    );
     const paperHeight = this.resolvePaperDimension(
       dto.paperHeight,
       data?.paperHeight,

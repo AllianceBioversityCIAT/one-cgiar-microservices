@@ -33,6 +33,7 @@ describe('ResponseInterceptor', () => {
     };
 
     mockContext = {
+      getType: jest.fn().mockReturnValue('http'),
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue(mockRequest),
         getResponse: jest.fn().mockReturnValue(mockResponse),
@@ -64,5 +65,24 @@ describe('ResponseInterceptor', () => {
     expect(loggerSpy).toHaveBeenCalledWith(
       '[GET]: /test-endpoint status: 200 - By 127.0.0.1',
     );
+  });
+
+  it('should pass through response unchanged for RPC context (e.g. queue messages)', async () => {
+    const rpcContext = {
+      getType: jest.fn().mockReturnValue('rpc'),
+    } as unknown as ExecutionContext;
+    const payload = {
+      description: 'PDF generated and uploaded successfully',
+      status: HttpStatus.OK,
+      data: { url: 'https://bucket.s3.amazonaws.com/out.pdf' },
+    };
+    mockNext.handle.mockReturnValue(of(payload));
+
+    const result = await interceptor
+      .intercept(rpcContext, mockNext)
+      .toPromise();
+
+    expect(rpcContext.getType).toHaveBeenCalled();
+    expect(result).toEqual(payload);
   });
 });
