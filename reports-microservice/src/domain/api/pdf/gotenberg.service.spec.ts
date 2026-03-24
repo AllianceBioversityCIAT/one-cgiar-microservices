@@ -64,6 +64,21 @@ describe('GotenbergService', () => {
           body: expect.any(FormData),
         }),
       );
+      const form = (mockFetch.mock.calls[0][1] as { body: FormData })
+        .body as FormData;
+      const entries = Array.from((form as any).entries()) as [string, string][];
+      const urlField = entries.find((e) => e[0] === 'url')?.[1];
+      expect(urlField).toBe(
+        'https://example.com/page?test=true&paperWidth=600&paperHeight=1000',
+      );
+      expect(entries.find((e) => e[0] === 'waitForNetworkIdle')).toEqual([
+        'waitForNetworkIdle',
+        'true',
+      ]);
+      expect(entries.find((e) => e[0] === 'waitDelay')).toEqual([
+        'waitDelay',
+        '2s',
+      ]);
       expect(Buffer.isBuffer(result)).toBe(true);
       expect(result.length).toBe(5);
     });
@@ -104,7 +119,7 @@ describe('GotenbergService', () => {
       ).rejects.toThrow('empty PDF');
     });
 
-    it('should use paper overrides when provided, else env defaults', async () => {
+    it('should apply paperWidth override; paperHeight uses env; URL query uses fixed height 1000', async () => {
       const pdfBytes = new Uint8Array([1, 2, 3]);
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -120,13 +135,19 @@ describe('GotenbergService', () => {
 
       const form = (mockFetch.mock.calls[0][1] as { body: FormData })
         .body as FormData;
-      const entries = Array.from((form as any).entries());
-      expect(
-        entries.find((e: [string, string]) => e[0] === 'paperWidth'),
-      ).toEqual(['paperWidth', '700px']);
-      expect(
-        entries.find((e: [string, string]) => e[0] === 'paperHeight'),
-      ).toEqual(['paperHeight', '1100px']);
+      const entries = Array.from((form as any).entries()) as [string, string][];
+      expect(entries.find((e) => e[0] === 'paperWidth')).toEqual([
+        'paperWidth',
+        '700px',
+      ]);
+      expect(entries.find((e) => e[0] === 'paperHeight')).toEqual([
+        'paperHeight',
+        '1000px',
+      ]);
+      const urlField = entries.find((e) => e[0] === 'url')?.[1];
+      expect(urlField).toBe(
+        'https://example.com?test=true&paperWidth=700&paperHeight=1000',
+      );
     });
   });
 
