@@ -58,10 +58,7 @@ export class GotenbergService {
       overrides?.paperWidth,
       this.paperWidth,
     );
-    const paperHeight = this.resolveDimension(
-      overrides?.paperHeight,
-      this.paperHeight,
-    );
+    const paperHeight = this.paperHeight;
 
     const w = this.dimensionToQueryValue(paperWidth);
     const h = this.dimensionToQueryValue(paperHeight);
