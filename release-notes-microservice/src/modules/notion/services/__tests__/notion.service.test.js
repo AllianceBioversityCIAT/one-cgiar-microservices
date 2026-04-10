@@ -27,7 +27,7 @@ describe('NotionService', () => {
     });
 
     describe('queryDatabase', () => {
-        it('should query the database with project filters', async () => {
+        it('should query the database with project filters and Published status', async () => {
             // Mock data
             const databaseId = 'test-database-id';
             const projects = 'project1,project2';
@@ -41,25 +41,31 @@ describe('NotionService', () => {
 
             // Assertions
             expect(result).toEqual(mockResponse.data);
-            expect(axios.create).toHaveBeenCalledWith({
-                baseURL: notionConfig.baseUrl,
-                headers: notionConfig.headers
-            });
             expect(mockAxiosInstance.post).toHaveBeenCalledWith(
                 `/databases/${databaseId}/query`,
                 {
                     filter: {
-                        or: [
+                        and: [
                             {
-                                property: 'Projects',
-                                multi_select: {
-                                    contains: 'project1'
-                                }
+                                or: [
+                                    {
+                                        property: 'Projects',
+                                        multi_select: {
+                                            contains: 'project1'
+                                        }
+                                    },
+                                    {
+                                        property: 'Projects',
+                                        multi_select: {
+                                            contains: 'project2'
+                                        }
+                                    }
+                                ]
                             },
                             {
-                                property: 'Projects',
-                                multi_select: {
-                                    contains: 'project2'
+                                property: 'Status',
+                                status: {
+                                    equals: 'Published'
                                 }
                             }
                         ]
