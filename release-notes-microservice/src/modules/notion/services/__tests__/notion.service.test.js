@@ -27,7 +27,7 @@ describe('NotionService', () => {
     });
 
     describe('queryDatabase', () => {
-        it('should query the database with project filters', async () => {
+        it('should query the database excluding Draft by default when no status is provided', async () => {
             // Mock data
             const databaseId = 'test-database-id';
             const projects = 'project1,project2';
@@ -36,7 +36,7 @@ describe('NotionService', () => {
             // Mock axios post method
             mockAxiosInstance.post.mockResolvedValue(mockResponse);
 
-            // Call the method
+            // Call the method without status
             const result = await notionService.queryDatabase(databaseId, projects);
 
             // Assertions
@@ -49,17 +49,69 @@ describe('NotionService', () => {
                 `/databases/${databaseId}/query`,
                 {
                     filter: {
-                        or: [
+                        and: [
                             {
-                                property: 'Projects',
-                                multi_select: {
-                                    contains: 'project1'
-                                }
+                                or: [
+                                    {
+                                        property: 'Projects',
+                                        multi_select: {
+                                            contains: 'project1'
+                                        }
+                                    },
+                                    {
+                                        property: 'Projects',
+                                        multi_select: {
+                                            contains: 'project2'
+                                        }
+                                    }
+                                ]
                             },
                             {
-                                property: 'Projects',
-                                multi_select: {
-                                    contains: 'project2'
+                                property: 'Status',
+                                select: {
+                                    does_not_equal: 'Draft'
+                                }
+                            }
+                        ]
+                    }
+                }
+            );
+        });
+
+        it('should query the database filtering by a specific status when provided', async () => {
+            // Mock data
+            const databaseId = 'test-database-id';
+            const projects = 'project1';
+            const status = 'Draft';
+            const mockResponse = { data: { results: [] } };
+
+            // Mock axios post method
+            mockAxiosInstance.post.mockResolvedValue(mockResponse);
+
+            // Call the method with status
+            const result = await notionService.queryDatabase(databaseId, projects, status);
+
+            // Assertions
+            expect(result).toEqual(mockResponse.data);
+            expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+                `/databases/${databaseId}/query`,
+                {
+                    filter: {
+                        and: [
+                            {
+                                or: [
+                                    {
+                                        property: 'Projects',
+                                        multi_select: {
+                                            contains: 'project1'
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                property: 'Status',
+                                select: {
+                                    equals: 'Draft'
                                 }
                             }
                         ]

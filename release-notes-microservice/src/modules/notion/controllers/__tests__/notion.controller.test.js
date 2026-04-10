@@ -48,7 +48,7 @@ describe('NotionController', () => {
             expect(mockRes.json).toHaveBeenCalledWith({ error: 'Projects query parameter is required' });
         });
 
-        it('should call notionService.queryDatabase and return the result', async () => {
+        it('should call notionService.queryDatabase and return the result without status', async () => {
             // Mock data
             mockReq.params.databaseId = 'test-database-id';
             mockReq.query.projects = 'project1,project2';
@@ -61,7 +61,25 @@ describe('NotionController', () => {
             await notionController.queryDatabase(mockReq, mockRes);
 
             // Assertions
-            expect(mockNotionService.queryDatabase).toHaveBeenCalledWith('test-database-id', 'project1,project2');
+            expect(mockNotionService.queryDatabase).toHaveBeenCalledWith('test-database-id', 'project1,project2', undefined);
+            expect(mockRes.json).toHaveBeenCalledWith(mockData);
+        });
+
+        it('should pass status query param to notionService.queryDatabase', async () => {
+            // Mock data
+            mockReq.params.databaseId = 'test-database-id';
+            mockReq.query.projects = 'project1';
+            mockReq.query.status = 'Draft';
+            const mockData = { results: [] };
+
+            // Mock the service method
+            mockNotionService.queryDatabase.mockResolvedValue(mockData);
+
+            // Call the method
+            await notionController.queryDatabase(mockReq, mockRes);
+
+            // Assertions
+            expect(mockNotionService.queryDatabase).toHaveBeenCalledWith('test-database-id', 'project1', 'Draft');
             expect(mockRes.json).toHaveBeenCalledWith(mockData);
         });
 
