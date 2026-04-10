@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Endpoint Documentation</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app" class="container">
+      <h1>Version 1.1</h1>
+      <h2>Endpoint Documentation - /Sockets</h2>
+
+      <p class="intro">
+        Below is the documentation for the developed endpoints under the base route
+        <code>/Sockets</code>. This information will be used to generate an HTML that presents the
+        details in a visually appealing manner.
+      </p>
+
+      <div v-for="endpoint in endpoints" :key="endpoint.name" class="endpoint">
+        <h3 class="endpoint-title">{{ endpoint.name }}</h3>
+        <p><strong>Method:</strong> {{ endpoint.method }}</p>
+        <p><strong>Description:</strong> {{ endpoint.description }}</p>
+
+        <p><strong>Parameters:</strong></p>
+        <ul class="parameters-list">
+          <li v-for="param in endpoint.parameters" :key="param">{{ param }}</li>
+        </ul>
+
+        <p><strong>Response:</strong></p>
+        <ul class="response-list">
+          <li v-for="response in endpoint.response" :key="response">{{ response }}</li>
+        </ul>
+
+        <p><strong>Usage:</strong> {{ endpoint.usage }}</p>
+      </div>
+
+      <!-- Nueva sección para la instalación de Angular -->
+      <div class="installation-section">
+        <h2>Installation Guide for Angular 18 with ngx-socket-io</h2>
+        <p>
+          This section will guide you through the installation of the
+          <code>ngx-socket-io</code> library in an Angular 18 project. This is essential for
+          integrating real-time communication in your application using WebSockets.
+        </p>
+        <h3>Step 1: Install ngx-socket-io</h3>
+        <p>
+          Run the following command in your Angular project to install
+          <code>ngx-socket-io</code>:
+        </p>
+        <pre><code>npm install ngx-socket-io</code></pre>
+
+        <h3>Step 2: Configure the Socket</h3>
+        <p>
+          After installation, you need to configure the SocketIoModule in your Angular application.
+          Below is an example configuration in
+          <code>app.module.ts</code>:
+        </p>
+        <pre><code>
+import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import { provideRouter, withViewTransitions } from '@angular/router';
+
+import { routes } from './app.routes';
+import { provideHttpClient } from '@angular/common/http';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
+
+const config: SocketIoConfig = { url: 'http://localhost:3005', options: {} };
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes, withViewTransitions()),
+    provideHttpClient(),
+    importProvidersFrom(BrowserAnimationsModule, SocketIoModule.forRoot(config))
+  ]
+};
+        </code></pre>
+
+        <h3>Step 3: Refer to the WebSocket Service</h3>
+        <p>
+          You can refer to the following
+          <a
+            href="https://github.com/AllianceBioversityCIAT/alliance-research-indicators-main/blob/dev-cognito-front/client/research-indicators/src/app/shared/sockets/websocket.service.ts"
+            target="_blank"
+            >GitHub file</a
+          >
+          for the complete implementation of the WebSocket service that handles the communication
+          logic.
+        </p>
+      </div>
+    </div>
+
+    <script src="./code.js"></script>
+
+    <script>
+      const { createApp, ref } = Vue;
+
+      createApp({
+        setup() {
+          const endpoints = ref([
+            {
+              name: '/socket/alert',
+              method: '',
+              description:
+                'This endpoint allows sending a global alert to all users connected to the platform. The alert is emitted in real-time via socket.io, and its content is defined by the request body.',
+              parameters: [
+                'body (object): Contains the information that will be sent as an alert. The content is dynamic and can vary depending on the developer’s logic.'
+              ],
+              response: [
+                'ok (boolean): Indicates if the operation was successful.',
+                'body (object): Returns the same object sent in the request for confirmation.'
+              ],
+              usage:
+                'This endpoint is ideal for sending urgent or important alerts that need to be seen by all users, regardless of their role or session status.'
+            },
+            {
+              name: '/socket/notification',
+              method: '',
+              description:
+                'This endpoint allows sending specific notifications to one or more users connected to the platform. Notifications are sent in real-time using socket.io, and the recipient is determined by the user’s ID.',
+              parameters: [
+                'userIds (array of numbers): Contains the IDs of the users to whom the notification will be sent.',
+                'notification (object): Contains the notification information. The content of this object is dynamic and can vary depending on the developer’s logic.'
+              ],
+              response: [
+                'ok (boolean): Indicates if the operation was successful.',
+                'notification (object): Returns the same object sent in the request for confirmation.'
+              ],
+              usage:
+                'This endpoint is useful for sending personalized notifications to specific users, for example, when a result is submitted, closed, or modified. The flexibility of the notification content allows adaptation to different scenarios.'
+            },
+            {
+              name: '/socket/users',
+              method: '',
+              description:
+                'This endpoint allows retrieving a list of all users currently connected to the platform. The users are listed in real-time, providing insights into who is active on the platform at any given moment.',
+              parameters: ['No parameters required.'],
+              response: [
+                'users (array of objects): Returns an array with details of each connected user, including their ID and name.'
+              ],
+              usage:
+                'This endpoint is useful for obtaining a real-time overview of connected users, which can be essential for decision-making, such as performing deployments or monitoring platform activity.'
+            }
+          ]);
+
+          return {
+            endpoints
+          };
+        }
+      }).mount('#app');
+    </script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+services:
+  web-sockets:
+    build: .
+    ports:
+      - '3005:3005'
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    command: npm start

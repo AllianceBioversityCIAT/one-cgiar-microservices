@@ -39,7 +39,7 @@ export class PdfService {
 
   async generatePdf(createPdfDto: CreatePdfDto) {
     try {
-      const { data, templateData, options, fileName, bucketName } =
+      const { data, templateData, options, fileName, bucketName, font } =
         createPdfDto;
 
       if (typeof data !== 'object' || data === null || Array.isArray(data)) {
@@ -54,8 +54,14 @@ export class PdfService {
         throw new Error(errorMessage);
       }
 
+      const fontStyle = font
+        ? `<style>body { font-family: ${font}; }</style>`
+        : '';
+
+      this._logger.debug(`Font style applied: ${fontStyle} in ${fileName}`);
+
       const document = {
-        html: templateData,
+        html: `${fontStyle}${templateData}`,
         data: data,
         type: 'stream',
       };

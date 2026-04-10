@@ -17,4 +17,11 @@ export class CreatePdfDto {
 
   @ApiProperty({ description: 'The file name to store the file' })
   public fileName: string;
+
+  @ApiProperty({
+    description:
+      'The font to be used in the PDF (e.g., Arial, Times New Roman)',
+    required: false,
+  })
+  public font?: string;
 }

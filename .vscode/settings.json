@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "alliancebioversityciat",
+        "projectKey": "AllianceBioversityCIAT_one-cgiar-microservices"
+    }
+}

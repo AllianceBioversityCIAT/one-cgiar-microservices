@@ -12,7 +12,7 @@ import { ResponseClarisaDto } from '../../shared/global-dto/response-clarisa.dto
 
 @Injectable()
 export class ClarisaService {
-  private connection: Clarisa;
+  private readonly connection: Clarisa;
   private readonly misSettings: MisConfigDto = {
     acronym: env.CLARISA_MIS,
     environment: env.CLARISA_MIS_ENV,

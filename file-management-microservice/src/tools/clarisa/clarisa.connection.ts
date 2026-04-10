@@ -5,10 +5,10 @@ import { BadRequestException } from '@nestjs/common';
 import { decode } from 'jsonwebtoken';
 
 export class Clarisa {
-  private clarisaHost: string;
-  private authBody: ClarisaOptions;
+  private readonly clarisaHost: string;
+  private readonly authBody: ClarisaOptions;
   private token: string;
-  private http: HttpService;
+  private readonly http: HttpService;
   constructor(http: HttpService, config: ClarisaOptions) {
     this.clarisaHost = env.CLARISA_HOST + 'api/';
     this.authBody = {

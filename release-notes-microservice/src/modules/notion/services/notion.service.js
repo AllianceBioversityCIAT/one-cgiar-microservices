@@ -20,7 +20,15 @@ class NotionService {
 
             const filterBody = {
                 filter: {
-                    or: projectFilters
+                    and: [
+                        { or: projectFilters },
+                        {
+                            property: 'Status',
+                            status: {
+                                equals: 'Published'
+                            }
+                        }
+                    ]
                 }
             };
 
