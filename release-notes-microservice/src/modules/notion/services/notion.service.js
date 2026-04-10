@@ -9,7 +9,7 @@ class NotionService {
         });
     }
 
-    async queryDatabase(databaseId, projects) {
+    async queryDatabase(databaseId, projects, status) {
         try {
             const projectFilters = projects.split(',').map(project => ({
                 property: 'Projects',
@@ -18,9 +18,23 @@ class NotionService {
                 }
             }));
 
+            const filters = [{ or: projectFilters }];
+
+            if (status) {
+                filters.push({
+                    property: 'Status',
+                    select: { equals: status }
+                });
+            } else {
+                filters.push({
+                    property: 'Status',
+                    select: { does_not_equal: 'Draft' }
+                });
+            }
+
             const filterBody = {
                 filter: {
-                    or: projectFilters
+                    and: filters
                 }
             };
 

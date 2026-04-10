@@ -8,13 +8,13 @@ class NotionController {
     async queryDatabase(req, res) {
         try {
             const { databaseId } = req.params;
-            const { projects } = req.query;
+            const { projects, status } = req.query;
 
             if (!projects) {
                 return res.status(400).json({ error: 'Projects query parameter is required' });
             }
 
-            const data = await this.notionService.queryDatabase(databaseId, projects);
+            const data = await this.notionService.queryDatabase(databaseId, projects, status);
             res.json(data);
         } catch (error) {
             res.status(500).json({ error: error.message });
