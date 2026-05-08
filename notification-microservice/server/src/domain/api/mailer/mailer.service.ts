@@ -32,9 +32,11 @@ export class MailerService {
     configMessage: ConfigMessageDto,
   ): Promise<ServiceResponseDto<SMTPTransport.SentMessageInfo>> {
     const subject = configMessage?.emailBody.subject || '<No subject>';
-    const emailsTo: string = configMessage?.emailBody?.to;
-    const emailsCc: string = configMessage?.emailBody?.cc;
-    const emailsBcc: string = configMessage?.emailBody?.bcc;
+    const emailsTo: string[] = this.formatEmails(configMessage?.emailBody?.to);
+    const emailsCc: string[] = this.formatEmails(configMessage?.emailBody?.cc);
+    const emailsBcc: string[] = this.formatEmails(
+      configMessage?.emailBody?.bcc,
+    );
     const emailFrom: string =
       configMessage?.from?.email || `${env.MS_DEFAULT_EMAIL}`;
     const nameFrom: string = `${configMessage?.from?.name || 'One CGIAR Notification'} No reply`;
@@ -43,6 +45,7 @@ export class MailerService {
       address: emailFrom,
     };
     const text: string = configMessage?.emailBody?.message?.text || '';
+
     const validEmail = this.validMultiplesEmails(emailsTo, emailsCc);
     if (!validEmail)
       throw new BadRequestException('No valid emails found in "TO" or "CC"');
@@ -92,6 +95,13 @@ export class MailerService {
       });
   }
 
+  private formatEmails(emails: string | string[]): string[] {
+    if (!emails) return [];
+    return Array.isArray(emails)
+      ? emails
+      : emails.split(',').map((email) => email?.trim());
+  }
+
   async subscribeApplication(newApplication: SubscribeApplicationDto) {
     return this._clarisaService
       .createConnection({
@@ -107,16 +117,16 @@ export class MailerService {
       );
   }
 
-  private validMultiplesEmails(...emails: string[]): boolean {
+  private validMultiplesEmails(...emails: string[][]): boolean {
     return emails.reduce(
       (acc, email) => this.validateEmail(email) || acc,
       false,
     );
   }
 
-  private validateEmail(emails: string) {
+  private validateEmail(emails: string[]) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const emailList = emails?.split(',').map((email) => email.trim());
+    const emailList = emails?.map((email) => email.trim());
     if (!emailList?.length) return false;
     for (const email of emailList) {
       if (!emailRegex.test(email)) {
