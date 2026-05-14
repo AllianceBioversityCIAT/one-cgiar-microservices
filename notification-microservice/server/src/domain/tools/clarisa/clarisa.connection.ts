@@ -20,6 +20,16 @@ export class Clarisa {
 
   private async getToken(): Promise<string> {
     if (!this.token || !this.validToken(this.token)) {
+      console.log(`[Clarisa Auth] Attempting login to: ${env.MS_CLARISA_HOST}auth/login`);
+      console.log(`[Clarisa Auth] Login: ${this.authBody.login}`);
+      console.log(`[Clarisa Auth] Password Length: ${this.authBody.password?.length}`);
+      if (this.authBody.password) {
+        console.log(`[Clarisa Auth] Password starts with ": ${this.authBody.password.startsWith('"')}`);
+        console.log(`[Clarisa Auth] Password ends with ": ${this.authBody.password.endsWith('"')}`);
+        console.log(`[Clarisa Auth] First 2 chars: ${this.authBody.password.substring(0, 2)}`);
+        console.log(`[Clarisa Auth] Last 2 chars: ${this.authBody.password.substring(this.authBody.password.length - 2)}`);
+      }
+
       this.token = await firstValueFrom(
         this.http.post(env.MS_CLARISA_HOST + 'auth/login', this.authBody).pipe(
           map(({ data }) => {
