@@ -99,7 +99,7 @@ export class MailerController {
     if (typeof configMessageDto.emailBody === 'string') {
       try {
         temp.emailBody = JSON.parse(configMessageDto.emailBody);
-      } catch (e) {
+      } catch {
         throw new BadRequestException('Invalid emailBody JSON format');
       }
     } else {
@@ -110,7 +110,7 @@ export class MailerController {
     if (typeof configMessageDto.from === 'string') {
       try {
         temp.from = JSON.parse(configMessageDto.from);
-      } catch (e) {
+      } catch {
         throw new BadRequestException('Invalid from JSON format');
       }
     } else {
@@ -123,7 +123,7 @@ export class MailerController {
     if (typeof header === 'string') {
       try {
         tempHeader = JSON.parse(header);
-      } catch (e) {
+      } catch {
         throw new BadRequestException('Invalid auth header JSON format');
       }
     } else {
