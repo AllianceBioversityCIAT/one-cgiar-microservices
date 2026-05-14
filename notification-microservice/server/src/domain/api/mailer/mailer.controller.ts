@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Headers,
@@ -93,11 +94,41 @@ export class MailerController {
     @Headers('auth') header: string,
   ) {
     const temp = configMessageDto;
-    temp.emailBody = JSON.parse(String(configMessageDto.emailBody));
-    temp.from = JSON.parse(String(configMessageDto.from));
+
+    // Safely handle emailBody parsing
+    if (typeof configMessageDto.emailBody === 'string') {
+      try {
+        temp.emailBody = JSON.parse(configMessageDto.emailBody);
+      } catch (e) {
+        throw new BadRequestException('Invalid emailBody JSON format');
+      }
+    } else {
+      temp.emailBody = configMessageDto.emailBody;
+    }
+
+    // Safely handle from parsing
+    if (typeof configMessageDto.from === 'string') {
+      try {
+        temp.from = JSON.parse(configMessageDto.from);
+      } catch (e) {
+        throw new BadRequestException('Invalid from JSON format');
+      }
+    } else {
+      temp.from = configMessageDto.from;
+    }
+
     temp.environment = appConect.receiver_mis.environment;
     temp.sender = appConect;
-    const tempHeader: AuthorizationDto = JSON.parse(header);
+    let tempHeader: AuthorizationDto;
+    if (typeof header === 'string') {
+      try {
+        tempHeader = JSON.parse(header);
+      } catch (e) {
+        throw new BadRequestException('Invalid auth header JSON format');
+      }
+    } else {
+      tempHeader = header;
+    }
 
     if (file && file?.mimetype === 'text/html') {
       temp.emailBody.message.socketFile = file.buffer;
