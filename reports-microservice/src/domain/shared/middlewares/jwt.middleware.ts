@@ -52,9 +52,8 @@ export class JwtMiddleware implements NestMiddleware {
 
     let authHeader: AuthorizationDto;
     if (typeof req.headers['auth'] === 'string') {
-      try {
-        authHeader = JSON.parse(req.headers['auth']);
-      } catch (error) {
+      authHeader = parseAuthHeader(req.headers['auth']);
+      if (!authHeader) {
         throw new UnauthorizedException('Invalid auth header format.');
       }
     } else {
@@ -88,4 +87,12 @@ export class JwtMiddleware implements NestMiddleware {
 
 interface RequestWithCustomAttrs extends Request {
   [key: string]: any;
+}
+
+function parseAuthHeader(value: string): AuthorizationDto | null {
+  try {
+    return JSON.parse(value) as AuthorizationDto;
+  } catch {
+    return null;
+  }
 }

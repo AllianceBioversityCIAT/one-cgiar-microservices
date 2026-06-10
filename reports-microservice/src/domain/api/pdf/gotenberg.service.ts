@@ -58,13 +58,11 @@ export class GotenbergService {
       overrides?.paperWidth,
       this.paperWidth,
     );
-    const paperHeight = this.resolveDimension(
-      overrides?.paperHeight,
-      this.paperHeight,
-    );
+    const paperHeight = this.paperHeight;
 
     const w = this.dimensionToQueryValue(paperWidth);
-    const urlWithParams = `${url}${url.includes('?') ? '&' : '?'}test=true&paperWidth=${w}&paperHeight=${1000}`;
+    const h = this.dimensionToQueryValue(paperHeight);
+    const urlWithParams = `${url}${url.includes('?') ? '&' : '?'}test=true&paperWidth=${w}&paperHeight=${h}`;
 
     const form = new FormData();
     form.append('url', urlWithParams);
