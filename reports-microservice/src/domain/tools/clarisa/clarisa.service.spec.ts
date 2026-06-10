@@ -116,6 +116,66 @@ describe('ClarisaService', () => {
     });
   });
 
+  describe('validateApiKey', () => {
+    it('should return valid true and mapped data when API returns valid: true', async () => {
+      (httpService.post as jest.Mock).mockReturnValueOnce(
+        of({
+          data: {
+            valid: true,
+            mis: { id: 5, name: 'Reporting Tool', acronym: 'PRMS' },
+            environment: 'PROD',
+            scopes: ['reports:generate'],
+          },
+        }),
+      );
+
+      const result = await service.validateApiKey(
+        'cl_prod_1234567890123456789012345678901234567890',
+        '/api/reports/pdf/generate',
+        '127.0.0.1',
+      );
+
+      expect(httpService.post).toHaveBeenCalled();
+      expect(result.valid).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data.receiver_mis.acronym).toBe('PRMS');
+      expect(result.data.client_id).toBe('cl_prod_12345678');
+    });
+
+    it('should return valid false when API returns valid: false', async () => {
+      (httpService.post as jest.Mock).mockReturnValueOnce(
+        of({
+          data: {
+            valid: false,
+            error: 'Invalid API key',
+          },
+        }),
+      );
+
+      const result = await service.validateApiKey(
+        'cl_prod_invalid',
+        '/api/reports/pdf/generate',
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.data).toBeNull();
+    });
+
+    it('should return valid false when request fails', async () => {
+      (httpService.post as jest.Mock).mockReturnValueOnce(
+        throwError(() => new Error('HTTP 401')),
+      );
+
+      const result = await service.validateApiKey(
+        'cl_prod_invalid',
+        '/api/reports/pdf/generate',
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.data).toBeNull();
+    });
+  });
+
   describe('formatValid', () => {
     it('should return valid true and data when status is 2xx', () => {
       const res = (service as any).formatValid({

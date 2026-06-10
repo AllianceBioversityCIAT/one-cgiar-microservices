@@ -29,6 +29,27 @@ export class JwtMiddleware implements NestMiddleware {
     @Res() _res: Response,
     @Next() next: NextFunction,
   ) {
+    const apiKey = req.headers['x-api-key'] || req.headers['X-API-Key'];
+
+    if (typeof apiKey === 'string' && apiKey.trim()) {
+      const clientIp =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+        req.ip;
+
+      const authData = await this.clarisaService.validateApiKey(
+        apiKey,
+        req.path,
+        clientIp,
+      );
+
+      if (!authData.valid || !authData.data) {
+        throw new UnauthorizedException('Invalid API key.');
+      }
+
+      req.application = authData.data.receiver_mis;
+      return next();
+    }
+
     let authHeader: AuthorizationDto;
     if (typeof req.headers['auth'] === 'string') {
       try {
@@ -38,7 +59,7 @@ export class JwtMiddleware implements NestMiddleware {
       }
     } else {
       throw new BadGatewayException(
-        'Auth header is missing or not in the correct format.',
+        'Auth header or X-API-Key is missing or not in the correct format.',
       );
     }
 
