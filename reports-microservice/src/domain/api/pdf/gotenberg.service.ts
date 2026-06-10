@@ -64,8 +64,7 @@ export class GotenbergService {
     );
 
     const w = this.dimensionToQueryValue(paperWidth);
-    const h = this.dimensionToQueryValue(paperHeight);
-    const urlWithParams = `${url}${url.includes('?') ? '&' : '?'}test=true&paperWidth=${w}&paperHeight=${h}`;
+    const urlWithParams = `${url}${url.includes('?') ? '&' : '?'}test=true&paperWidth=${w}&paperHeight=${1000}`;
 
     const form = new FormData();
     form.append('url', urlWithParams);
