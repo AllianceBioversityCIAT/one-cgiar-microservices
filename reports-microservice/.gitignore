@@ -42,3 +42,6 @@
 !**/.env.example
 
 .serverless
+
+# SDD
+.cursor

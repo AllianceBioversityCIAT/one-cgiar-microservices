@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PDF URL Generation - Queue Message Payload",
+  "description": "RabbitMQ message payload for pdf.generateUrl pattern",
+  "type": "object",
+  "required": ["data", "templateName", "bucketName", "fileName"],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Key-value pairs for URL query parameters"
+    },
+    "templateName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Template identifier (e.g., 001)"
+    },
+    "bucketName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fileName": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

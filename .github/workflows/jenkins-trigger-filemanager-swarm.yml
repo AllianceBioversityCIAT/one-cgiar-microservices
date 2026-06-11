@@ -1,12 +1,9 @@
-name: Trigger Jenkins Job FileManager Swarm
+name: Trigger Jenkins Job Reports microservice
 
 on:
   push:
     branches:
       - "main-reports" # Only on push to main-reports
-  pull_request:
-    branches:
-      - "main-reports" # Only on PR to main-reports
 
 jobs:
   trigger-job:
@@ -16,7 +13,7 @@ jobs:
       # Step 1: Define Jenkins URL
       - name: Set Jenkins URL
         run: |
-          JENKINS_URL="https://automation.prms.cgiar.org/job/microservice-files-management-swarm-prod/build"
+          JENKINS_URL="https://automation.prms.cgiar.org/job/microservice-reports-prod/build"
           echo "Jenkins job URL is: $JENKINS_URL"
           echo "JENKINS_URL=${JENKINS_URL}" >> $GITHUB_ENV
 

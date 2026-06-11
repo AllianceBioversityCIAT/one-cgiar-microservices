@@ -7,7 +7,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { ClarisaService } from '../../tools/clarisa/clarisa.service';
 import { AuthorizationDto } from '../global-dto/auth.dto';
 import { ResClarisaValidateConectioDto } from '../../tools/clarisa/dto/clarisa-create-conection.dto';
@@ -25,8 +24,67 @@ export class AuthInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Promise<Observable<any>> {
-    const data = context.switchToRpc().getData();
+    const data = context.switchToRpc().getData() || {};
+    const apiKey = data.apiKey || data.api_key;
     const { credentials } = data;
+
+    if (typeof apiKey === 'string' && apiKey.trim()) {
+      let pattern = '';
+      const rmqCtx = context.switchToRpc().getContext();
+      if (rmqCtx && typeof rmqCtx.getPattern === 'function') {
+        pattern = rmqCtx.getPattern();
+      }
+      if (!pattern) {
+        const handler = context.getHandler();
+        if (handler) {
+          if (handler.name === 'generatePdfNode') {
+            pattern = 'pdf.generate';
+          } else if (handler.name === 'generatePdfFromUrlNode') {
+            pattern = 'pdf.generateUrl';
+          } else {
+            pattern = handler.name;
+          }
+        }
+      }
+
+      this._logger.debug(
+        `A client is trying to access the Reports Microservice using API Key`,
+      );
+
+      const authData = await this._clarisaService.validateApiKey(
+        apiKey,
+        pattern,
+      );
+
+      if (!authData.valid || !authData.data) {
+        const maskedKey = apiKey.substring(0, 16) + '...';
+        await this._notificationService.sendSlackNotification(
+          ':alert:',
+          'Reports Microservice',
+          '#FF0000',
+          'Invalid API Key',
+          `User tried to access the Reports Microservice with invalid API Key (Key: ${maskedKey})`,
+          'Medium',
+        );
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const newData = {
+        ...data,
+        user: {
+          username: apiKey.substring(0, 16) + '...',
+          environment: (authData.data as ResClarisaValidateConectioDto)
+            .receiver_mis.environment,
+          sender: authData.data,
+        },
+      };
+
+      this._logger.log(
+        `The Client ${newData.user.sender.sender_mis.name} in the ${newData.user.sender.sender_mis.environment} environment is authorized to access the Reports Microservice`,
+      );
+      return next.handle();
+    }
+
     const payload: AuthorizationDto = JSON.parse(credentials || '{}');
     this._logger.debug(
       `A client ${payload.username} is trying to access to the Reports Microservice`,
@@ -62,6 +120,6 @@ export class AuthInterceptor implements NestInterceptor {
     this._logger.log(
       `The Client ${newData.user.sender.sender_mis.name} in the ${newData.user.sender.sender_mis.environment} environment is authorized to access the Reports Microservice`,
     );
-    return next.handle().pipe(map(() => newData));
+    return next.handle();
   }
 }

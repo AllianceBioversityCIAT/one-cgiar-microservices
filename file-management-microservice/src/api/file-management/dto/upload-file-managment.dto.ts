@@ -15,6 +15,9 @@ export class UploadFileDto {
 
   @ApiProperty({ description: 'Weigth limit' })
   weightLimit?: number;
+
+  @ApiProperty({ description: 'Bucket Route' })
+  key?: string;
 }
 
 export class FileValidationDto {

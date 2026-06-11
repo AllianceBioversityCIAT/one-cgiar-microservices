@@ -20,12 +20,15 @@ describe('JwtMiddleware', () => {
 
     clarisaService = {
       authorization: jest.fn(),
+      validateApiKey: jest.fn(),
     } as unknown as ClarisaService;
 
     jwtMiddleware = new JwtMiddleware(clarisaService, configService);
 
     mockRequest = {
       headers: {},
+      path: '/api/reports/pdf/generate',
+      ip: '127.0.0.1',
     };
     mockResponse = {};
     mockNext = jest.fn();
@@ -114,5 +117,60 @@ describe('JwtMiddleware', () => {
     ).rejects.toThrow(UnauthorizedException);
 
     expect(mockNext).not.toHaveBeenCalled();
+  });
+
+  describe('API Key Authentication', () => {
+    it('should call next if API Key is valid', async () => {
+      mockRequest.headers['x-api-key'] = 'cl_prod_validkey';
+      const mockResult = {
+        valid: true,
+        data: {
+          client_id: 'cl_prod_validkey',
+          receiver_mis: {
+            acronym: 'PRMS',
+            environment: 'production',
+            code: 1,
+            name: 'PRMS',
+          },
+        },
+      };
+      (clarisaService.validateApiKey as jest.Mock).mockResolvedValueOnce(
+        mockResult,
+      );
+
+      await jwtMiddleware.use(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
+
+      expect(clarisaService.validateApiKey).toHaveBeenCalledWith(
+        'cl_prod_validkey',
+        '/api/reports/pdf/generate',
+        '127.0.0.1',
+      );
+      expect((mockRequest as any).application).toEqual(
+        mockResult.data.receiver_mis,
+      );
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedException if API Key is invalid', async () => {
+      mockRequest.headers['x-api-key'] = 'cl_prod_invalidkey';
+      (clarisaService.validateApiKey as jest.Mock).mockResolvedValueOnce({
+        valid: false,
+        data: null,
+      });
+
+      await expect(
+        jwtMiddleware.use(
+          mockRequest as Request,
+          mockResponse as Response,
+          mockNext,
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(mockNext).not.toHaveBeenCalled();
+    });
   });
 });

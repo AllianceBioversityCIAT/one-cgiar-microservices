@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { PdfService } from './pdf.service';
 import { PdfController } from './pdf.controller';
+import { GotenbergService } from './gotenberg.service';
 import Handlebars, { Exception } from 'handlebars';
 import { ClarisaModule } from '../../tools/clarisa/clarisa.module';
 import { NotificationsModule } from '../../notifications/notifications.module';
 
 @Module({
   controllers: [PdfController],
-  providers: [PdfService],
+  providers: [PdfService, GotenbergService],
   exports: [PdfService],
   imports: [ClarisaModule, NotificationsModule],
 })
