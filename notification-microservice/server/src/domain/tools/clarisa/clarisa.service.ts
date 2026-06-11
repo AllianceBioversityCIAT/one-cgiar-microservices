@@ -14,7 +14,7 @@ import {
 @Injectable()
 export class ClarisaService {
   private readonly _logger = new Logger(ClarisaService.name);
-  private connection: Clarisa;
+  private readonly connection: Clarisa;
   private readonly misSettings: MisConfigDto = {
     acronym: env.MS_CLARISA_MIS,
     environment: env.MS_CLARISA_MIS_ENV,
@@ -44,7 +44,7 @@ export class ClarisaService {
     const url = `${normalizedUrl}/api/auth/validate-api-key`;
     const body = {
       api_key: apiKey.trim(),
-      microservice_name: env.MS_CLARISA_MIS || 'Notification Ms',
+      microservice_name: 'Notification Ms1',
       endpoint_accessed: endpointAccessed,
       ip_address: ipAddress,
     };
@@ -59,7 +59,7 @@ export class ClarisaService {
       );
 
       const data = response.data;
-      if (data && data.valid) {
+      if (data?.valid) {
         const mappedData: ResClarisaValidateConectioDto = {
           client_id: apiKey.substring(0, 16),
           sender_mis: {
