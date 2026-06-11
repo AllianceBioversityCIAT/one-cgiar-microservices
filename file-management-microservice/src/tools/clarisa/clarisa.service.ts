@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Clarisa } from './clarisa.connection';
 import { HttpService } from '@nestjs/axios';
 import { env } from 'process';
+import { firstValueFrom } from 'rxjs';
 import {
   ClarisaCreateConenctionDto,
   MisConfigDto,
@@ -12,6 +13,7 @@ import { ResponseClarisaDto } from '../../shared/global-dto/response-clarisa.dto
 
 @Injectable()
 export class ClarisaService {
+  private readonly _logger = new Logger(ClarisaService.name);
   private readonly connection: Clarisa;
   private readonly misSettings: MisConfigDto = {
     acronym: env.CLARISA_MIS,
@@ -22,6 +24,83 @@ export class ClarisaService {
       login: env.CLARISA_LOGIN,
       password: env.CLARISA_PASSWORD,
     });
+  }
+
+  async validateApiKey(
+    apiKey: string,
+    endpointAccessed: string,
+    ipAddress?: string,
+  ): Promise<ResponseValidateClarisa<ResClarisaValidateConectioDto>> {
+    const baseUrl = env.CLARISA_HOST;
+
+    let normalizedUrl = baseUrl ? baseUrl.trim() : '';
+    if (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.slice(0, -1);
+    }
+    if (normalizedUrl.endsWith('/api')) {
+      normalizedUrl = normalizedUrl.slice(0, -4);
+    }
+
+    const url = `${normalizedUrl}/api/auth/validate-api-key`;
+    const body = {
+      api_key: apiKey.trim(),
+      microservice_name: 'File Management Ms',
+      endpoint_accessed: endpointAccessed,
+      ip_address: ipAddress,
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this._http.post(url, body, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+
+      const data = response.data;
+      if (data && data.valid) {
+        const mappedData: ResClarisaValidateConectioDto = {
+          client_id: apiKey.substring(0, 16),
+          sender_mis: {
+            code: data.mis?.id || null,
+            name: data.mis?.name || '',
+            acronym: data.mis?.acronym || '',
+            environment: data.environment || '',
+          },
+          receiver_mis: {
+            code: data.mis?.id || null,
+            name: data.mis?.name || '',
+            acronym: data.mis?.acronym || '',
+            environment: data.environment || '',
+          },
+        };
+
+        return {
+          valid: true,
+          data: mappedData,
+        };
+      }
+      return {
+        valid: false,
+        data: null,
+      };
+    } catch (error) {
+      this._logger.error(
+        'Error validating API Key in ClarisaService:',
+        error.message || error,
+      );
+      if (error.response) {
+        this._logger.error(
+          'CLARISA Response error data:',
+          JSON.stringify(error.response.data),
+        );
+      }
+      return {
+        valid: false,
+        data: null,
+      };
+    }
   }
 
   async authorization(clientId: string, clientSecret: string) {

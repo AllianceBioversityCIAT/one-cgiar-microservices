@@ -17,7 +17,7 @@ export class JwtPrmsMiddleware implements NestMiddleware {
   async use(req: PrmsAuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const token = req.headers['access-token'] as string;
-      console.log("🚀 ~ JwtPrmsMiddleware ~ use ~ token:", token)
+      console.log('🚀 ~ JwtPrmsMiddleware ~ use ~ token:', token);
       const environmentUrl = req.headers['environment-url'] as string;
 
       if (!token) {
