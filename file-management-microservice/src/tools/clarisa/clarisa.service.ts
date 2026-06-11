@@ -44,7 +44,7 @@ export class ClarisaService {
     const url = `${normalizedUrl}/api/auth/validate-api-key`;
     const body = {
       api_key: apiKey.trim(),
-      microservice_name: 'File Management Ms',
+      microservice_name: 'File Management Ms4',
       endpoint_accessed: endpointAccessed,
       ip_address: ipAddress,
     };
