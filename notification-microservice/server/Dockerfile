@@ -5,8 +5,10 @@ FROM --platform=linux/amd64 node:22.11.0 as base
 # Create app directory
 WORKDIR /app
 
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-COPY package*.json ./
+RUN corepack enable
+
+# Copy package manifests and pnpm config
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 #################### DEVELOPMENT STAGE ####################
 
@@ -14,26 +16,26 @@ COPY package*.json ./
 FROM base AS development
 
 # Install app dependencies
-RUN npm install
+RUN pnpm install --frozen-lockfile
 
 # Bundle app source
 COPY . .
 
 # Creates a "dist" folder with the production build
-RUN npm run build
+RUN pnpm run build
 
 # Expose the port on which the app will run
 EXPOSE 3004
 
 # Start the server using the production build
-CMD ["npm", "run", "start"]
+CMD ["pnpm", "run", "start"]
 
 #################### BUILD STAGE ####################
 
 FROM base AS build
-RUN npm ci --only=production
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN pnpm run build && pnpm prune --prod
 
 #################### PRODUCTION STAGE ####################
 
@@ -46,7 +48,7 @@ WORKDIR /app
 # Copy the "dist" folder from the build stage
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package*.json ./
+COPY --from=build /app/package.json ./
 
 # Expose the port on which the app will run
 EXPOSE 3004
