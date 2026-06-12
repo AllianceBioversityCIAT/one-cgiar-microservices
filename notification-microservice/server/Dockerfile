@@ -5,7 +5,7 @@ FROM --platform=linux/amd64 node:22.11.0 as base
 # Create app directory
 WORKDIR /app
 
-RUN corepack enable
+RUN npm install -g pnpm@9.15.4
 
 # Copy package manifests and pnpm config
 COPY package.json pnpm-lock.yaml .npmrc ./
