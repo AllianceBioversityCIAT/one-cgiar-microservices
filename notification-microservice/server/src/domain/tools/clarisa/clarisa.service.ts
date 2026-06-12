@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { firstValueFrom } from 'rxjs';
 import { Clarisa } from './clarisa.connection';
 import { HttpService } from '@nestjs/axios';
-import { env } from 'process';
-import { firstValueFrom } from 'rxjs';
+import { env } from 'node:process';
 import { ResponseClarisaDtio } from '../../shared/global-dto/response-clarisa.dto';
 import {
   ClarisaCreateConenctionDto,
@@ -85,7 +85,7 @@ export class ClarisaService {
         valid: false,
         data: null,
       };
-    } catch (error) {
+    } catch (error: any) {
       this._logger.error(
         'Error validating API Key in ClarisaService:',
         error.message || error,
