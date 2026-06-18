@@ -67,7 +67,7 @@ export class ClarisaService {
     const url = `${normalizedUrl}/api/auth/validate-api-key`;
     const body = {
       api_key: apiKey.trim(),
-      microservice_name: 'Reports Ms2',
+      microservice_name: 'Reports Ms8',
       endpoint_accessed: endpointAccessed,
       ip_address: ipAddress,
     };
