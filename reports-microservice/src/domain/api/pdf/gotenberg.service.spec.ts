@@ -22,7 +22,7 @@ describe('GotenbergService', () => {
           GOTENBERG_MARGIN_LEFT: '0',
           GOTENBERG_MARGIN_RIGHT: '0',
           GOTENBERG_PRINT_BACKGROUND: 'true',
-          API_SECRET: 'secret',
+          API_KEY: 'secret',
           ADMIN_SECRET: 'admin',
         };
         return map[key] ?? '';
@@ -167,7 +167,7 @@ describe('GotenbergService', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'x-api-secret': 'secret',
+            'x-api-key': 'secret',
           }),
           body: JSON.stringify({ id: 1, name: 'test' }),
         }),
