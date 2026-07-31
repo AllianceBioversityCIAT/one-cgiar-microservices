@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ValidateCodeDto {
   @ApiProperty({
@@ -9,4 +9,12 @@ export class ValidateCodeDto {
   @IsNotEmpty()
   @IsString()
   code: string;
+
+  @ApiPropertyOptional({
+    description: 'OAuth redirect URI used when the authorization code was obtained',
+    example: 'https://prtest.ciat.cgiar.org/auth',
+  })
+  @IsOptional()
+  @IsString()
+  redirectUri?: string;
 }

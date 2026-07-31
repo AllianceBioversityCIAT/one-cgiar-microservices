@@ -32,6 +32,15 @@ export class AuthService {
     private readonly passwordGenerator: PasswordGeneratorService,
   ) {}
 
+  private selectRedirectUri(authUrl: string, requestedUri?: string): string {
+    const uris = authUrl.split(',').map((u) => u.trim()).filter(Boolean);
+    if (requestedUri) {
+      const match = uris.find((u) => u === requestedUri);
+      if (match) return match;
+    }
+    return uris[0];
+  }
+
   /**
    * Creates authentication URL for provider-based login
    * @param providerAuthDto Provider auth parameters
@@ -56,7 +65,11 @@ export class AuthService {
       }
 
       const cognitoUrl = this.configService.get<string>('COGNITO_URL');
-      const authUrl = `${cognitoUrl}/oauth2/authorize?response_type=code&client_id=${misMetadata.mis_auth.cognito_client_id}&redirect_uri=${misMetadata.mis_auth.auth_url}&scope=openid+email+profile&identity_provider=${providerAuthDto.provider}`;
+      const redirectUri = this.selectRedirectUri(
+        misMetadata.mis_auth.auth_url,
+        providerAuthDto.redirectUri,
+      );
+      const authUrl = `${cognitoUrl}/oauth2/authorize?response_type=code&client_id=${misMetadata.mis_auth.cognito_client_id}&redirect_uri=${redirectUri}&scope=openid+email+profile&identity_provider=${providerAuthDto.provider}`;
 
       this.logger.log(
         `Generated auth URL for provider ${providerAuthDto.provider}`,
@@ -102,7 +115,11 @@ export class AuthService {
       this.logger.debug(
         `Using Cognito client ID: ${misMetadata.mis_auth.cognito_client_id}`,
       );
-      this.logger.debug(`Using redirect URI: ${misMetadata.mis_auth.auth_url}`);
+      const redirectUri = this.selectRedirectUri(
+        misMetadata.mis_auth.auth_url,
+        validateCodeDto.redirectUri,
+      );
+      this.logger.debug(`Using redirect URI: ${redirectUri}`);
 
       const params = new URLSearchParams();
       params.append('grant_type', 'authorization_code');
@@ -112,7 +129,7 @@ export class AuthService {
         misMetadata.mis_auth.cognito_client_secret,
       );
       params.append('code', validateCodeDto.code);
-      params.append('redirect_uri', misMetadata.mis_auth.auth_url);
+      params.append('redirect_uri', redirectUri);
 
       const tokenResponse = await firstValueFrom(
         this.httpService.post(tokenEndpoint, params.toString(), {

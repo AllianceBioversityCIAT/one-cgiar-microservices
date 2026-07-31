@@ -194,6 +194,56 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('authUrl');
       expect(result.authUrl).toContain('identity_provider=CGIAR-AzureAD');
       expect(result.authUrl).toContain('mock-client-id');
+      expect(result.authUrl).toContain('mock-redirect.com');
+    });
+
+    it('should select the matching URI from comma-separated auth_url when redirectUri is provided', async () => {
+      const providerAuthDto: ProviderAuthDto = {
+        provider: 'CGIAR-AzureAD',
+        redirectUri: 'https://d11q2gkl6a1qr7.cloudfront.net/auth',
+      };
+      const multiUriRequest = createMockRequest();
+      multiUriRequest.senderMisMetadata.mis_auth.auth_url =
+        'https://prtest.ciat.cgiar.org/auth, https://d11q2gkl6a1qr7.cloudfront.net/auth';
+
+      const result = await service.authenticateWithProvider(
+        providerAuthDto,
+        multiUriRequest,
+      );
+
+      expect(result.authUrl).toContain('d11q2gkl6a1qr7.cloudfront.net');
+      expect(result.authUrl).not.toContain('prtest.ciat.cgiar.org');
+    });
+
+    it('should fall back to first URI when redirectUri does not match any in auth_url', async () => {
+      const providerAuthDto: ProviderAuthDto = {
+        provider: 'CGIAR-AzureAD',
+        redirectUri: 'https://unknown.example.com/auth',
+      };
+      const multiUriRequest = createMockRequest();
+      multiUriRequest.senderMisMetadata.mis_auth.auth_url =
+        'https://prtest.ciat.cgiar.org/auth, https://d11q2gkl6a1qr7.cloudfront.net/auth';
+
+      const result = await service.authenticateWithProvider(
+        providerAuthDto,
+        multiUriRequest,
+      );
+
+      expect(result.authUrl).toContain('prtest.ciat.cgiar.org');
+    });
+
+    it('should use first URI when no redirectUri is provided and auth_url has multiple URIs', async () => {
+      const providerAuthDto: ProviderAuthDto = { provider: 'CGIAR-AzureAD' };
+      const multiUriRequest = createMockRequest();
+      multiUriRequest.senderMisMetadata.mis_auth.auth_url =
+        'https://prtest.ciat.cgiar.org/auth, https://d11q2gkl6a1qr7.cloudfront.net/auth';
+
+      const result = await service.authenticateWithProvider(
+        providerAuthDto,
+        multiUriRequest,
+      );
+
+      expect(result.authUrl).toContain('prtest.ciat.cgiar.org');
     });
 
     it('should throw exception when MIS metadata is missing', async () => {
@@ -254,6 +304,51 @@ describe('AuthService', () => {
 
       expect(httpService.post).toHaveBeenCalled();
       expect(result).toHaveProperty('accessToken', 'mock-access-token');
+    });
+
+    it('should use the matching URI from comma-separated auth_url when redirectUri is provided', async () => {
+      const validateCodeDto: ValidateCodeDto = {
+        code: 'mock-auth-code',
+        redirectUri: 'https://d11q2gkl6a1qr7.cloudfront.net/auth',
+      };
+      const multiUriRequest = createMockRequest();
+      multiUriRequest.senderMisMetadata.mis_auth.auth_url =
+        'https://prtest.ciat.cgiar.org/auth, https://d11q2gkl6a1qr7.cloudfront.net/auth';
+
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValueOnce(of(mockTokenResponse));
+      jest
+        .spyOn(service, 'getUserInfo')
+        .mockResolvedValueOnce(mockUserInfoResponse.data);
+
+      await service.validateAuthorizationCode(validateCodeDto, multiUriRequest);
+
+      const postedBody: string = (httpService.post as jest.Mock).mock.calls[0][1];
+      expect(postedBody).toContain('d11q2gkl6a1qr7.cloudfront.net');
+      expect(postedBody).not.toContain('prtest.ciat.cgiar.org');
+    });
+
+    it('should fall back to first URI when redirectUri does not match any in auth_url', async () => {
+      const validateCodeDto: ValidateCodeDto = {
+        code: 'mock-auth-code',
+        redirectUri: 'https://unknown.example.com/auth',
+      };
+      const multiUriRequest = createMockRequest();
+      multiUriRequest.senderMisMetadata.mis_auth.auth_url =
+        'https://prtest.ciat.cgiar.org/auth, https://d11q2gkl6a1qr7.cloudfront.net/auth';
+
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValueOnce(of(mockTokenResponse));
+      jest
+        .spyOn(service, 'getUserInfo')
+        .mockResolvedValueOnce(mockUserInfoResponse.data);
+
+      await service.validateAuthorizationCode(validateCodeDto, multiUriRequest);
+
+      const postedBody: string = (httpService.post as jest.Mock).mock.calls[0][1];
+      expect(postedBody).toContain('prtest.ciat.cgiar.org');
     });
 
     it('should handle API error responses', async () => {
