@@ -19,6 +19,8 @@ import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
 import { CognitoService } from './services/cognito/cognito.service';
 import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
 import { PasswordGeneratorService } from './services/password/password.service';
+import { EmailOtpStartDto } from './dto/email-otp-start.dto';
+import { EmailOtpVerifyDto } from './dto/email-otp-verify.dto';
 
 @Injectable()
 export class AuthService {
@@ -632,5 +634,43 @@ export class AuthService {
         );
       }
     }
+  }
+
+  /**
+   * Start the EMAIL_OTP challenge (OTP-R-7, OTP-T-3, design.md §4.2/§5.2).
+   * Thin orchestration over `CognitoService.startEmailOtp`, which already
+   * shapes the `{ challengeName, session, codeDeliveryDestination? }`
+   * response and emits the `otp.start` outcome log (OTP-R-12) — no
+   * additional logging here to avoid duplicate events.
+   */
+  async startEmailOtp(dto: EmailOtpStartDto): Promise<{
+    challengeName: 'EMAIL_OTP';
+    session: string;
+    codeDeliveryDestination?: string;
+  }> {
+    return this.cognitoService.startEmailOtp(dto.username);
+  }
+
+  /**
+   * Verify an EMAIL_OTP code (OTP-R-7, OTP-T-3, design.md §4.2/§5.2).
+   * Thin orchestration over `CognitoService.verifyEmailOtp`, which already
+   * returns the `{ tokens }` shape — identical to
+   * `authenticateWithCustomPassword`'s success shape — and emits the
+   * `otp.verify` outcome log (OTP-R-12); no additional logging here.
+   */
+  async verifyEmailOtp(dto: EmailOtpVerifyDto): Promise<{
+    tokens: {
+      accessToken: string;
+      idToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      tokenType: string;
+    };
+  }> {
+    return this.cognitoService.verifyEmailOtp(
+      dto.username,
+      dto.code,
+      dto.session,
+    );
   }
 }

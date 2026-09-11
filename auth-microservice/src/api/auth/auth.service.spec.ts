@@ -15,6 +15,8 @@ import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware'
 import { CognitoService } from './services/cognito/cognito.service';
 import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
 import { PasswordGeneratorService } from './services/password/password.service';
+import { EmailOtpStartDto } from './dto/email-otp-start.dto';
+import { EmailOtpVerifyDto } from './dto/email-otp-verify.dto';
 
 const createMockRequest = () => {
   const req = {
@@ -148,6 +150,8 @@ describe('AuthService', () => {
             validateAccessToken: jest.fn(),
             refreshAccessToken: jest.fn(),
             isPasswordlessDomain: jest.fn().mockReturnValue(false),
+            startEmailOtp: jest.fn(),
+            verifyEmailOtp: jest.fn(),
           },
         },
         {
@@ -1087,6 +1091,130 @@ describe('AuthService', () => {
       await expect(service.validateToken(accessToken)).rejects.toThrow(
         HttpException,
       );
+    });
+  });
+
+  // OTP-T-3: startEmailOtp / verifyEmailOtp orchestration (OTP-R-7)
+  describe('startEmailOtp', () => {
+    it('delegates to CognitoService.startEmailOtp and returns its shape unchanged', async () => {
+      const dto: EmailOtpStartDto = { username: 'user@icrisat.org' };
+      const cognitoResult = {
+        challengeName: 'EMAIL_OTP' as const,
+        session: 'session-value',
+        codeDeliveryDestination: 'j***@icrisat.org',
+      };
+
+      jest
+        .spyOn(cognitoService, 'startEmailOtp')
+        .mockResolvedValueOnce(cognitoResult);
+
+      const result = await service.startEmailOtp(dto);
+
+      expect(cognitoService.startEmailOtp).toHaveBeenCalledWith(dto.username);
+      expect(result).toEqual(cognitoResult);
+    });
+
+    it('propagates the stable HttpException code from CognitoService unchanged', async () => {
+      const dto: EmailOtpStartDto = { username: 'user@icrisat.org' };
+      const error = new HttpException(
+        { code: 'CHALLENGE_NOT_SUPPORTED', message: 'not available' },
+        HttpStatus.UNAUTHORIZED,
+      );
+
+      jest.spyOn(cognitoService, 'startEmailOtp').mockRejectedValueOnce(error);
+
+      await expect(service.startEmailOtp(dto)).rejects.toBe(error);
+      expect(error.getResponse()).toMatchObject({
+        code: 'CHALLENGE_NOT_SUPPORTED',
+      });
+      expect(error.getStatus()).toBe(HttpStatus.UNAUTHORIZED);
+    });
+  });
+
+  describe('verifyEmailOtp', () => {
+    it('delegates to CognitoService.verifyEmailOtp and returns its shape unchanged', async () => {
+      const dto: EmailOtpVerifyDto = {
+        username: 'user@icrisat.org',
+        code: '12345678',
+        session: 'session-value',
+      };
+      const cognitoResult = {
+        tokens: {
+          accessToken: 'mock-access-token',
+          idToken: 'mock-id-token',
+          refreshToken: 'mock-refresh-token',
+          expiresIn: 3600,
+          tokenType: 'Bearer',
+        },
+      };
+
+      jest
+        .spyOn(cognitoService, 'verifyEmailOtp')
+        .mockResolvedValueOnce(cognitoResult);
+
+      const result = await service.verifyEmailOtp(dto);
+
+      expect(cognitoService.verifyEmailOtp).toHaveBeenCalledWith(
+        dto.username,
+        dto.code,
+        dto.session,
+      );
+      expect(result).toEqual(cognitoResult);
+    });
+
+    it('returns the same { tokens } shape as authenticateWithCustomPassword for identical tokens', async () => {
+      const otpDto: EmailOtpVerifyDto = {
+        username: 'user@icrisat.org',
+        code: '12345678',
+        session: 'session-value',
+      };
+      const customAuthDto: CustomAuthDto = {
+        username: 'user@icrisat.org',
+        password: 'password123',
+      };
+
+      jest.spyOn(cognitoService, 'verifyEmailOtp').mockResolvedValueOnce({
+        tokens: {
+          accessToken: 'mock-access-token',
+          idToken: 'mock-id-token',
+          refreshToken: 'mock-refresh-token',
+          expiresIn: 3600,
+          tokenType: 'Bearer',
+        },
+      });
+      jest.spyOn(cognitoService, 'loginWithCustomPassword').mockResolvedValueOnce({
+        AuthenticationResult: {
+          AccessToken: 'mock-access-token',
+          IdToken: 'mock-id-token',
+          RefreshToken: 'mock-refresh-token',
+          ExpiresIn: 3600,
+          TokenType: 'Bearer',
+        },
+      });
+
+      const otpResult = await service.verifyEmailOtp(otpDto);
+      const passwordResult =
+        await service.authenticateWithCustomPassword(customAuthDto);
+
+      expect(otpResult).toEqual(passwordResult);
+    });
+
+    it('propagates the stable HttpException code from CognitoService unchanged', async () => {
+      const dto: EmailOtpVerifyDto = {
+        username: 'user@icrisat.org',
+        code: '00000000',
+        session: 'session-value',
+      };
+      const error = new HttpException(
+        { code: 'CODE_MISMATCH', message: 'Code incorrect. Try again.' },
+        HttpStatus.UNAUTHORIZED,
+      );
+
+      jest
+        .spyOn(cognitoService, 'verifyEmailOtp')
+        .mockRejectedValueOnce(error);
+
+      await expect(service.verifyEmailOtp(dto)).rejects.toBe(error);
     });
   });
 });

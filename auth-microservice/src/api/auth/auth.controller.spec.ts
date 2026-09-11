@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, ValidationPipe } from '@nestjs/common';
+import { DECORATORS } from '@nestjs/swagger/dist/constants';
 import { RequestWithCustomAttrs } from '../../middleware/jwt-clarisa.middleware';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -15,6 +16,8 @@ import {
   BulkCreationResponse,
 } from './dto/bulk-user-registration.dto';
 import { BulkUserService } from './services/bulk-registration/bulk-registration.service';
+import { EmailOtpStartDto } from './dto/email-otp-start.dto';
+import { EmailOtpVerifyDto } from './dto/email-otp-verify.dto';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -152,6 +155,8 @@ describe('AuthController', () => {
       validateToken: jest.fn(),
       refreshAuthenticationTokens: jest.fn(),
       completeNewPasswordChallenge: jest.fn(),
+      startEmailOtp: jest.fn(),
+      verifyEmailOtp: jest.fn(),
     };
 
     const mockBulkUserService = {
@@ -1236,6 +1241,191 @@ describe('AuthController', () => {
       expect(result.successCount).toBe(2);
       expect(result.emailsSent).toBe(1);
       expect(result.emailsFailed).toBe(1);
+    });
+  });
+
+  // OTP-T-3: login/otp/start and login/otp/verify (OTP-R-7)
+  describe('startEmailOtp', () => {
+    it('delegates to authService.startEmailOtp and returns its result', async () => {
+      const dto: EmailOtpStartDto = { username: 'user@icrisat.org' };
+      const mockOtpStartResult = {
+        challengeName: 'EMAIL_OTP' as const,
+        session: 'session-value',
+        codeDeliveryDestination: 'j***@icrisat.org',
+      };
+
+      authService.startEmailOtp.mockResolvedValue(mockOtpStartResult);
+
+      const result = await controller.startEmailOtp(dto);
+
+      expect(result).toEqual(mockOtpStartResult);
+      expect(authService.startEmailOtp).toHaveBeenCalledWith(dto);
+    });
+
+    it('propagates the mapped HttpException unchanged', async () => {
+      const dto: EmailOtpStartDto = { username: 'user@icrisat.org' };
+      const error = new HttpException(
+        { code: 'UPSTREAM_ERROR', message: 'We could not reach the sign-in service.' },
+        HttpStatus.BAD_GATEWAY,
+      );
+
+      authService.startEmailOtp.mockRejectedValue(error);
+
+      await expect(controller.startEmailOtp(dto)).rejects.toBe(error);
+    });
+  });
+
+  describe('verifyEmailOtp', () => {
+    it('delegates to authService.verifyEmailOtp and returns its result', async () => {
+      const dto: EmailOtpVerifyDto = {
+        username: 'user@icrisat.org',
+        code: '12345678',
+        session: 'session-value',
+      };
+
+      authService.verifyEmailOtp.mockResolvedValue(mockAuthResult);
+
+      const result = await controller.verifyEmailOtp(dto);
+
+      expect(result).toEqual(mockAuthResult);
+      expect(authService.verifyEmailOtp).toHaveBeenCalledWith(dto);
+    });
+
+    it('deep-equals the login/custom success shape for identical tokens', async () => {
+      const otpDto: EmailOtpVerifyDto = {
+        username: 'user@icrisat.org',
+        code: '12345678',
+        session: 'session-value',
+      };
+      const customAuthDto: CustomAuthDto = {
+        username: 'user@icrisat.org',
+        password: 'Password123!',
+      };
+
+      authService.verifyEmailOtp.mockResolvedValue(mockAuthResult);
+      authService.authenticateWithCustomPassword.mockResolvedValue(
+        mockAuthResult,
+      );
+
+      const otpResult = await controller.verifyEmailOtp(otpDto);
+      const passwordResult =
+        await controller.loginWithCustomPassword(customAuthDto);
+
+      expect(otpResult).toEqual(passwordResult);
+    });
+
+    it('propagates the mapped HttpException code unchanged', async () => {
+      const dto: EmailOtpVerifyDto = {
+        username: 'user@icrisat.org',
+        code: '00000000',
+        session: 'session-value',
+      };
+      const error = new HttpException(
+        { code: 'CODE_MISMATCH', message: 'Code incorrect. Try again.' },
+        HttpStatus.UNAUTHORIZED,
+      );
+
+      authService.verifyEmailOtp.mockRejectedValue(error);
+
+      await expect(controller.verifyEmailOtp(dto)).rejects.toBe(error);
+    });
+  });
+
+  describe('login/otp routes carry the same auth decorator as login/custom', () => {
+    it('applies the same @ApiSecurity(\'clarisa-auth\') metadata to start/verify as loginWithCustomPassword', () => {
+      const reference = Reflect.getMetadata(
+        DECORATORS.API_SECURITY,
+        AuthController.prototype.loginWithCustomPassword,
+      );
+      const start = Reflect.getMetadata(
+        DECORATORS.API_SECURITY,
+        AuthController.prototype.startEmailOtp,
+      );
+      const verify = Reflect.getMetadata(
+        DECORATORS.API_SECURITY,
+        AuthController.prototype.verifyEmailOtp,
+      );
+
+      expect(reference).toEqual([{ 'clarisa-auth': [] }]);
+      expect(start).toEqual(reference);
+      expect(verify).toEqual(reference);
+    });
+  });
+
+  describe('EmailOtpStartDto / EmailOtpVerifyDto validation (via the app\'s ValidationPipe)', () => {
+    const pipe = new ValidationPipe();
+
+    it('rejects a non-email username on start', async () => {
+      await expect(
+        pipe.transform(
+          { username: 'not-an-email' },
+          { type: 'body', metatype: EmailOtpStartDto } as any,
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('accepts a valid start payload', async () => {
+      const result = await pipe.transform(
+        { username: 'user@icrisat.org' },
+        { type: 'body', metatype: EmailOtpStartDto } as any,
+      );
+      expect(result.username).toBe('user@icrisat.org');
+    });
+
+    it('rejects a non-numeric code on verify', async () => {
+      await expect(
+        pipe.transform(
+          {
+            username: 'user@icrisat.org',
+            code: 'abc',
+            session: 'session-value',
+          },
+          { type: 'body', metatype: EmailOtpVerifyDto } as any,
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('rejects a missing session on verify', async () => {
+      await expect(
+        pipe.transform(
+          { username: 'user@icrisat.org', code: '12345678' },
+          { type: 'body', metatype: EmailOtpVerifyDto } as any,
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('rejects an empty session on verify', async () => {
+      await expect(
+        pipe.transform(
+          { username: 'user@icrisat.org', code: '12345678', session: '' },
+          { type: 'body', metatype: EmailOtpVerifyDto } as any,
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('rejects a non-email username on verify', async () => {
+      await expect(
+        pipe.transform(
+          {
+            username: 'not-an-email',
+            code: '12345678',
+            session: 'session-value',
+          },
+          { type: 'body', metatype: EmailOtpVerifyDto } as any,
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('accepts a valid verify payload', async () => {
+      const result = await pipe.transform(
+        {
+          username: 'user@icrisat.org',
+          code: '12345678',
+          session: 'session-value',
+        },
+        { type: 'body', metatype: EmailOtpVerifyDto } as any,
+      );
+      expect(result.code).toBe('12345678');
     });
   });
 });

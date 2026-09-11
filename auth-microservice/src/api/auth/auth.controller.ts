@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseFilters } from '@nestjs/common';
 import { UserService } from './services/user/user.service';
 import { AuthService } from './auth.service';
 import { ProviderAuthDto } from './dto/provider-auth.dto';
@@ -28,6 +28,9 @@ import {
   BulkCreationResponse,
 } from './dto/bulk-user-registration.dto';
 import { BulkUserService } from './services/bulk-registration/bulk-registration.service';
+import { EmailOtpStartDto } from './dto/email-otp-start.dto';
+import { EmailOtpVerifyDto } from './dto/email-otp-verify.dto';
+import { OtpHttpExceptionFilter } from './filters/otp-http-exception.filter';
 
 @ApiTags('Authetication and Authorization')
 @Controller('auth')
@@ -74,6 +77,74 @@ export class AuthController {
   @ApiBody({ type: CustomAuthDto })
   async loginWithCustomPassword(@Body() customAuthDto: CustomAuthDto) {
     return this.authService.authenticateWithCustomPassword(customAuthDto);
+  }
+
+  @Post('login/otp/start')
+  @UseFilters(OtpHttpExceptionFilter)
+  @ApiClarisaAuth('Start the EMAIL_OTP challenge for a Center user')
+  @ApiOperation({
+    summary: 'Start EMAIL_OTP sign-in',
+    description:
+      'Initiates the EMAIL_OTP Cognito challenge for the given username, answering a SELECT_CHALLENGE reply automatically when EMAIL_OTP is offered.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'EMAIL_OTP challenge started',
+    schema: {
+      type: 'object',
+      properties: {
+        challengeName: { type: 'string', example: 'EMAIL_OTP' },
+        session: { type: 'string', example: 'AYABe...' },
+        codeDeliveryDestination: {
+          type: 'string',
+          example: 'j***@icrisat.org',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'NOT_AUTHORIZED or CHALLENGE_NOT_SUPPORTED (stable error code in the body)',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: 502,
+    description: 'UPSTREAM_ERROR — Cognito could not be reached',
+    type: ErrorResponse,
+  })
+  @ApiBody({ type: EmailOtpStartDto })
+  async startEmailOtp(@Body() emailOtpStartDto: EmailOtpStartDto) {
+    return this.authService.startEmailOtp(emailOtpStartDto);
+  }
+
+  @Post('login/otp/verify')
+  @UseFilters(OtpHttpExceptionFilter)
+  @ApiClarisaAuth('Verify an EMAIL_OTP code and return tokens')
+  @ApiOperation({
+    summary: 'Verify EMAIL_OTP sign-in',
+    description:
+      'Completes the EMAIL_OTP challenge; returns the same tokens shape as login/custom.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Returns authentication tokens',
+    type: TokenResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'CODE_MISMATCH, CODE_EXPIRED, ATTEMPTS_EXCEEDED, NOT_AUTHORIZED or CHALLENGE_NOT_SUPPORTED (stable error code in the body)',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: 502,
+    description: 'UPSTREAM_ERROR — Cognito could not be reached',
+    type: ErrorResponse,
+  })
+  @ApiBody({ type: EmailOtpVerifyDto })
+  async verifyEmailOtp(@Body() emailOtpVerifyDto: EmailOtpVerifyDto) {
+    return this.authService.verifyEmailOtp(emailOtpVerifyDto);
   }
 
   @Post('validate/code')
