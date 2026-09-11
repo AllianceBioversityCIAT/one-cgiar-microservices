@@ -158,6 +158,260 @@ export class CognitoService {
   }
 
   /**
+   * Stable microservice error codes for the EMAIL_OTP flow (OTP-R-7, OTP-R-11).
+   * Never expose the raw Cognito `__type`/message to the caller.
+   */
+  private static readonly OTP_ERROR_COPY: Record<string, string> = {
+    CODE_MISMATCH: 'Code incorrect. Try again.',
+    CODE_EXPIRED: 'Code expired. Request a new one.',
+    ATTEMPTS_EXCEEDED: 'Too many attempts. Request a new code.',
+    NOT_AUTHORIZED: 'Not authorized.',
+    CHALLENGE_NOT_SUPPORTED:
+      'This sign-in option is not available for this account.',
+    UPSTREAM_ERROR: 'We could not reach the sign-in service.',
+  };
+
+  /**
+   * Pure mapping from a Cognito error shape (`__type`/`message`) to a stable
+   * microservice error code. Never returns or forwards the raw Cognito text.
+   * `CHALLENGE_NOT_SUPPORTED` is also used as an internal sentinel `__type`
+   * so every OTP error path (Cognito exception or an unsupported challenge
+   * in place of tokens) funnels through this one function.
+   */
+  private mapCognitoError(
+    type: string,
+    message: string,
+  ):
+    | 'CODE_MISMATCH'
+    | 'CODE_EXPIRED'
+    | 'ATTEMPTS_EXCEEDED'
+    | 'NOT_AUTHORIZED'
+    | 'CHALLENGE_NOT_SUPPORTED'
+    | 'UPSTREAM_ERROR' {
+    const msg = (message || '').toLowerCase();
+    switch (type) {
+      case 'CodeMismatchException':
+        return 'CODE_MISMATCH';
+      case 'ExpiredCodeException':
+        return 'CODE_EXPIRED';
+      case 'TooManyFailedAttemptsException':
+        return 'ATTEMPTS_EXCEEDED';
+      case 'NotAuthorizedException':
+        if (msg.includes('session is expired')) return 'CODE_EXPIRED';
+        if (msg.includes('attempt')) return 'ATTEMPTS_EXCEEDED';
+        return 'NOT_AUTHORIZED';
+      case 'CHALLENGE_NOT_SUPPORTED':
+        return 'CHALLENGE_NOT_SUPPORTED';
+      default:
+        return 'UPSTREAM_ERROR';
+    }
+  }
+
+  private otpException(type: string, message: string): HttpException {
+    const code = this.mapCognitoError(type, message);
+    const status =
+      code === 'UPSTREAM_ERROR'
+        ? HttpStatus.BAD_GATEWAY
+        : HttpStatus.UNAUTHORIZED;
+    return new HttpException(
+      { code, message: CognitoService.OTP_ERROR_COPY[code] },
+      status,
+    );
+  }
+
+  private logOtpOutcome(
+    event: 'otp.start' | 'otp.verify',
+    outcome: string,
+  ): void {
+    this._logger.log(JSON.stringify({ event, outcome }));
+  }
+
+  /**
+   * Start the EMAIL_OTP challenge (OTP-R-7, design.md §4.2/§5.2).
+   * Mirrors loginWithCustomPassword's fetch/secret-hash pattern.
+   */
+  async startEmailOtp(username: string): Promise<{
+    challengeName: 'EMAIL_OTP';
+    session: string;
+    codeDeliveryDestination?: string;
+  }> {
+    try {
+      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID');
+      const clientSecret = this.configService.get<string>(
+        'COGNITO_CLIENT_SECRET',
+      );
+      const secretHash = this.calculateSecretHash(
+        username,
+        clientId,
+        clientSecret,
+      );
+
+      const initiateResponse = await fetch(
+        this.configService.get<string>('COGNITO_USER_POOL_URL'),
+        {
+          method: 'POST',
+          headers: {
+            'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: JSON.stringify({
+            AuthFlow: 'USER_AUTH',
+            ClientId: clientId,
+            AuthParameters: {
+              USERNAME: username,
+              SECRET_HASH: secretHash,
+              PREFERRED_CHALLENGE: 'EMAIL_OTP',
+            },
+          }),
+        },
+      );
+      const initiateResult = await initiateResponse.json();
+
+      if (!initiateResponse.ok) {
+        throw this.otpException(initiateResult.__type, initiateResult.message);
+      }
+
+      let challenge = initiateResult;
+
+      if (challenge.ChallengeName === 'SELECT_CHALLENGE') {
+        const availableChallenges: string[] =
+          challenge.AvailableChallenges || [];
+        if (!availableChallenges.includes('EMAIL_OTP')) {
+          throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
+        }
+
+        const selectResponse = await fetch(
+          this.configService.get<string>('COGNITO_USER_POOL_URL'),
+          {
+            method: 'POST',
+            headers: {
+              'X-Amz-Target':
+                'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
+              'Content-Type': 'application/x-amz-json-1.1',
+            },
+            body: JSON.stringify({
+              ChallengeName: 'SELECT_CHALLENGE',
+              ClientId: clientId,
+              Session: challenge.Session,
+              ChallengeResponses: {
+                USERNAME: username,
+                ANSWER: 'EMAIL_OTP',
+                SECRET_HASH: secretHash,
+              },
+            }),
+          },
+        );
+        const selectResult = await selectResponse.json();
+
+        if (!selectResponse.ok) {
+          throw this.otpException(selectResult.__type, selectResult.message);
+        }
+
+        challenge = selectResult;
+      }
+
+      if (challenge.ChallengeName !== 'EMAIL_OTP') {
+        throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
+      }
+
+      this.logOtpOutcome('otp.start', 'sent');
+      return {
+        challengeName: 'EMAIL_OTP',
+        session: challenge.Session,
+        codeDeliveryDestination:
+          challenge.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const response = error.getResponse() as { code?: string };
+        this.logOtpOutcome('otp.start', response?.code || 'upstream_error');
+        throw error;
+      }
+      this.logOtpOutcome('otp.start', 'upstream_error');
+      throw this.otpException('UPSTREAM_ERROR', 'upstream error');
+    }
+  }
+
+  /**
+   * Verify an EMAIL_OTP code (OTP-R-7, design.md §4.2/§5.2).
+   */
+  async verifyEmailOtp(
+    username: string,
+    code: string,
+    session: string,
+  ): Promise<{
+    tokens: {
+      accessToken: string;
+      idToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      tokenType: string;
+    };
+  }> {
+    try {
+      const clientId = this.configService.get<string>('COGNITO_CLIENT_ID');
+      const clientSecret = this.configService.get<string>(
+        'COGNITO_CLIENT_SECRET',
+      );
+      const secretHash = this.calculateSecretHash(
+        username,
+        clientId,
+        clientSecret,
+      );
+
+      const response = await fetch(
+        this.configService.get<string>('COGNITO_USER_POOL_URL'),
+        {
+          method: 'POST',
+          headers: {
+            'X-Amz-Target':
+              'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: JSON.stringify({
+            ChallengeName: 'EMAIL_OTP',
+            ClientId: clientId,
+            Session: session,
+            ChallengeResponses: {
+              USERNAME: username,
+              EMAIL_OTP_CODE: code,
+              SECRET_HASH: secretHash,
+            },
+          }),
+        },
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw this.otpException(result.__type, result.message);
+      }
+
+      if (!result.AuthenticationResult) {
+        throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
+      }
+
+      this.logOtpOutcome('otp.verify', 'ok');
+      return {
+        tokens: {
+          accessToken: result.AuthenticationResult.AccessToken,
+          idToken: result.AuthenticationResult.IdToken,
+          refreshToken: result.AuthenticationResult.RefreshToken,
+          expiresIn: result.AuthenticationResult.ExpiresIn,
+          tokenType: result.AuthenticationResult.TokenType,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const response = error.getResponse() as { code?: string };
+        this.logOtpOutcome('otp.verify', response?.code || 'upstream_error');
+        throw error;
+      }
+      this.logOtpOutcome('otp.verify', 'upstream_error');
+      throw this.otpException('UPSTREAM_ERROR', 'upstream error');
+    }
+  }
+
+  /**
    * Create a new user in Cognito User Pool
    * @param username Username
    * @param temporaryPassword Temporary password
