@@ -425,6 +425,139 @@ describe('CognitoService', () => {
     });
   });
 
+  // OTP-T-10: provisioning adjustment so PASSWORDLESS_DOMAINS emails land CONFIRMED
+  // (docs/specs/changes/cognito-email-otp-login: OTP-R-13, OTP-AC-12, design.md §13)
+  describe('createUser — PASSWORDLESS_DOMAINS provisioning adjustment (OTP-T-10)', () => {
+    const passwordlessConfig = {
+      ...mockConfig,
+      PASSWORDLESS_DOMAINS: 'cifor-icraf.org,icrisat.org',
+    };
+
+    const withConfig = (overrides: Record<string, string>) => {
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key: string) => overrides[key]);
+    };
+
+    const lastCommandInput = (): any =>
+      (AdminCreateUserCommand as unknown as jest.Mock).mock.calls[
+        (AdminCreateUserCommand as unknown as jest.Mock).mock.calls.length - 1
+      ][0];
+
+    it('omits TemporaryPassword and suppresses messaging for a listed domain', async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'center@icrisat.org',
+        'TempPass123!',
+        'Center',
+        'User',
+        'center@icrisat.org',
+      );
+
+      expect(AdminCreateUserCommand).toHaveBeenCalledWith({
+        UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
+        Username: 'center@icrisat.org',
+        MessageAction: 'SUPPRESS',
+        UserAttributes: [
+          { Name: 'email', Value: 'center@icrisat.org' },
+          { Name: 'given_name', Value: 'Center' },
+          { Name: 'family_name', Value: 'User' },
+          { Name: 'email_verified', Value: 'true' },
+        ],
+      });
+      expect(lastCommandInput()).not.toHaveProperty('TemporaryPassword');
+    });
+
+    it('matches the domain case-insensitively', async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'Center@ICRISAT.ORG',
+        'TempPass123!',
+        'Center',
+        'User',
+        'Center@ICRISAT.ORG',
+      );
+
+      expect(lastCommandInput().TemporaryPassword).toBeUndefined();
+    });
+
+    it("keeps today's temporary-password flow byte-identical for a non-listed domain", async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'other@example.com',
+        'TempPass123!',
+        'Other',
+        'User',
+        'other@example.com',
+      );
+
+      expect(AdminCreateUserCommand).toHaveBeenCalledWith({
+        UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
+        Username: 'other@example.com',
+        TemporaryPassword: 'TempPass123!',
+        MessageAction: 'SUPPRESS',
+        UserAttributes: [
+          { Name: 'email', Value: 'other@example.com' },
+          { Name: 'given_name', Value: 'Other' },
+          { Name: 'family_name', Value: 'User' },
+          { Name: 'email_verified', Value: 'true' },
+        ],
+      });
+    });
+
+    it('does not treat a suffix match as a listed domain', async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'attacker@evil-icrisat.org',
+        'TempPass123!',
+        'Attacker',
+        'User',
+        'attacker@evil-icrisat.org',
+      );
+
+      expect(lastCommandInput().TemporaryPassword).toBe('TempPass123!');
+    });
+
+    it('keeps the feature off when PASSWORDLESS_DOMAINS is unset', async () => {
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'center@icrisat.org',
+        'TempPass123!',
+        'Center',
+        'User',
+        'center@icrisat.org',
+      );
+
+      expect(lastCommandInput().TemporaryPassword).toBe('TempPass123!');
+    });
+
+    describe('isPasswordlessDomain', () => {
+      it('returns true only for an exact, case-insensitive domain match from the env list', () => {
+        withConfig(passwordlessConfig);
+        expect(service.isPasswordlessDomain('a@CIFOR-ICRAF.ORG')).toBe(true);
+        expect(service.isPasswordlessDomain('a@icrisat.org')).toBe(true);
+        expect(service.isPasswordlessDomain('a@evil-icrisat.org')).toBe(
+          false,
+        );
+        expect(service.isPasswordlessDomain('a@example.com')).toBe(false);
+      });
+
+      it('returns false when the env var is unset or empty', () => {
+        withConfig({ ...mockConfig, PASSWORDLESS_DOMAINS: '' });
+        expect(service.isPasswordlessDomain('a@icrisat.org')).toBe(false);
+      });
+    });
+  });
+
   describe('updateUser', () => {
     it('should update user attributes successfully', async () => {
       const updateUserDto: UpdateUserDto = {

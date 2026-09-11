@@ -147,6 +147,7 @@ describe('AuthService', () => {
             changeUserPassword: jest.fn(),
             validateAccessToken: jest.fn(),
             refreshAccessToken: jest.fn(),
+            isPasswordlessDomain: jest.fn().mockReturnValue(false),
           },
         },
         {
@@ -821,6 +822,57 @@ describe('AuthService', () => {
         'ComplexPass123!',
         complexEmailConfig,
       );
+    });
+
+    // OTP-T-10: provisioning adjustment so PASSWORDLESS_DOMAINS emails land
+    // CONFIRMED (docs/specs/changes/cognito-email-otp-login: OTP-R-13, OTP-AC-12)
+    it('skips the welcome-password email for a PASSWORDLESS_DOMAINS email', async () => {
+      const registerUserDto = {
+        username: 'center@icrisat.org',
+        firstName: 'Center',
+        lastName: 'User',
+        email: 'center@icrisat.org',
+        emailConfig: mockEmailConfig,
+      };
+
+      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      jest
+        .spyOn(passwordGeneratorService, 'generateSecurePassword')
+        .mockReturnValue('TempPass123!');
+      jest
+        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
+        .mockReturnValue({
+          isValid: true,
+          errors: [],
+        });
+      jest
+        .spyOn(cognitoService, 'createUser')
+        .mockResolvedValue(mockCreateUserResult);
+      jest.spyOn(cognitoService, 'isPasswordlessDomain').mockReturnValue(true);
+      jest.spyOn(dynamicEmailService, 'getEmailStats').mockReturnValue({
+        variableCount: 6,
+        variables: [
+          'firstName',
+          'lastName',
+          'username',
+          'email',
+          'tempPassword',
+          'appName',
+        ],
+        templateSize: 256,
+      });
+
+      const result = await service.registerUser(registerUserDto, mockRequest);
+
+      expect(cognitoService.isPasswordlessDomain).toHaveBeenCalledWith(
+        'center@icrisat.org',
+      );
+      expect(dynamicEmailService.sendWelcomeEmail).not.toHaveBeenCalled();
+      expect(result.emailSent).toBe(false);
+      expect(result.userSub).toBe('new-user-123');
     });
   });
 

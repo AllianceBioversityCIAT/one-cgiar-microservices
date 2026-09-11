@@ -58,6 +58,12 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Environment Variables
+
+| Variable | Description | TEST value |
+|---|---|---|
+| `PASSWORDLESS_DOMAINS` | Comma-separated, case-insensitive list of email domains provisioned **without** a temporary password (`AdminCreateUser` with `MessageAction: SUPPRESS`, `email_verified: 'true'`) so the user lands `CONFIRMED` and is eligible for `EMAIL_OTP` directly (`/auth/register` → `CognitoService.createUser`, OTP-T-10, `docs/specs/changes/cognito-email-otp-login`: `OTP-R-13`, `OTP-AC-12`). Domains not in the list keep today's temporary-password flow unchanged. Empty/undefined disables the feature entirely. | `cifor-icraf.org,icrisat.org` |
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

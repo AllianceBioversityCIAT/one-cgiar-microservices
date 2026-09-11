@@ -412,6 +412,32 @@ export class CognitoService {
   }
 
   /**
+   * Provisioning adjustment (OTP-T-10, `OTP-R-13`, `OTP-AC-12`, design.md §13):
+   * the spike showed a Cognito user holding a temporary password never
+   * receives `EMAIL_OTP` (`SELECT_CHALLENGE [PASSWORD_SRP, PASSWORD]` only).
+   * For emails whose domain is in `PASSWORDLESS_DOMAINS` (comma-separated,
+   * matched case-insensitively, exact domain — no suffix match), `createUser`
+   * skips `TemporaryPassword` so the user lands `CONFIRMED` and is eligible
+   * for `EMAIL_OTP` directly. Empty/undefined env → feature off, every
+   * domain keeps today's temporary-password flow.
+   */
+  isPasswordlessDomain(email: string): boolean {
+    const domainsEnv = this.configService.get<string>('PASSWORDLESS_DOMAINS');
+    if (!domainsEnv) {
+      return false;
+    }
+    const domains = domainsEnv
+      .split(',')
+      .map((domain) => domain.trim().toLowerCase())
+      .filter(Boolean);
+    const emailDomain = (email || '').split('@')[1]?.toLowerCase();
+    if (!emailDomain) {
+      return false;
+    }
+    return domains.includes(emailDomain);
+  }
+
+  /**
    * Create a new user in Cognito User Pool
    * @param username Username
    * @param temporaryPassword Temporary password
@@ -429,7 +455,7 @@ export class CognitoService {
     email: string,
   ): Promise<any> {
     try {
-      const command = new AdminCreateUserCommand({
+      const commandInput: Record<string, unknown> = {
         UserPoolId: this.configService.get<string>('COGNITO_USER_POOL_ID'),
         Username: username,
         TemporaryPassword: temporaryPassword,
@@ -440,7 +466,13 @@ export class CognitoService {
           { Name: 'family_name', Value: lastName },
           { Name: 'email_verified', Value: 'true' },
         ],
-      });
+      };
+
+      if (this.isPasswordlessDomain(email)) {
+        delete commandInput.TemporaryPassword;
+      }
+
+      const command = new AdminCreateUserCommand(commandInput as any);
 
       const response = await this.cognitoClient.send(command);
 
