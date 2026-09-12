@@ -1455,14 +1455,15 @@ describe('CognitoService', () => {
   describe('startEmailOtp', () => {
     it('calls InitiateAuth with AuthFlow: CUSTOM_AUTH (no PREFERRED_CHALLENGE) and returns the CUSTOM_CHALLENGE', async () => {
       // design.md §18.1 steps 2-5: CUSTOM_AUTH replaces USER_AUTH/PREFERRED_CHALLENGE.
+      // OTP-T-14: CreateAuthChallenge (OTP-T-11) publishes the masked address
+      // as `destination`, not the built-in EMAIL_OTP `CODE_DELIVERY_DESTINATION`.
       mockFetchOnce(
         200,
         makeInitiateAuthResponse({
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'session-from-initiate-auth',
           ChallengeParameters: {
-            CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
-            CODE_DELIVERY_DESTINATION: 'j***@g***',
+            destination: 'j***@g***',
           },
         }),
       );
@@ -1496,6 +1497,46 @@ describe('CognitoService', () => {
       });
     });
 
+    it('falls back to the legacy EMAIL_OTP CODE_DELIVERY_DESTINATION key when destination is absent (OTP-T-14)', async () => {
+      mockFetchOnce(
+        200,
+        makeInitiateAuthResponse({
+          ChallengeName: 'CUSTOM_CHALLENGE',
+          Session: 'session-legacy-key',
+          ChallengeParameters: {
+            CODE_DELIVERY_DESTINATION: 'l***@e***',
+          },
+        }),
+      );
+
+      const result = await service.startEmailOtp('user@icrisat.org');
+
+      expect(result).toEqual({
+        challengeName: 'CUSTOM_CHALLENGE',
+        session: 'session-legacy-key',
+        codeDeliveryDestination: 'l***@e***',
+      });
+    });
+
+    it('returns codeDeliveryDestination: undefined when neither destination nor CODE_DELIVERY_DESTINATION is present', async () => {
+      mockFetchOnce(
+        200,
+        makeInitiateAuthResponse({
+          ChallengeName: 'CUSTOM_CHALLENGE',
+          Session: 'session-no-destination',
+          ChallengeParameters: {},
+        }),
+      );
+
+      const result = await service.startEmailOtp('user@icrisat.org');
+
+      expect(result).toEqual({
+        challengeName: 'CUSTOM_CHALLENGE',
+        session: 'session-no-destination',
+        codeDeliveryDestination: undefined,
+      });
+    });
+
     it('returns the simulated CUSTOM_CHALLENGE for an email unknown to Cognito (userNotFound decoy, design.md §18.1 step 3)', async () => {
       mockFetchOnce(
         200,
@@ -1503,8 +1544,7 @@ describe('CognitoService', () => {
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'session-unknown-user',
           ChallengeParameters: {
-            CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
-            CODE_DELIVERY_DESTINATION: 'n***@i***',
+            destination: 'n***@i***',
           },
         }),
       );
@@ -1734,8 +1774,7 @@ describe('CognitoService', () => {
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'super-secret-session-value',
           ChallengeParameters: {
-            CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
-            CODE_DELIVERY_DESTINATION: 'j***@i***',
+            destination: 'j***@i***',
           },
         }),
       });

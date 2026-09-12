@@ -297,7 +297,13 @@ export class CognitoService {
       return {
         challengeName: 'CUSTOM_CHALLENGE',
         session: initiateResult.Session,
+        // OTP-T-14: our CreateAuthChallenge trigger (OTP-T-11) publishes the
+        // masked address as `publicChallengeParameters.destination`, which
+        // Cognito surfaces here as `ChallengeParameters.destination` — not
+        // the built-in EMAIL_OTP factor's `CODE_DELIVERY_DESTINATION` key,
+        // kept only as a legacy fallback.
         codeDeliveryDestination:
+          initiateResult.ChallengeParameters?.destination ??
           initiateResult.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
       };
     } catch (error) {
