@@ -78,8 +78,8 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
       body { margin: 0; padding: 0; background-color: #f4f6f8; }
       .wrapper { width: 100%; background-color: #f4f6f8; padding: 24px 0; }
       .card { width: 100%; max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; font-family: Arial, Helvetica, sans-serif; color: #1f2a37; }
-      .header { padding: 0; text-align: center; }
-      .header img { display: block; width: 100%; max-width: 560px; height: auto; border: 0; }
+      .header { padding: 24px 32px 8px 32px; text-align: left; }
+      .header img { display: block; width: 220px; max-width: 100%; height: auto; border: 0; }
       .content { padding: 28px 32px 8px 32px; font-size: 15px; line-height: 22px; }
       .otp-code { font-family: "Courier New", Consolas, Menlo, monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #1f2a37; text-align: center; padding: 18px 0; margin: 20px 0; background-color: #f0f4f8; border-radius: 6px; }
       .muted { color: #5b6b7c; font-size: 13px; line-height: 20px; }
@@ -91,7 +91,7 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
     <div class="wrapper">
       <div class="card">
         <div class="header">
-          <img src="{{logoUrl}}" alt="{{appName}}" />
+          <img src="{{logoUrl}}" alt="{{appName}}" width="220" style="width:220px;max-width:100%;height:auto;display:block" />
         </div>
         <div class="content">
           <p>Hello,</p>
