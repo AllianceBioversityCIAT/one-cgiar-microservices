@@ -105,6 +105,56 @@ const mockEmailConfig: EmailConfigDto = {
     '<html><body><h1>Welcome {{firstName}}!</h1><p>Password: {{tempPassword}}</p></body></html>',
 };
 
+// Shared OTP/registration test builders (OTP-T-3, OTP-T-10) — collapse the
+// repeated Cognito/email-service mock setup and delegate-rejection shape to
+// control duplication on new code.
+const mockOtpTokens = {
+  accessToken: 'mock-access-token',
+  idToken: 'mock-id-token',
+  refreshToken: 'mock-refresh-token',
+  expiresIn: 3600,
+  tokenType: 'Bearer',
+};
+
+const mockCognitoAuthenticationResult = {
+  AuthenticationResult: {
+    AccessToken: mockOtpTokens.accessToken,
+    IdToken: mockOtpTokens.idToken,
+    RefreshToken: mockOtpTokens.refreshToken,
+    ExpiresIn: mockOtpTokens.expiresIn,
+    TokenType: mockOtpTokens.tokenType,
+  },
+};
+
+const expectDelegatedRejection = (
+  call: () => Promise<unknown>,
+  error: unknown,
+) => expect(call()).rejects.toBe(error);
+
+// Happy-path registration mocks (validate config -> generate password ->
+// validate password -> create Cognito user) shared by the OTP-T-10
+// PASSWORDLESS_DOMAINS case; the pre-existing registration tests keep their
+// own inline setup unchanged.
+const mockRegisterUserHappyPath = (
+  cognitoSvc: CognitoService,
+  dynamicEmailSvc: DynamicEmailService,
+  passwordGenSvc: PasswordGeneratorService,
+  createUserResult: unknown,
+  tempPassword = 'TempPass123!',
+) => {
+  jest.spyOn(dynamicEmailSvc, 'validateEmailConfig').mockReturnValue({
+    isValid: true,
+    errors: [],
+  });
+  jest
+    .spyOn(passwordGenSvc, 'generateSecurePassword')
+    .mockReturnValue(tempPassword);
+  jest
+    .spyOn(passwordGenSvc, 'validateCognitoPassword')
+    .mockReturnValue({ isValid: true, errors: [] });
+  jest.spyOn(cognitoSvc, 'createUser').mockResolvedValue(createUserResult);
+};
+
 describe('AuthService', () => {
   let service: AuthService;
   let httpService: HttpService;
@@ -839,22 +889,12 @@ describe('AuthService', () => {
         emailConfig: mockEmailConfig,
       };
 
-      jest.spyOn(dynamicEmailService, 'validateEmailConfig').mockReturnValue({
-        isValid: true,
-        errors: [],
-      });
-      jest
-        .spyOn(passwordGeneratorService, 'generateSecurePassword')
-        .mockReturnValue('TempPass123!');
-      jest
-        .spyOn(passwordGeneratorService, 'validateCognitoPassword')
-        .mockReturnValue({
-          isValid: true,
-          errors: [],
-        });
-      jest
-        .spyOn(cognitoService, 'createUser')
-        .mockResolvedValue(mockCreateUserResult);
+      mockRegisterUserHappyPath(
+        cognitoService,
+        dynamicEmailService,
+        passwordGeneratorService,
+        mockCreateUserResult,
+      );
       jest.spyOn(cognitoService, 'isPasswordlessDomain').mockReturnValue(true);
       jest.spyOn(dynamicEmailService, 'getEmailStats').mockReturnValue({
         variableCount: 6,
@@ -1123,7 +1163,7 @@ describe('AuthService', () => {
 
       jest.spyOn(cognitoService, 'startEmailOtp').mockRejectedValueOnce(error);
 
-      await expect(service.startEmailOtp(dto)).rejects.toBe(error);
+      await expectDelegatedRejection(() => service.startEmailOtp(dto), error);
       expect(error.getResponse()).toMatchObject({
         code: 'CHALLENGE_NOT_SUPPORTED',
       });
@@ -1138,15 +1178,7 @@ describe('AuthService', () => {
         code: '12345678',
         session: 'session-value',
       };
-      const cognitoResult = {
-        tokens: {
-          accessToken: 'mock-access-token',
-          idToken: 'mock-id-token',
-          refreshToken: 'mock-refresh-token',
-          expiresIn: 3600,
-          tokenType: 'Bearer',
-        },
-      };
+      const cognitoResult = { tokens: mockOtpTokens };
 
       jest
         .spyOn(cognitoService, 'verifyEmailOtp')
@@ -1173,24 +1205,12 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      jest.spyOn(cognitoService, 'verifyEmailOtp').mockResolvedValueOnce({
-        tokens: {
-          accessToken: 'mock-access-token',
-          idToken: 'mock-id-token',
-          refreshToken: 'mock-refresh-token',
-          expiresIn: 3600,
-          tokenType: 'Bearer',
-        },
-      });
-      jest.spyOn(cognitoService, 'loginWithCustomPassword').mockResolvedValueOnce({
-        AuthenticationResult: {
-          AccessToken: 'mock-access-token',
-          IdToken: 'mock-id-token',
-          RefreshToken: 'mock-refresh-token',
-          ExpiresIn: 3600,
-          TokenType: 'Bearer',
-        },
-      });
+      jest
+        .spyOn(cognitoService, 'verifyEmailOtp')
+        .mockResolvedValueOnce({ tokens: mockOtpTokens });
+      jest
+        .spyOn(cognitoService, 'loginWithCustomPassword')
+        .mockResolvedValueOnce(mockCognitoAuthenticationResult);
 
       const otpResult = await service.verifyEmailOtp(otpDto);
       const passwordResult =
@@ -1210,11 +1230,9 @@ describe('AuthService', () => {
         HttpStatus.UNAUTHORIZED,
       );
 
-      jest
-        .spyOn(cognitoService, 'verifyEmailOtp')
-        .mockRejectedValueOnce(error);
+      jest.spyOn(cognitoService, 'verifyEmailOtp').mockRejectedValueOnce(error);
 
-      await expect(service.verifyEmailOtp(dto)).rejects.toBe(error);
+      await expectDelegatedRejection(() => service.verifyEmailOtp(dto), error);
     });
   });
 });
