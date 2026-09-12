@@ -1249,7 +1249,7 @@ describe('AuthController', () => {
     it('delegates to authService.startEmailOtp and returns its result', async () => {
       const dto: EmailOtpStartDto = { username: 'user@icrisat.org' };
       const mockOtpStartResult = {
-        challengeName: 'EMAIL_OTP' as const,
+        challengeName: 'CUSTOM_CHALLENGE' as const,
         session: 'session-value',
         codeDeliveryDestination: 'j***@icrisat.org',
       };

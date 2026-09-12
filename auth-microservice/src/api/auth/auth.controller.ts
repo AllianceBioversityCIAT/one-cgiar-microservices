@@ -81,19 +81,19 @@ export class AuthController {
 
   @Post('login/otp/start')
   @UseFilters(OtpHttpExceptionFilter)
-  @ApiClarisaAuth('Start the EMAIL_OTP challenge for a Center user')
+  @ApiClarisaAuth('Start the CUSTOM_AUTH sign-in challenge for a Center user')
   @ApiOperation({
-    summary: 'Start EMAIL_OTP sign-in',
+    summary: 'Start CUSTOM_AUTH sign-in',
     description:
-      'Initiates the EMAIL_OTP Cognito challenge for the given username, answering a SELECT_CHALLENGE reply automatically when EMAIL_OTP is offered.',
+      'Initiates the CUSTOM_AUTH Cognito challenge for the given username; the pool always answers with a single CUSTOM_CHALLENGE.',
   })
   @ApiResponse({
     status: 201,
-    description: 'EMAIL_OTP challenge started',
+    description: 'CUSTOM_CHALLENGE started',
     schema: {
       type: 'object',
       properties: {
-        challengeName: { type: 'string', example: 'EMAIL_OTP' },
+        challengeName: { type: 'string', example: 'CUSTOM_CHALLENGE' },
         session: { type: 'string', example: 'AYABe...' },
         codeDeliveryDestination: {
           type: 'string',
@@ -105,7 +105,7 @@ export class AuthController {
   @ApiResponse({
     status: 401,
     description:
-      'NOT_AUTHORIZED or CHALLENGE_NOT_SUPPORTED (stable error code in the body)',
+      'ATTEMPTS_EXCEEDED, NOT_AUTHORIZED or CHALLENGE_NOT_SUPPORTED (stable error code in the body)',
     type: ErrorResponse,
   })
   @ApiResponse({
@@ -120,11 +120,11 @@ export class AuthController {
 
   @Post('login/otp/verify')
   @UseFilters(OtpHttpExceptionFilter)
-  @ApiClarisaAuth('Verify an EMAIL_OTP code and return tokens')
+  @ApiClarisaAuth('Verify a CUSTOM_AUTH code and return tokens')
   @ApiOperation({
-    summary: 'Verify EMAIL_OTP sign-in',
+    summary: 'Verify CUSTOM_AUTH sign-in',
     description:
-      'Completes the EMAIL_OTP challenge; returns the same tokens shape as login/custom.',
+      'Completes the CUSTOM_CHALLENGE; returns the same tokens shape as login/custom.',
   })
   @ApiResponse({
     status: 201,
@@ -134,7 +134,7 @@ export class AuthController {
   @ApiResponse({
     status: 401,
     description:
-      'CODE_MISMATCH, CODE_EXPIRED, ATTEMPTS_EXCEEDED, NOT_AUTHORIZED or CHALLENGE_NOT_SUPPORTED (stable error code in the body)',
+      'CODE_MISMATCH, CODE_EXPIRED, ATTEMPTS_EXCEEDED, NOT_AUTHORIZED or CHALLENGE_NOT_SUPPORTED (stable error code in the body) — CODE_MISMATCH also carries the rotated session for retry',
     type: ErrorResponse,
   })
   @ApiResponse({

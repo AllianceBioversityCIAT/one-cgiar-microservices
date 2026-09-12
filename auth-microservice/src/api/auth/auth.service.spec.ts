@@ -1139,7 +1139,7 @@ describe('AuthService', () => {
     it('delegates to CognitoService.startEmailOtp and returns its shape unchanged', async () => {
       const dto: EmailOtpStartDto = { username: 'user@icrisat.org' };
       const cognitoResult = {
-        challengeName: 'EMAIL_OTP' as const,
+        challengeName: 'CUSTOM_CHALLENGE' as const,
         session: 'session-value',
         codeDeliveryDestination: 'j***@icrisat.org',
       };

@@ -190,6 +190,8 @@ export class CognitoService {
     | 'UPSTREAM_ERROR' {
     const msg = (message || '').toLowerCase();
     switch (type) {
+      // Also used as an internal sentinel `__type` (no real Cognito exception)
+      // for the CUSTOM_AUTH mismatch reply — see verifyEmailOtp.
       case 'CodeMismatchException':
         return 'CODE_MISMATCH';
       case 'ExpiredCodeException':
@@ -197,8 +199,17 @@ export class CognitoService {
       case 'TooManyFailedAttemptsException':
         return 'ATTEMPTS_EXCEEDED';
       case 'NotAuthorizedException':
-        if (msg.includes('session is expired')) return 'CODE_EXPIRED';
-        if (msg.includes('attempt')) return 'ATTEMPTS_EXCEEDED';
+        // CUSTOM_AUTH's DefineAuthChallenge fails the whole auth attempt with
+        // this generic message after the 3rd wrong code (design.md §18.1
+        // steps 8-9) — Cognito never returns a distinguishable "attempts"
+        // message here.
+        if (msg.includes('incorrect username or password')) {
+          return 'ATTEMPTS_EXCEEDED';
+        }
+        // Any session-related NotAuthorizedException (expired or already
+        // consumed) means the client's session token is no longer usable —
+        // the user-facing outcome is the same as an expired code.
+        if (msg.includes('session')) return 'CODE_EXPIRED';
         return 'NOT_AUTHORIZED';
       case 'CHALLENGE_NOT_SUPPORTED':
         return 'CHALLENGE_NOT_SUPPORTED';
@@ -207,14 +218,18 @@ export class CognitoService {
     }
   }
 
-  private otpException(type: string, message: string): HttpException {
+  private otpException(
+    type: string,
+    message: string,
+    extra?: Record<string, unknown>,
+  ): HttpException {
     const code = this.mapCognitoError(type, message);
     const status =
       code === 'UPSTREAM_ERROR'
         ? HttpStatus.BAD_GATEWAY
         : HttpStatus.UNAUTHORIZED;
     return new HttpException(
-      { code, message: CognitoService.OTP_ERROR_COPY[code] },
+      { code, message: CognitoService.OTP_ERROR_COPY[code], ...extra },
       status,
     );
   }
@@ -227,11 +242,15 @@ export class CognitoService {
   }
 
   /**
-   * Start the EMAIL_OTP challenge (OTP-R-7, design.md §4.2/§5.2).
-   * Mirrors loginWithCustomPassword's fetch/secret-hash pattern.
+   * Start the CUSTOM_AUTH challenge (OTP-R-7 modified, design.md §18.1 steps
+   * 2-5). `DefineAuthChallenge`/`CreateAuthChallenge` (cognito-triggers,
+   * OTP-T-11) always answer with a single `CUSTOM_CHALLENGE` — no
+   * `PREFERRED_CHALLENGE` and no `SELECT_CHALLENGE` branch, unlike the prior
+   * built-in `EMAIL_OTP` factor. Mirrors loginWithCustomPassword's
+   * fetch/secret-hash pattern.
    */
   async startEmailOtp(username: string): Promise<{
-    challengeName: 'EMAIL_OTP';
+    challengeName: 'CUSTOM_CHALLENGE';
     session: string;
     codeDeliveryDestination?: string;
   }> {
@@ -255,12 +274,11 @@ export class CognitoService {
             'Content-Type': 'application/x-amz-json-1.1',
           },
           body: JSON.stringify({
-            AuthFlow: 'USER_AUTH',
+            AuthFlow: 'CUSTOM_AUTH',
             ClientId: clientId,
             AuthParameters: {
               USERNAME: username,
               SECRET_HASH: secretHash,
-              PREFERRED_CHALLENGE: 'EMAIL_OTP',
             },
           }),
         },
@@ -271,55 +289,16 @@ export class CognitoService {
         throw this.otpException(initiateResult.__type, initiateResult.message);
       }
 
-      let challenge = initiateResult;
-
-      if (challenge.ChallengeName === 'SELECT_CHALLENGE') {
-        const availableChallenges: string[] =
-          challenge.AvailableChallenges || [];
-        if (!availableChallenges.includes('EMAIL_OTP')) {
-          throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
-        }
-
-        const selectResponse = await fetch(
-          this.configService.get<string>('COGNITO_USER_POOL_URL'),
-          {
-            method: 'POST',
-            headers: {
-              'X-Amz-Target':
-                'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
-              'Content-Type': 'application/x-amz-json-1.1',
-            },
-            body: JSON.stringify({
-              ChallengeName: 'SELECT_CHALLENGE',
-              ClientId: clientId,
-              Session: challenge.Session,
-              ChallengeResponses: {
-                USERNAME: username,
-                ANSWER: 'EMAIL_OTP',
-                SECRET_HASH: secretHash,
-              },
-            }),
-          },
-        );
-        const selectResult = await selectResponse.json();
-
-        if (!selectResponse.ok) {
-          throw this.otpException(selectResult.__type, selectResult.message);
-        }
-
-        challenge = selectResult;
-      }
-
-      if (challenge.ChallengeName !== 'EMAIL_OTP') {
+      if (initiateResult.ChallengeName !== 'CUSTOM_CHALLENGE') {
         throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
       }
 
       this.logOtpOutcome('otp.start', 'sent');
       return {
-        challengeName: 'EMAIL_OTP',
-        session: challenge.Session,
+        challengeName: 'CUSTOM_CHALLENGE',
+        session: initiateResult.Session,
         codeDeliveryDestination:
-          challenge.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
+          initiateResult.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -333,7 +312,13 @@ export class CognitoService {
   }
 
   /**
-   * Verify an EMAIL_OTP code (OTP-R-7, design.md §4.2/§5.2).
+   * Verify a CUSTOM_CHALLENGE code (OTP-R-7 modified, OTP-R-4, design.md
+   * §18.1 steps 6-9). A wrong code is NOT a Cognito exception in custom
+   * auth: the reply comes back `ok` with `ChallengeName: 'CUSTOM_CHALLENGE'`
+   * again (no `AuthenticationResult`) and a rotated `Session` — surfaced as
+   * `401 CODE_MISMATCH` carrying that rotated session so the client can
+   * retry without a new code (OTP-R-11: the session travels in the response
+   * body only, never through `logOtpOutcome`).
    */
   async verifyEmailOtp(
     username: string,
@@ -369,12 +354,12 @@ export class CognitoService {
             'Content-Type': 'application/x-amz-json-1.1',
           },
           body: JSON.stringify({
-            ChallengeName: 'EMAIL_OTP',
+            ChallengeName: 'CUSTOM_CHALLENGE',
             ClientId: clientId,
             Session: session,
             ChallengeResponses: {
               USERNAME: username,
-              EMAIL_OTP_CODE: code,
+              ANSWER: code,
               SECRET_HASH: secretHash,
             },
           }),
@@ -386,14 +371,41 @@ export class CognitoService {
         throw this.otpException(result.__type, result.message);
       }
 
-      if (!result.AuthenticationResult) {
+      const accessToken = result.AuthenticationResult?.AccessToken;
+      const hasAccessToken =
+        typeof accessToken === 'string' && accessToken.length > 0;
+
+      if (!hasAccessToken) {
+        if (result.AuthenticationResult) {
+          // Cognito claimed success (an `AuthenticationResult` key is
+          // present) but it carries no usable AccessToken — e.g. `{}`. This
+          // is not a real Cognito exception and not a challenge reply, so it
+          // maps to UPSTREAM_ERROR (502) rather than a fabricated 401.
+          throw this.otpException('UPSTREAM_ERROR', 'upstream error');
+        }
+
+        if (result.ChallengeName === 'CUSTOM_CHALLENGE') {
+          if (!result.Session) {
+            // No rotated session to carry for retry — surfacing CODE_MISMATCH
+            // here would silently drop the session the client needs, so this
+            // is treated as an unsupported challenge outcome instead.
+            throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
+          }
+          // Wrong code: Cognito issued a new CUSTOM_CHALLENGE with a rotated
+          // Session instead of failing outright (design.md §18.1 step 8).
+          // 'CodeMismatchException' here is an internal sentinel `__type`
+          // for mapCognitoError — no real Cognito exception was thrown.
+          throw this.otpException('CodeMismatchException', 'code mismatch', {
+            session: result.Session,
+          });
+        }
         throw this.otpException('CHALLENGE_NOT_SUPPORTED', 'unsupported');
       }
 
       this.logOtpOutcome('otp.verify', 'ok');
       return {
         tokens: {
-          accessToken: result.AuthenticationResult.AccessToken,
+          accessToken,
           idToken: result.AuthenticationResult.IdToken,
           refreshToken: result.AuthenticationResult.RefreshToken,
           expiresIn: result.AuthenticationResult.ExpiresIn,
