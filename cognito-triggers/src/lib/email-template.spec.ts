@@ -99,6 +99,17 @@ describe('email-template', () => {
     it('leaves no placeholder unresolved', () => {
       expect(html()).not.toContain('{{');
     });
+
+    it('constrains the header logo to 220px with an explicit width attribute (OTP-T-14 — Gmail ignores CSS-only sizing)', () => {
+      const img = /<img\b[^>]*>/.exec(html());
+      expect(img).not.toBeNull();
+      const tag = img![0];
+
+      expect(tag).toContain('width="220"');
+      expect(tag).toMatch(/style="[^"]*width:\s*220px/);
+      expect(tag).toContain('max-width:100%');
+      expect(tag).toContain(`alt="${PRMS_BRANDING.appName}"`);
+    });
   });
 
   describe('renderOtpEmailText (plain-text alternative)', () => {
