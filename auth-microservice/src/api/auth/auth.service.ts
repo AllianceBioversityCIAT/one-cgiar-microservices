@@ -644,7 +644,7 @@ export class AuthService {
    * additional logging here to avoid duplicate events.
    */
   async startEmailOtp(dto: EmailOtpStartDto): Promise<{
-    challengeName: 'EMAIL_OTP';
+    challengeName: 'CUSTOM_CHALLENGE';
     session: string;
     codeDeliveryDestination?: string;
   }> {

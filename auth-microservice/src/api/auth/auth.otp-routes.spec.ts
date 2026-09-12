@@ -104,6 +104,71 @@ describe('AuthController OTP routes (request-level, OTP-R-7)', () => {
       );
     });
 
+    it('keeps `code: CODE_MISMATCH` AND the rotated `session` in the 401 body through the real OtpHttpExceptionFilter (OTP-R-7 modified, OTP-R-4), and never logs the rotated session (OTP-R-11)', async () => {
+      const ROTATED_SESSION = 'rotated-session-value';
+
+      const logSpy = jest
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      const errorSpy = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      const warnSpy = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      try {
+        authService.verifyEmailOtp.mockRejectedValue(
+          new HttpException(
+            {
+              code: 'CODE_MISMATCH',
+              message: 'The code entered is incorrect.',
+              session: ROTATED_SESSION,
+            },
+            HttpStatus.UNAUTHORIZED,
+          ),
+        );
+
+        const res = await request(app.getHttpServer())
+          .post('/auth/login/otp/verify')
+          .send({
+            username: 'user@icrisat.org',
+            code: '12345678',
+            session: 'AYABe',
+          });
+
+        expect(res.status).toBe(401);
+        expect(res.body).toEqual(
+          expect.objectContaining({
+            statusCode: 401,
+            code: 'CODE_MISMATCH',
+            message: 'The code entered is incorrect.',
+            session: ROTATED_SESSION,
+            path: '/auth/login/otp/verify',
+            timestamp: expect.any(String),
+          }),
+        );
+        expect(res.body.session).toBe(ROTATED_SESSION);
+
+        const allCalls = [
+          ...logSpy.mock.calls,
+          ...errorSpy.mock.calls,
+          ...warnSpy.mock.calls,
+        ];
+        expect(allCalls.length).toBeGreaterThan(0);
+        const loggedText = allCalls
+          .flat()
+          .map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg)));
+        expect(loggedText).not.toEqual(
+          expect.arrayContaining([expect.stringContaining(ROTATED_SESSION)]),
+        );
+      } finally {
+        logSpy.mockRestore();
+        errorSpy.mockRestore();
+        warnSpy.mockRestore();
+      }
+    });
+
     it.each([
       'CODE_EXPIRED',
       'ATTEMPTS_EXCEEDED',
@@ -202,7 +267,7 @@ describe('AuthController OTP routes (request-level, OTP-R-7)', () => {
 
     it('returns 201 with the service result unchanged on success', async () => {
       const started = {
-        challengeName: 'EMAIL_OTP' as const,
+        challengeName: 'CUSTOM_CHALLENGE' as const,
         session: 'AYABe-new',
         codeDeliveryDestination: 'u***@icrisat.org',
       };
@@ -279,7 +344,7 @@ describe('AuthController OTP routes (request-level, OTP-R-7)', () => {
 
     it('start: the session never reaches any logger call, the client body is unchanged', async () => {
       const started = {
-        challengeName: 'EMAIL_OTP' as const,
+        challengeName: 'CUSTOM_CHALLENGE' as const,
         session: FAKE_SESSION,
         codeDeliveryDestination: 'u***@icrisat.org',
       };

@@ -66,10 +66,9 @@ const makeInitiateAuthResponse = (
     ChallengeName: string;
     Session: string;
     ChallengeParameters: Record<string, string>;
-    AvailableChallenges: string[];
   }> = {},
 ) => ({
-  ChallengeName: 'EMAIL_OTP',
+  ChallengeName: 'CUSTOM_CHALLENGE',
   Session: 'session-value',
   ChallengeParameters: {},
   ...overrides,
@@ -1410,9 +1409,9 @@ describe('CognitoService', () => {
       },
       {
         title:
-          'maps a NotAuthorizedException carrying an attempts message to ATTEMPTS_EXCEEDED',
+          'maps the exceeded-attempts NotAuthorizedException ("Incorrect username or password", design.md §18.1 step 8/9, after the 3rd miss) to ATTEMPTS_EXCEEDED',
         type: 'NotAuthorizedException',
-        message: 'Attempt limit exceeded, please try after some time.',
+        message: 'Incorrect username or password.',
         expected: 'ATTEMPTS_EXCEEDED',
       },
       {
@@ -1424,15 +1423,16 @@ describe('CognitoService', () => {
       },
       {
         title:
-          'maps the reused-session NotAuthorizedException to NOT_AUTHORIZED',
+          'maps the reused-session NotAuthorizedException to CODE_EXPIRED (custom auth: any session-related message means the session token is no longer usable)',
         type: 'NotAuthorizedException',
         message: 'Invalid session for the user, session can only be used once.',
-        expected: 'NOT_AUTHORIZED',
+        expected: 'CODE_EXPIRED',
       },
       {
-        title: 'maps a generic NotAuthorizedException to NOT_AUTHORIZED',
+        title:
+          'maps a NotAuthorizedException matching neither pattern to NOT_AUTHORIZED (fallback)',
         type: 'NotAuthorizedException',
-        message: 'Incorrect username or password.',
+        message: 'User is disabled.',
         expected: 'NOT_AUTHORIZED',
       },
       {
@@ -1453,22 +1453,23 @@ describe('CognitoService', () => {
   });
 
   describe('startEmailOtp', () => {
-    it('calls InitiateAuth with USER_AUTH + PREFERRED_CHALLENGE=EMAIL_OTP and returns the direct challenge', async () => {
-      // initiate-auth.email-otp.confirmed-user.json
+    it('calls InitiateAuth with AuthFlow: CUSTOM_AUTH (no PREFERRED_CHALLENGE) and returns the CUSTOM_CHALLENGE', async () => {
+      // design.md §18.1 steps 2-5: CUSTOM_AUTH replaces USER_AUTH/PREFERRED_CHALLENGE.
       mockFetchOnce(
         200,
         makeInitiateAuthResponse({
+          ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'session-from-initiate-auth',
           ChallengeParameters: {
             CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
             CODE_DELIVERY_DESTINATION: 'j***@g***',
           },
-          AvailableChallenges: ['EMAIL_OTP'],
         }),
       );
 
       const result = await service.startEmailOtp('user@icrisat.org');
 
+      expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(global.fetch).toHaveBeenCalledWith(
         mockConfig.COGNITO_USER_POOL_URL,
         {
@@ -1478,121 +1479,46 @@ describe('CognitoService', () => {
             'Content-Type': 'application/x-amz-json-1.1',
           },
           body: JSON.stringify({
-            AuthFlow: 'USER_AUTH',
+            AuthFlow: 'CUSTOM_AUTH',
             ClientId: mockConfig.COGNITO_CLIENT_ID,
             AuthParameters: {
               USERNAME: 'user@icrisat.org',
               SECRET_HASH: 'mocked-hash-value',
-              PREFERRED_CHALLENGE: 'EMAIL_OTP',
             },
           }),
         },
       );
 
       expect(result).toEqual({
-        challengeName: 'EMAIL_OTP',
+        challengeName: 'CUSTOM_CHALLENGE',
         session: 'session-from-initiate-auth',
         codeDeliveryDestination: 'j***@g***',
       });
     });
 
-    it('answers a SELECT_CHALLENGE offering EMAIL_OTP and returns the new session', async () => {
-      // initiate-auth.email-otp.force-change-password.json shape, but with EMAIL_OTP offered
+    it('returns the simulated CUSTOM_CHALLENGE for an email unknown to Cognito (userNotFound decoy, design.md §18.1 step 3)', async () => {
       mockFetchOnce(
         200,
         makeInitiateAuthResponse({
-          ChallengeName: 'SELECT_CHALLENGE',
-          Session: 'session-from-select-challenge',
-          AvailableChallenges: ['EMAIL_OTP', 'PASSWORD'],
-        }),
-      );
-      mockFetchOnce(
-        200,
-        makeInitiateAuthResponse({
-          Session: 'session-after-select',
-          ChallengeParameters: {
-            CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
-            CODE_DELIVERY_DESTINATION: 'j***@i***',
-          },
-        }),
-      );
-
-      const result = await service.startEmailOtp('user@icrisat.org');
-
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-      expect(global.fetch).toHaveBeenNthCalledWith(
-        2,
-        mockConfig.COGNITO_USER_POOL_URL,
-        {
-          method: 'POST',
-          headers: {
-            'X-Amz-Target':
-              'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
-            'Content-Type': 'application/x-amz-json-1.1',
-          },
-          body: JSON.stringify({
-            ChallengeName: 'SELECT_CHALLENGE',
-            ClientId: mockConfig.COGNITO_CLIENT_ID,
-            Session: 'session-from-select-challenge',
-            ChallengeResponses: {
-              USERNAME: 'user@icrisat.org',
-              ANSWER: 'EMAIL_OTP',
-              SECRET_HASH: 'mocked-hash-value',
-            },
-          }),
-        },
-      );
-
-      expect(result).toEqual({
-        challengeName: 'EMAIL_OTP',
-        session: 'session-after-select',
-        codeDeliveryDestination: 'j***@i***',
-      });
-    });
-
-    it('maps a SELECT_CHALLENGE without EMAIL_OTP available (force-change-password fixture) to CHALLENGE_NOT_SUPPORTED', async () => {
-      // initiate-auth.email-otp.force-change-password.json
-      mockFetchOnce(
-        200,
-        makeInitiateAuthResponse({
-          ChallengeName: 'SELECT_CHALLENGE',
-          Session: 'session-force-change-password',
-          AvailableChallenges: ['PASSWORD_SRP', 'PASSWORD'],
-        }),
-      );
-
-      await expectOtpRejection(
-        service.startEmailOtp('locked@icrisat.org'),
-        'CHALLENGE_NOT_SUPPORTED',
-        HttpStatus.UNAUTHORIZED,
-      );
-
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-    });
-
-    it('returns the simulated EMAIL_OTP challenge for an email unknown to Cognito (initiate-auth.unknown-user.json)', async () => {
-      mockFetchOnce(
-        200,
-        makeInitiateAuthResponse({
+          ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'session-unknown-user',
           ChallengeParameters: {
             CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
             CODE_DELIVERY_DESTINATION: 'n***@i***',
           },
-          AvailableChallenges: ['EMAIL_OTP'],
         }),
       );
 
       const result = await service.startEmailOtp('nobody@icrisat.org');
 
       expect(result).toEqual({
-        challengeName: 'EMAIL_OTP',
+        challengeName: 'CUSTOM_CHALLENGE',
         session: 'session-unknown-user',
         codeDeliveryDestination: 'n***@i***',
       });
     });
 
-    it('maps a NotAuthorizedException on InitiateAuth to NOT_AUTHORIZED without leaking the raw message', async () => {
+    it('maps the exceeded-attempts NotAuthorizedException on InitiateAuth to ATTEMPTS_EXCEEDED without leaking the raw message', async () => {
       mockFetchOnce(
         400,
         makeCognitoError(
@@ -1605,22 +1531,28 @@ describe('CognitoService', () => {
         service.startEmailOtp('user@icrisat.org'),
       ).rejects.toMatchObject({
         response: {
-          code: 'NOT_AUTHORIZED',
+          code: 'ATTEMPTS_EXCEEDED',
           message: expect.not.stringContaining('Incorrect username'),
         },
         status: HttpStatus.UNAUTHORIZED,
       });
     });
 
-    it('rejects an unsupported direct challenge (SMS_MFA) with CHALLENGE_NOT_SUPPORTED', async () => {
-      mockFetchOnce(200, { ChallengeName: 'SMS_MFA', Session: 'session-sms' });
+    it.each(['NEW_PASSWORD_REQUIRED', 'SMS_MFA', 'SELECT_CHALLENGE'])(
+      'rejects a non-CUSTOM_CHALLENGE InitiateAuth reply (%s) with CHALLENGE_NOT_SUPPORTED',
+      async (challengeName) => {
+        mockFetchOnce(200, {
+          ChallengeName: challengeName,
+          Session: 'session-other-challenge',
+        });
 
-      await expectOtpRejection(
-        service.startEmailOtp('user@icrisat.org'),
-        'CHALLENGE_NOT_SUPPORTED',
-        HttpStatus.UNAUTHORIZED,
-      );
-    });
+        await expectOtpRejection(
+          service.startEmailOtp('user@icrisat.org'),
+          'CHALLENGE_NOT_SUPPORTED',
+          HttpStatus.UNAUTHORIZED,
+        );
+      },
+    );
 
     it('maps a fetch network failure to UPSTREAM_ERROR (502)', async () => {
       mockFetchRejectOnce(new Error('Network connection failed'));
@@ -1634,7 +1566,7 @@ describe('CognitoService', () => {
   });
 
   describe('verifyEmailOtp', () => {
-    it('calls RespondToAuthChallenge with EMAIL_OTP_CODE and returns tokens on success (respond-to-auth.success.json)', async () => {
+    it('calls RespondToAuthChallenge with ChallengeName: CUSTOM_CHALLENGE + ANSWER and returns tokens on success', async () => {
       mockFetchOnce(200, {
         ChallengeParameters: {},
         AuthenticationResult: {
@@ -1662,12 +1594,12 @@ describe('CognitoService', () => {
             'Content-Type': 'application/x-amz-json-1.1',
           },
           body: JSON.stringify({
-            ChallengeName: 'EMAIL_OTP',
+            ChallengeName: 'CUSTOM_CHALLENGE',
             ClientId: mockConfig.COGNITO_CLIENT_ID,
             Session: 'session-value',
             ChallengeResponses: {
               USERNAME: 'user@icrisat.org',
-              EMAIL_OTP_CODE: '12345678',
+              ANSWER: '12345678',
               SECRET_HASH: 'mocked-hash-value',
             },
           }),
@@ -1685,16 +1617,56 @@ describe('CognitoService', () => {
       });
     });
 
-    // Each row exercises the shared `RespondToAuthChallenge` error-response
-    // -> mapCognitoError -> HttpException path (OTP-T-2 fixtures).
+    it('maps a CUSTOM_CHALLENGE reply with no AuthenticationResult (wrong code) to 401 CODE_MISMATCH carrying the rotated session (OTP-R-7 modified, OTP-R-4, design.md §18.1 step 9)', async () => {
+      mockFetchOnce(200, {
+        ChallengeName: 'CUSTOM_CHALLENGE',
+        Session: 'rotated-session-value',
+        ChallengeParameters: {},
+      });
+
+      await expect(
+        service.verifyEmailOtp('user@icrisat.org', '00000000', 'session-value'),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'CODE_MISMATCH',
+          session: 'rotated-session-value',
+        },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps a CUSTOM_CHALLENGE reply with no rotated Session to 401 CHALLENGE_NOT_SUPPORTED instead of silently dropping session', async () => {
+      mockFetchOnce(200, {
+        ChallengeName: 'CUSTOM_CHALLENGE',
+        Session: '',
+        ChallengeParameters: {},
+      });
+
+      await expectOtpRejection(
+        service.verifyEmailOtp('user@icrisat.org', '00000000', 'session-value'),
+        'CHALLENGE_NOT_SUPPORTED',
+        HttpStatus.UNAUTHORIZED,
+      );
+    });
+
+    it('maps an AuthenticationResult with no usable AccessToken (e.g. `{}`) to 502 UPSTREAM_ERROR', async () => {
+      mockFetchOnce(200, {
+        ChallengeParameters: {},
+        AuthenticationResult: {},
+      });
+
+      await expectOtpRejection(
+        service.verifyEmailOtp('user@icrisat.org', '12345678', 'session-value'),
+        'UPSTREAM_ERROR',
+        HttpStatus.BAD_GATEWAY,
+      );
+    });
+
+    // Each row exercises a genuine Cognito exception on RespondToAuthChallenge
+    // -> mapCognitoError -> HttpException path. Wrong-code mismatch is NOT an
+    // exception in custom auth (see the dedicated test above) — CodeMismatchException
+    // no longer reaches this table.
     it.each([
-      {
-        title:
-          'maps CodeMismatchException (respond-to-auth.code-mismatch.json) to CODE_MISMATCH',
-        type: 'CodeMismatchException',
-        message: 'Invalid code or auth state for the user.',
-        code: 'CODE_MISMATCH',
-      },
       {
         title:
           'maps the session-is-expired error (respond-to-auth.session-expired.json) to CODE_EXPIRED',
@@ -1703,16 +1675,17 @@ describe('CognitoService', () => {
         code: 'CODE_EXPIRED',
       },
       {
-        title: 'maps the reused-session error to NOT_AUTHORIZED',
+        title:
+          'maps the reused-session error to CODE_EXPIRED (custom auth: any session-related message means the session token is no longer usable)',
         type: 'NotAuthorizedException',
         message: 'Invalid session for the user, session can only be used once.',
-        code: 'NOT_AUTHORIZED',
+        code: 'CODE_EXPIRED',
       },
       {
         title:
-          'maps an attempts-exceeded NotAuthorizedException to ATTEMPTS_EXCEEDED',
+          'maps the exceeded-attempts NotAuthorizedException ("Incorrect username or password" after the 3rd miss, design.md §18.1 step 8/9) to ATTEMPTS_EXCEEDED',
         type: 'NotAuthorizedException',
-        message: 'Attempt limit exceeded, please try after some time.',
+        message: 'Incorrect username or password.',
         code: 'ATTEMPTS_EXCEEDED',
       },
     ])('$title', async ({ type, message, code }) => {
@@ -1725,9 +1698,9 @@ describe('CognitoService', () => {
       );
     });
 
-    it('maps a challenge returned instead of tokens to CHALLENGE_NOT_SUPPORTED', async () => {
+    it('maps a challenge returned instead of tokens (e.g. NEW_PASSWORD_REQUIRED) to CHALLENGE_NOT_SUPPORTED', async () => {
       mockFetchOnce(200, {
-        ChallengeName: 'SMS_MFA',
+        ChallengeName: 'NEW_PASSWORD_REQUIRED',
         Session: 'another-session',
       });
 
@@ -1750,7 +1723,7 @@ describe('CognitoService', () => {
   });
 
   describe('OTP logging hygiene (OTP-R-11)', () => {
-    it('never logs the username, code, session or tokens for start/verify outcomes', async () => {
+    it('never logs the username, code, start session or the rotated mismatch session for start/verify outcomes', async () => {
       const logSpy = jest
         .spyOn(service['_logger'], 'log')
         .mockImplementation(() => undefined);
@@ -1758,7 +1731,7 @@ describe('CognitoService', () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValueOnce({
-          ChallengeName: 'EMAIL_OTP',
+          ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'super-secret-session-value',
           ChallengeParameters: {
             CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
@@ -1768,12 +1741,15 @@ describe('CognitoService', () => {
       });
       await service.startEmailOtp('someone@icrisat.org');
 
+      // Wrong code: custom auth answers 200 with a rotated Session and no
+      // AuthenticationResult — the rotated session must reach the exception
+      // body (OTP-R-4) but never a logger call (OTP-R-11).
       (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 400,
+        ok: true,
+        status: 200,
         json: jest.fn().mockResolvedValueOnce({
-          __type: 'CodeMismatchException',
-          message: 'Invalid code or auth state for the user.',
+          ChallengeName: 'CUSTOM_CHALLENGE',
+          Session: 'rotated-secret-session-value',
         }),
       });
       await expect(
@@ -1782,7 +1758,12 @@ describe('CognitoService', () => {
           '87654321',
           'super-secret-session-value',
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({
+        response: {
+          code: 'CODE_MISMATCH',
+          session: 'rotated-secret-session-value',
+        },
+      });
 
       expect(logSpy).toHaveBeenCalled();
 
@@ -1790,6 +1771,7 @@ describe('CognitoService', () => {
         'someone@icrisat.org',
         '87654321',
         'super-secret-session-value',
+        'rotated-secret-session-value',
       ];
       logSpy.mock.calls.forEach((call) => {
         const stringified = JSON.stringify(call);
