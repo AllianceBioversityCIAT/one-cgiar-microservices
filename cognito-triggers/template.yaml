@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  PRMS Cognito CUSTOM_AUTH triggers (Define / Create / Verify). The sign-in code
+  is generated here and e-mailed through PRMS's own RabbitMQ notification
+  pipeline, so it arrives from "PRMS Reporting Tool" instead of Cognito's
+  default sender. See docs/specs/changes/cognito-email-otp-login (OTP-T-11).
+
+Parameters:
+  UserPoolId:
+    Type: String
+    Default: us-east-1_o9y9Yq5pO
+    Description: >-
+      User pool whose CUSTOM_AUTH flow invokes these triggers. The default is
+      the IBD-DEV TEST pool; PROD is a different account (OTP-OQ-1).
+  MsNotificationHost:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: >-
+      Optional complete broker URL (amqps://user:pass@host), the shape
+      auth-microservice passes to ClientsModule.register. When empty the URL is
+      assembled from MsRmqHost / MsRmqUser / MsRmqPassword.
+  MsRmqHost:
+    Type: String
+    Default: ''
+    Description: >-
+      RabbitMQ host (optionally with a scheme and port). No path segment is ever
+      appended: the queue is addressed by name via MsNotificationQueue.
+  MsRmqUser:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: RabbitMQ user.
+  MsRmqPassword:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: RabbitMQ password.
+  MsNotificationQueue:
+    Type: String
+    Description: Queue the notification microservice consumes ('send' pattern).
+  MsNotificationUser:
+    Type: String
+    NoEcho: true
+    Description: CLARISA application user validated by the notification AuthInterceptor.
+  MsNotificationPassword:
+    Type: String
+    NoEcho: true
+    Description: CLARISA application password validated by the notification AuthInterceptor.
+  EmailSender:
+    Type: String
+    Default: PRMS-No-reply@cgiar.org
+    Description: From address of the code e-mail (OTP-R-32).
+  AppUrl:
+    Type: String
+    Default: https://reporting.cgiar.org/
+    Description: PRMS URL linked from the e-mail footer.
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+    Description: CloudWatch Logs retention for the three trigger log groups.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    # Cognito aborts a sync trigger at 5 s; never let the Lambda outlive that.
+    Timeout: 5
+    MemorySize: 256
+    LoggingConfig:
+      LogFormat: Text
+    Environment:
+      Variables:
+        MS_NOTIFICATION_HOST: !Ref MsNotificationHost
+        MS_RMQ_HOST: !Ref MsRmqHost
+        MS_RMQ_USER: !Ref MsRmqUser
+        MS_RMQ_PASSWORD: !Ref MsRmqPassword
+        MS_NOTIFICATION_QUEUE: !Ref MsNotificationQueue
+        MS_NOTIFICATION_USER: !Ref MsNotificationUser
+        MS_NOTIFICATION_PASSWORD: !Ref MsNotificationPassword
+        EMAIL_SENDER: !Ref EmailSender
+        APP_URL: !Ref AppUrl
+
+Resources:
+  # --- DefineAuthChallenge -------------------------------------------------
+  DefineAuthChallengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-define-auth-challenge'
+      Description: CUSTOM_AUTH state machine (challenge / tokens / fail after 3).
+      CodeUri: ./
+      Handler: dist/define-auth-challenge.handler
+
+  DefineAuthChallengeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${DefineAuthChallengeFunction}'
+      RetentionInDays: !Ref LogRetentionInDays
+
+  DefineAuthChallengeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DefineAuthChallengeFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
+
+  # --- CreateAuthChallenge -------------------------------------------------
+  CreateAuthChallengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-create-auth-challenge'
+      Description: Mints or reuses the 6-digit code and e-mails it through RabbitMQ.
+      CodeUri: ./
+      Handler: dist/create-auth-challenge.handler
+
+  CreateAuthChallengeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CreateAuthChallengeFunction}'
+      RetentionInDays: !Ref LogRetentionInDays
+
+  CreateAuthChallengeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CreateAuthChallengeFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
+
+  # --- VerifyAuthChallengeResponse ----------------------------------------
+  VerifyAuthChallengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-verify-auth-challenge'
+      Description: Constant-time comparison of the submitted code (OTP-R-34).
+      CodeUri: ./
+      Handler: dist/verify-auth-challenge.handler
+
+  VerifyAuthChallengeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${VerifyAuthChallengeFunction}'
+      RetentionInDays: !Ref LogRetentionInDays
+
+  VerifyAuthChallengeInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt VerifyAuthChallengeFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
+
+Outputs:
+  DefineAuthChallengeFunctionArn:
+    Description: LambdaConfig.DefineAuthChallenge
+    Value: !GetAtt DefineAuthChallengeFunction.Arn
+  CreateAuthChallengeFunctionArn:
+    Description: LambdaConfig.CreateAuthChallenge
+    Value: !GetAtt CreateAuthChallengeFunction.Arn
+  VerifyAuthChallengeResponseFunctionArn:
+    Description: LambdaConfig.VerifyAuthChallengeResponse
+    Value: !GetAtt VerifyAuthChallengeFunction.Arn
