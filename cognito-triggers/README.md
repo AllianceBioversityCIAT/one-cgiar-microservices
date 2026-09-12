@@ -1,3 +1,5 @@
+> **⚠️ Not in use (retired 2026-09-12).** PRMS now generates, emails and verifies the sign-in code itself (spec `cognito-email-otp-login` rev 4, Option D) because the PROD Cognito pool lives in an account without Lambda access. The TEST stack `prms-cognito-otp-triggers-test` was deleted and the pool `LambdaConfig` detached. This package is kept as a reference implementation of Cognito `CUSTOM_AUTH` triggers; the `auth-microservice` OTP routes are likewise unused by PRMS.
+
 # cognito-triggers
 
 Three Cognito **`CUSTOM_AUTH`** Lambda triggers that let PRMS own the e-mail
