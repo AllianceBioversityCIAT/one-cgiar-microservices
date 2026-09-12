@@ -24,8 +24,12 @@ Two properties fall out of that table and are worth stating explicitly:
 - **One e-mail per Cognito session.** A wrong code rotates the session but keeps
   the code, so retries never generate a second mail (`OTP-R-32`).
 - **An unknown user is indistinguishable from a real one.** It still gets a
-  challenge, with a random masked destination and no e-mail — and Verify rejects
-  it unconditionally (`design.md` §18.3).
+  challenge, with a masked destination derived from the submitted `userName`
+  (byte-identical to what a real user with that same input would get) and no
+  e-mail — and Verify rejects it unconditionally (`design.md` §18.3). A random
+  decoy mask would itself be the enumeration tell at the microservice
+  boundary, since a real user's mask is a deterministic function of the
+  email.
 
 ## Layout
 

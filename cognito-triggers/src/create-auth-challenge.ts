@@ -7,7 +7,7 @@ import {
 } from './lib/code';
 import { buildOtpEmailMessage } from './lib/email-template';
 import { logTrigger } from './lib/logger';
-import { maskEmail, randomMaskedDestination } from './lib/mask';
+import { maskEmail } from './lib/mask';
 import { notificationAuth, publishEvent } from './lib/rmq-publisher';
 
 /** Pattern the notification microservice listens on (`mailer.controller.ts`). */
@@ -22,8 +22,12 @@ const NOTIFICATION_PATTERN = 'send';
  *   **no** second e-mail (`OTP-R-32`).
  * - **The code never leaves the private parameters** except inside the e-mail;
  *   the client only ever sees the masked destination (`OTP-R-11`).
- * - **An unknown user gets a challenge anyway**, with a random masked
- *   destination and no e-mail (`design.md` §18.3).
+ * - **An unknown user gets a challenge anyway**, with a masked destination
+ *   derived from the submitted `userName` — byte-identical to what a real
+ *   user with that same input would get — and no e-mail (`design.md` §18.3).
+ *   A random decoy would itself be the enumeration tell at the microservice
+ *   boundary, since a known user's mask is a deterministic function of the
+ *   email.
  * - **A broker failure never fails the challenge**: the trigger logs
  *   `email_failed` and returns normally (`OTP-R-35`) — failing here would both
  *   break the flow and leak that the address exists.
@@ -43,7 +47,7 @@ export const handler = async (
 
   event.response.privateChallengeParameters = { answer: code };
   event.response.publicChallengeParameters = {
-    destination: userNotFound ? randomMaskedDestination() : maskEmail(email),
+    destination: maskEmail(userNotFound ? event.userName : email),
   };
   event.response.challengeMetadata = encodeChallengeMetadata(code);
 
