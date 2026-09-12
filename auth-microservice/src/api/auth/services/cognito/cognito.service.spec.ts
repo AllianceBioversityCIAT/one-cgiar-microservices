@@ -425,6 +425,139 @@ describe('CognitoService', () => {
     });
   });
 
+  // OTP-T-10: provisioning adjustment so PASSWORDLESS_DOMAINS emails land CONFIRMED
+  // (docs/specs/changes/cognito-email-otp-login: OTP-R-13, OTP-AC-12, design.md §13)
+  describe('createUser — PASSWORDLESS_DOMAINS provisioning adjustment (OTP-T-10)', () => {
+    const passwordlessConfig = {
+      ...mockConfig,
+      PASSWORDLESS_DOMAINS: 'cifor-icraf.org,icrisat.org',
+    };
+
+    const withConfig = (overrides: Record<string, string>) => {
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key: string) => overrides[key]);
+    };
+
+    const lastCommandInput = (): any =>
+      (AdminCreateUserCommand as unknown as jest.Mock).mock.calls[
+        (AdminCreateUserCommand as unknown as jest.Mock).mock.calls.length - 1
+      ][0];
+
+    it('omits TemporaryPassword and suppresses messaging for a listed domain', async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'center@icrisat.org',
+        'TempPass123!',
+        'Center',
+        'User',
+        'center@icrisat.org',
+      );
+
+      expect(AdminCreateUserCommand).toHaveBeenCalledWith({
+        UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
+        Username: 'center@icrisat.org',
+        MessageAction: 'SUPPRESS',
+        UserAttributes: [
+          { Name: 'email', Value: 'center@icrisat.org' },
+          { Name: 'given_name', Value: 'Center' },
+          { Name: 'family_name', Value: 'User' },
+          { Name: 'email_verified', Value: 'true' },
+        ],
+      });
+      expect(lastCommandInput()).not.toHaveProperty('TemporaryPassword');
+    });
+
+    it('matches the domain case-insensitively', async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'Center@ICRISAT.ORG',
+        'TempPass123!',
+        'Center',
+        'User',
+        'Center@ICRISAT.ORG',
+      );
+
+      expect(lastCommandInput().TemporaryPassword).toBeUndefined();
+    });
+
+    it("keeps today's temporary-password flow byte-identical for a non-listed domain", async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'other@example.com',
+        'TempPass123!',
+        'Other',
+        'User',
+        'other@example.com',
+      );
+
+      expect(AdminCreateUserCommand).toHaveBeenCalledWith({
+        UserPoolId: mockConfig.COGNITO_USER_POOL_ID,
+        Username: 'other@example.com',
+        TemporaryPassword: 'TempPass123!',
+        MessageAction: 'SUPPRESS',
+        UserAttributes: [
+          { Name: 'email', Value: 'other@example.com' },
+          { Name: 'given_name', Value: 'Other' },
+          { Name: 'family_name', Value: 'User' },
+          { Name: 'email_verified', Value: 'true' },
+        ],
+      });
+    });
+
+    it('does not treat a suffix match as a listed domain', async () => {
+      withConfig(passwordlessConfig);
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'attacker@evil-icrisat.org',
+        'TempPass123!',
+        'Attacker',
+        'User',
+        'attacker@evil-icrisat.org',
+      );
+
+      expect(lastCommandInput().TemporaryPassword).toBe('TempPass123!');
+    });
+
+    it('keeps the feature off when PASSWORDLESS_DOMAINS is unset', async () => {
+      cognitoClient.send.mockResolvedValue(mockUserResponse);
+
+      await service.createUser(
+        'center@icrisat.org',
+        'TempPass123!',
+        'Center',
+        'User',
+        'center@icrisat.org',
+      );
+
+      expect(lastCommandInput().TemporaryPassword).toBe('TempPass123!');
+    });
+
+    describe('isPasswordlessDomain', () => {
+      it('returns true only for an exact, case-insensitive domain match from the env list', () => {
+        withConfig(passwordlessConfig);
+        expect(service.isPasswordlessDomain('a@CIFOR-ICRAF.ORG')).toBe(true);
+        expect(service.isPasswordlessDomain('a@icrisat.org')).toBe(true);
+        expect(service.isPasswordlessDomain('a@evil-icrisat.org')).toBe(
+          false,
+        );
+        expect(service.isPasswordlessDomain('a@example.com')).toBe(false);
+      });
+
+      it('returns false when the env var is unset or empty', () => {
+        withConfig({ ...mockConfig, PASSWORDLESS_DOMAINS: '' });
+        expect(service.isPasswordlessDomain('a@icrisat.org')).toBe(false);
+      });
+    });
+  });
+
   describe('updateUser', () => {
     it('should update user attributes successfully', async () => {
       const updateUserDto: UpdateUserDto = {
@@ -1234,6 +1367,511 @@ describe('CognitoService', () => {
         refreshToken: undefined,
         expiresIn: 3600,
         tokenType: 'Bearer',
+      });
+    });
+  });
+
+  // OTP-T-2: startEmailOtp / verifyEmailOtp + mapCognitoError
+  // Fixture shapes pinned by the OTP-T-1 spike, docs/specs/changes/cognito-email-otp-login/fixtures/cognito/
+  describe('mapCognitoError', () => {
+    it('maps CodeMismatchException (respond-to-auth.code-mismatch.json) to CODE_MISMATCH', () => {
+      expect(
+        service['mapCognitoError'](
+          'CodeMismatchException',
+          'Invalid code or auth state for the user.',
+        ),
+      ).toBe('CODE_MISMATCH');
+    });
+
+    it('maps ExpiredCodeException to CODE_EXPIRED', () => {
+      expect(
+        service['mapCognitoError']('ExpiredCodeException', 'Code expired.'),
+      ).toBe('CODE_EXPIRED');
+    });
+
+    it('maps TooManyFailedAttemptsException to ATTEMPTS_EXCEEDED', () => {
+      expect(
+        service['mapCognitoError'](
+          'TooManyFailedAttemptsException',
+          'Attempt limit exceeded, please try after some time.',
+        ),
+      ).toBe('ATTEMPTS_EXCEEDED');
+    });
+
+    it('maps a NotAuthorizedException carrying an attempts message to ATTEMPTS_EXCEEDED', () => {
+      expect(
+        service['mapCognitoError'](
+          'NotAuthorizedException',
+          'Attempt limit exceeded, please try after some time.',
+        ),
+      ).toBe('ATTEMPTS_EXCEEDED');
+    });
+
+    it('maps the session-is-expired NotAuthorizedException (respond-to-auth.session-expired.json) to CODE_EXPIRED', () => {
+      expect(
+        service['mapCognitoError'](
+          'NotAuthorizedException',
+          'Invalid session for the user, session is expired.',
+        ),
+      ).toBe('CODE_EXPIRED');
+    });
+
+    it('maps the reused-session NotAuthorizedException to NOT_AUTHORIZED', () => {
+      expect(
+        service['mapCognitoError'](
+          'NotAuthorizedException',
+          'Invalid session for the user, session can only be used once.',
+        ),
+      ).toBe('NOT_AUTHORIZED');
+    });
+
+    it('maps a generic NotAuthorizedException to NOT_AUTHORIZED', () => {
+      expect(
+        service['mapCognitoError'](
+          'NotAuthorizedException',
+          'Incorrect username or password.',
+        ),
+      ).toBe('NOT_AUTHORIZED');
+    });
+
+    it('passes through the CHALLENGE_NOT_SUPPORTED sentinel', () => {
+      expect(
+        service['mapCognitoError'](
+          'CHALLENGE_NOT_SUPPORTED',
+          'Unsupported authentication challenge.',
+        ),
+      ).toBe('CHALLENGE_NOT_SUPPORTED');
+    });
+
+    it('maps an unrecognised error type to UPSTREAM_ERROR', () => {
+      expect(
+        service['mapCognitoError']('ServiceUnavailableException', 'down'),
+      ).toBe('UPSTREAM_ERROR');
+    });
+  });
+
+  describe('startEmailOtp', () => {
+    // initiate-auth.email-otp.confirmed-user.json
+    const directEmailOtpChallenge = {
+      ChallengeName: 'EMAIL_OTP',
+      Session: 'session-from-initiate-auth',
+      ChallengeParameters: {
+        CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
+        CODE_DELIVERY_DESTINATION: 'j***@g***',
+      },
+      AvailableChallenges: ['EMAIL_OTP'],
+    };
+
+    it('calls InitiateAuth with USER_AUTH + PREFERRED_CHALLENGE=EMAIL_OTP and returns the direct challenge', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce(directEmailOtpChallenge),
+      });
+
+      const result = await service.startEmailOtp('user@icrisat.org');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        mockConfig.COGNITO_USER_POOL_URL,
+        {
+          method: 'POST',
+          headers: {
+            'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: JSON.stringify({
+            AuthFlow: 'USER_AUTH',
+            ClientId: mockConfig.COGNITO_CLIENT_ID,
+            AuthParameters: {
+              USERNAME: 'user@icrisat.org',
+              SECRET_HASH: 'mocked-hash-value',
+              PREFERRED_CHALLENGE: 'EMAIL_OTP',
+            },
+          }),
+        },
+      );
+
+      expect(result).toEqual({
+        challengeName: 'EMAIL_OTP',
+        session: 'session-from-initiate-auth',
+        codeDeliveryDestination: 'j***@g***',
+      });
+    });
+
+    it('answers a SELECT_CHALLENGE offering EMAIL_OTP and returns the new session', async () => {
+      // initiate-auth.email-otp.force-change-password.json shape, but with EMAIL_OTP offered
+      const selectChallenge = {
+        ChallengeName: 'SELECT_CHALLENGE',
+        Session: 'session-from-select-challenge',
+        ChallengeParameters: {},
+        AvailableChallenges: ['EMAIL_OTP', 'PASSWORD'],
+      };
+      const secondReply = {
+        ChallengeName: 'EMAIL_OTP',
+        Session: 'session-after-select',
+        ChallengeParameters: {
+          CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
+          CODE_DELIVERY_DESTINATION: 'j***@i***',
+        },
+      };
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValueOnce(selectChallenge),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValueOnce(secondReply),
+        });
+
+      const result = await service.startEmailOtp('user@icrisat.org');
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        mockConfig.COGNITO_USER_POOL_URL,
+        {
+          method: 'POST',
+          headers: {
+            'X-Amz-Target':
+              'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: JSON.stringify({
+            ChallengeName: 'SELECT_CHALLENGE',
+            ClientId: mockConfig.COGNITO_CLIENT_ID,
+            Session: 'session-from-select-challenge',
+            ChallengeResponses: {
+              USERNAME: 'user@icrisat.org',
+              ANSWER: 'EMAIL_OTP',
+              SECRET_HASH: 'mocked-hash-value',
+            },
+          }),
+        },
+      );
+
+      expect(result).toEqual({
+        challengeName: 'EMAIL_OTP',
+        session: 'session-after-select',
+        codeDeliveryDestination: 'j***@i***',
+      });
+    });
+
+    it('maps a SELECT_CHALLENGE without EMAIL_OTP available (force-change-password fixture) to CHALLENGE_NOT_SUPPORTED', async () => {
+      // initiate-auth.email-otp.force-change-password.json
+      const forceChangePassword = {
+        ChallengeName: 'SELECT_CHALLENGE',
+        Session: 'session-force-change-password',
+        ChallengeParameters: {},
+        AvailableChallenges: ['PASSWORD_SRP', 'PASSWORD'],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce(forceChangePassword),
+      });
+
+      await expect(
+        service.startEmailOtp('locked@icrisat.org'),
+      ).rejects.toMatchObject({
+        response: { code: 'CHALLENGE_NOT_SUPPORTED' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns the simulated EMAIL_OTP challenge for an email unknown to Cognito (initiate-auth.unknown-user.json)', async () => {
+      const unknownUser = {
+        ChallengeName: 'EMAIL_OTP',
+        Session: 'session-unknown-user',
+        ChallengeParameters: {
+          CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
+          CODE_DELIVERY_DESTINATION: 'n***@i***',
+        },
+        AvailableChallenges: ['EMAIL_OTP'],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce(unknownUser),
+      });
+
+      const result = await service.startEmailOtp('nobody@icrisat.org');
+
+      expect(result).toEqual({
+        challengeName: 'EMAIL_OTP',
+        session: 'session-unknown-user',
+        codeDeliveryDestination: 'n***@i***',
+      });
+    });
+
+    it('maps a NotAuthorizedException on InitiateAuth to NOT_AUTHORIZED without leaking the raw message', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce({
+          __type: 'NotAuthorizedException',
+          message: 'Incorrect username or password.',
+        }),
+      });
+
+      await expect(
+        service.startEmailOtp('user@icrisat.org'),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'NOT_AUTHORIZED',
+          message: expect.not.stringContaining('Incorrect username'),
+        },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('rejects an unsupported direct challenge (SMS_MFA) with CHALLENGE_NOT_SUPPORTED', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce({
+          ChallengeName: 'SMS_MFA',
+          Session: 'session-sms',
+        }),
+      });
+
+      await expect(
+        service.startEmailOtp('user@icrisat.org'),
+      ).rejects.toMatchObject({
+        response: { code: 'CHALLENGE_NOT_SUPPORTED' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps a fetch network failure to UPSTREAM_ERROR (502)', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(
+        new Error('Network connection failed'),
+      );
+
+      await expect(
+        service.startEmailOtp('user@icrisat.org'),
+      ).rejects.toMatchObject({
+        response: { code: 'UPSTREAM_ERROR' },
+        status: HttpStatus.BAD_GATEWAY,
+      });
+    });
+  });
+
+  describe('verifyEmailOtp', () => {
+    it('calls RespondToAuthChallenge with EMAIL_OTP_CODE and returns tokens on success (respond-to-auth.success.json)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce({
+          ChallengeParameters: {},
+          AuthenticationResult: {
+            AccessToken: 'access-token-value',
+            ExpiresIn: 3600,
+            TokenType: 'Bearer',
+            RefreshToken: 'refresh-token-value',
+            IdToken: 'id-token-value',
+          },
+        }),
+      });
+
+      const result = await service.verifyEmailOtp(
+        'user@icrisat.org',
+        '12345678',
+        'session-value',
+      );
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        mockConfig.COGNITO_USER_POOL_URL,
+        {
+          method: 'POST',
+          headers: {
+            'X-Amz-Target':
+              'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
+            'Content-Type': 'application/x-amz-json-1.1',
+          },
+          body: JSON.stringify({
+            ChallengeName: 'EMAIL_OTP',
+            ClientId: mockConfig.COGNITO_CLIENT_ID,
+            Session: 'session-value',
+            ChallengeResponses: {
+              USERNAME: 'user@icrisat.org',
+              EMAIL_OTP_CODE: '12345678',
+              SECRET_HASH: 'mocked-hash-value',
+            },
+          }),
+        },
+      );
+
+      expect(result).toEqual({
+        tokens: {
+          accessToken: 'access-token-value',
+          idToken: 'id-token-value',
+          refreshToken: 'refresh-token-value',
+          expiresIn: 3600,
+          tokenType: 'Bearer',
+        },
+      });
+    });
+
+    it('maps CodeMismatchException (respond-to-auth.code-mismatch.json) to CODE_MISMATCH', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce({
+          __type: 'CodeMismatchException',
+          message: 'Invalid code or auth state for the user.',
+        }),
+      });
+
+      await expect(
+        service.verifyEmailOtp('user@icrisat.org', '00000000', 'session-value'),
+      ).rejects.toMatchObject({
+        response: { code: 'CODE_MISMATCH' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps the session-is-expired error (respond-to-auth.session-expired.json) to CODE_EXPIRED', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce({
+          __type: 'NotAuthorizedException',
+          message: 'Invalid session for the user, session is expired.',
+        }),
+      });
+
+      await expect(
+        service.verifyEmailOtp(
+          'user@icrisat.org',
+          '12345678',
+          'expired-session',
+        ),
+      ).rejects.toMatchObject({
+        response: { code: 'CODE_EXPIRED' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps the reused-session error to NOT_AUTHORIZED', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce({
+          __type: 'NotAuthorizedException',
+          message:
+            'Invalid session for the user, session can only be used once.',
+        }),
+      });
+
+      await expect(
+        service.verifyEmailOtp(
+          'user@icrisat.org',
+          '12345678',
+          'reused-session',
+        ),
+      ).rejects.toMatchObject({
+        response: { code: 'NOT_AUTHORIZED' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps an attempts-exceeded NotAuthorizedException to ATTEMPTS_EXCEEDED', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce({
+          __type: 'NotAuthorizedException',
+          message: 'Attempt limit exceeded, please try after some time.',
+        }),
+      });
+
+      await expect(
+        service.verifyEmailOtp('user@icrisat.org', '12345678', 'session-value'),
+      ).rejects.toMatchObject({
+        response: { code: 'ATTEMPTS_EXCEEDED' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps a challenge returned instead of tokens to CHALLENGE_NOT_SUPPORTED', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce({
+          ChallengeName: 'SMS_MFA',
+          Session: 'another-session',
+        }),
+      });
+
+      await expect(
+        service.verifyEmailOtp('user@icrisat.org', '12345678', 'session-value'),
+      ).rejects.toMatchObject({
+        response: { code: 'CHALLENGE_NOT_SUPPORTED' },
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    });
+
+    it('maps a fetch network failure to UPSTREAM_ERROR (502)', async () => {
+      (global.fetch as jest.Mock).mockRejectedValueOnce(
+        new Error('fetch failed'),
+      );
+
+      await expect(
+        service.verifyEmailOtp('user@icrisat.org', '12345678', 'session-value'),
+      ).rejects.toMatchObject({
+        response: { code: 'UPSTREAM_ERROR' },
+        status: HttpStatus.BAD_GATEWAY,
+      });
+    });
+  });
+
+  describe('OTP logging hygiene (OTP-R-11)', () => {
+    it('never logs the username, code, session or tokens for start/verify outcomes', async () => {
+      const logSpy = jest
+        .spyOn(service['_logger'], 'log')
+        .mockImplementation(() => undefined);
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValueOnce({
+          ChallengeName: 'EMAIL_OTP',
+          Session: 'super-secret-session-value',
+          ChallengeParameters: {
+            CODE_DELIVERY_DELIVERY_MEDIUM: 'EMAIL',
+            CODE_DELIVERY_DESTINATION: 'j***@i***',
+          },
+        }),
+      });
+      await service.startEmailOtp('someone@icrisat.org');
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValueOnce({
+          __type: 'CodeMismatchException',
+          message: 'Invalid code or auth state for the user.',
+        }),
+      });
+      await expect(
+        service.verifyEmailOtp(
+          'someone@icrisat.org',
+          '87654321',
+          'super-secret-session-value',
+        ),
+      ).rejects.toThrow();
+
+      expect(logSpy).toHaveBeenCalled();
+
+      const forbidden = [
+        'someone@icrisat.org',
+        '87654321',
+        'super-secret-session-value',
+      ];
+      logSpy.mock.calls.forEach((call) => {
+        const stringified = JSON.stringify(call);
+        forbidden.forEach((value) => {
+          expect(stringified).not.toContain(value);
+        });
       });
     });
   });

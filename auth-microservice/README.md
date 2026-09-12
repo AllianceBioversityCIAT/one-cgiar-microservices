@@ -58,6 +58,30 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Environment Variables
+
+| Variable | Description | TEST value |
+|---|---|---|
+| `PASSWORDLESS_DOMAINS` | Comma-separated, case-insensitive list of email domains provisioned **without** a temporary password (`AdminCreateUser` with `MessageAction: SUPPRESS`, `email_verified: 'true'`) so the user lands `CONFIRMED` and is eligible for `EMAIL_OTP` directly (`/auth/register` → `CognitoService.createUser`, OTP-T-10, `docs/specs/changes/cognito-email-otp-login`: `OTP-R-13`, `OTP-AC-12`). Domains not in the list keep today's temporary-password flow unchanged. Empty/undefined disables the feature entirely. | `cifor-icraf.org,icrisat.org` |
+
+## Endpoints
+
+EMAIL_OTP sign-in (OTP-T-3, `docs/specs/changes/cognito-email-otp-login`: `OTP-R-7`, design.md §4.2/§5.2). Same CLARISA `auth` header, Cognito app client and secret hash as `login/custom`.
+
+| Route | Request | Success (201) | Errors |
+|---|---|---|---|
+| `POST /auth/login/otp/start` | `{ username }` | `{ challengeName: 'EMAIL_OTP', session, codeDeliveryDestination? }` | `401 { statusCode: 401, code: NOT_AUTHORIZED \| CHALLENGE_NOT_SUPPORTED, message, path, timestamp }` · `502 { statusCode: 502, code: UPSTREAM_ERROR, message, path, timestamp }` |
+| `POST /auth/login/otp/verify` | `{ username, code, session }` | `{ tokens: { accessToken, idToken, refreshToken, expiresIn, tokenType } }` — identical shape to `login/custom` | `401 { statusCode: 401, code: CODE_MISMATCH \| CODE_EXPIRED \| ATTEMPTS_EXCEEDED \| NOT_AUTHORIZED \| CHALLENGE_NOT_SUPPORTED, message, path, timestamp }` · `502 { statusCode: 502, code: UPSTREAM_ERROR, message, path, timestamp }` |
+
+Both routes answer **201 Created** on success (NestJS `@Post` default, the same status `login/custom` returns; no `@HttpCode` override — the Swagger `@ApiResponse` on both handlers documents 201). Error bodies are `{ statusCode, code, message, path, timestamp }`: the two OTP handlers carry a route-local `@UseFilters(OtpHttpExceptionFilter)` (`src/api/auth/filters/otp-http-exception.filter.ts`) that serialises the `HttpException` object response verbatim, because the global `HttpExceptionFilter` rebuilds the body from `exception.message` only and would drop `code`. `message` is the stable, user-safe copy from `CognitoService.OTP_ERROR_COPY` — never a raw Cognito message. Existing routes keep the global filter unchanged (OTP-R-10).
+
+**Telemetry** — `CognitoService` logs `{ event: 'otp.start' | 'otp.verify', outcome }`, outcome only (never username/code/session/tokens, OTP-R-11/OTP-R-12). The global `LoggingInterceptor` (`src/shared/interceptors/logging.interceptor.ts`) still logs a 1,000-char preview of every successful response body, so it now passes the body through `redactSensitive()` first: the values of `session`, `tokens`, `accessToken`, `idToken`, `refreshToken`, `password`, `temporaryPassword`, `secretHash` and `code` (any casing, any depth) are replaced by `"[REDACTED]"` in the log line only — the response sent to the client is untouched.
+
+| Event | Outcome vocabulary |
+|---|---|
+| `otp.start` | `sent \| CODE_MISMATCH \| CODE_EXPIRED \| ATTEMPTS_EXCEEDED \| NOT_AUTHORIZED \| CHALLENGE_NOT_SUPPORTED \| UPSTREAM_ERROR` (the lowercase `upstream_error` variant is what `CognitoService` emits on the fetch/network-failure path, i.e. when Cognito returned no `code`; treat both spellings as the same outcome when filtering logs) |
+| `otp.verify` | `ok \| CODE_MISMATCH \| CODE_EXPIRED \| ATTEMPTS_EXCEEDED \| NOT_AUTHORIZED \| CHALLENGE_NOT_SUPPORTED \| UPSTREAM_ERROR` (same `upstream_error` note as above) |
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

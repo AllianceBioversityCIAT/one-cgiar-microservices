@@ -19,6 +19,8 @@ import { NewPasswordChallengeDto } from './dto/new-password-challenge.dto';
 import { CognitoService } from './services/cognito/cognito.service';
 import { DynamicEmailService } from './services/dynamic-email/dynamic-email.service';
 import { PasswordGeneratorService } from './services/password/password.service';
+import { EmailOtpStartDto } from './dto/email-otp-start.dto';
+import { EmailOtpVerifyDto } from './dto/email-otp-verify.dto';
 
 @Injectable()
 export class AuthService {
@@ -352,30 +354,40 @@ export class AuthService {
       let emailSent = false;
       let emailError = null;
 
-      try {
-        emailSent = await this.dynamicEmailService.sendWelcomeEmail(
-          registerUserDto,
-          temporaryPassword,
-          registerUserDto.emailConfig,
-        );
+      // OTP-T-10 (OTP-R-13, OTP-AC-12): PASSWORDLESS_DOMAINS emails are
+      // provisioned CONFIRMED with no temporary password, so there is no
+      // welcome-password email to send for them — gate is the domain check,
+      // independent of any caller-supplied flag.
+      const skipWelcomeEmail = this.cognitoService.isPasswordlessDomain(
+        registerUserDto.email,
+      );
 
-        if (emailSent) {
-          this.logger.log(
-            `✅ Welcome email queued successfully for: ${registerUserDto.email}`,
+      if (!skipWelcomeEmail) {
+        try {
+          emailSent = await this.dynamicEmailService.sendWelcomeEmail(
+            registerUserDto,
+            temporaryPassword,
+            registerUserDto.emailConfig,
           );
-        } else {
-          this.logger.warn(
-            `⚠️ Failed to queue welcome email for: ${registerUserDto.email}`,
+
+          if (emailSent) {
+            this.logger.log(
+              `✅ Welcome email queued successfully for: ${registerUserDto.email}`,
+            );
+          } else {
+            this.logger.warn(
+              `⚠️ Failed to queue welcome email for: ${registerUserDto.email}`,
+            );
+          }
+        } catch (error) {
+          emailError = error.message;
+          this.logger.error(
+            `❌ Email queueing failed: ${error.message}`,
+            error.stack,
           );
+
+          emailSent = false;
         }
-      } catch (error) {
-        emailError = error.message;
-        this.logger.error(
-          `❌ Email queueing failed: ${error.message}`,
-          error.stack,
-        );
-
-        emailSent = false;
       }
 
       const templateStats = this.dynamicEmailService.getEmailStats(
@@ -622,5 +634,43 @@ export class AuthService {
         );
       }
     }
+  }
+
+  /**
+   * Start the EMAIL_OTP challenge (OTP-R-7, OTP-T-3, design.md §4.2/§5.2).
+   * Thin orchestration over `CognitoService.startEmailOtp`, which already
+   * shapes the `{ challengeName, session, codeDeliveryDestination? }`
+   * response and emits the `otp.start` outcome log (OTP-R-12) — no
+   * additional logging here to avoid duplicate events.
+   */
+  async startEmailOtp(dto: EmailOtpStartDto): Promise<{
+    challengeName: 'EMAIL_OTP';
+    session: string;
+    codeDeliveryDestination?: string;
+  }> {
+    return this.cognitoService.startEmailOtp(dto.username);
+  }
+
+  /**
+   * Verify an EMAIL_OTP code (OTP-R-7, OTP-T-3, design.md §4.2/§5.2).
+   * Thin orchestration over `CognitoService.verifyEmailOtp`, which already
+   * returns the `{ tokens }` shape — identical to
+   * `authenticateWithCustomPassword`'s success shape — and emits the
+   * `otp.verify` outcome log (OTP-R-12); no additional logging here.
+   */
+  async verifyEmailOtp(dto: EmailOtpVerifyDto): Promise<{
+    tokens: {
+      accessToken: string;
+      idToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      tokenType: string;
+    };
+  }> {
+    return this.cognitoService.verifyEmailOtp(
+      dto.username,
+      dto.code,
+      dto.session,
+    );
   }
 }
