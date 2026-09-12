@@ -97,7 +97,9 @@ export class AuthController {
         session: { type: 'string', example: 'AYABe...' },
         codeDeliveryDestination: {
           type: 'string',
-          example: 'j***@icrisat.org',
+          description:
+            "Derived locally from the request username (never from Cognito's reply) to avoid an enumeration tell between known and unknown users.",
+          example: 'j***@i***',
         },
       },
     },

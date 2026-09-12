@@ -33,16 +33,17 @@ function attempt(challengeMetadata?: string): SessionEntry {
 function buildEvent(
   session: SessionEntry[] = [],
   userNotFound = false,
+  userName: string = EMAIL,
 ): CreateAuthChallengeTriggerEvent {
   return {
     version: '1',
     region: 'us-east-1',
     userPoolId: 'us-east-1_o9y9Yq5pO',
-    userName: EMAIL,
+    userName,
     triggerSource: 'CreateAuthChallenge_Authentication',
     callerContext: { awsSdkVersion: '1', clientId: 'general-client' },
     request: {
-      userAttributes: { email: EMAIL },
+      userAttributes: { email: userName },
       challengeName: 'CUSTOM_CHALLENGE',
       session,
       userNotFound,
@@ -221,16 +222,37 @@ describe('create-auth-challenge (design.md §18.1 step 4)', () => {
       expect(publishEventMock).not.toHaveBeenCalled();
     });
 
-    it('still returns a challenge with a random-looking masked destination', async () => {
+    it('still returns a usable challenge', async () => {
       const result = await handler(buildEvent([], true));
 
       expect(result.response.privateChallengeParameters.answer).toMatch(
         /^\d{6}$/,
       );
-      expect(result.response.publicChallengeParameters.destination).toMatch(
-        /^[a-z]\*\*\*@[a-z]\*\*\*$/,
-      );
       expect(result.response.challengeMetadata).toMatch(/^CODE-\d{6}$/);
+    });
+
+    it('derives the destination from the submitted userName — byte-identical to what a real user with that email gets (no enumeration tell)', async () => {
+      const unknown = await handler(
+        buildEvent([], true, 'someone@icrisat.org'),
+      );
+      const known = await handler(
+        buildEvent([], false, 'someone@icrisat.org'),
+      );
+
+      expect(unknown.response.publicChallengeParameters.destination).toBe(
+        's***@i***',
+      );
+      expect(unknown.response.publicChallengeParameters.destination).toBe(
+        known.response.publicChallengeParameters.destination,
+      );
+    });
+
+    it('falls back to the opaque mask (never throws) when the submitted userName does not look like an email', async () => {
+      const result = await handler(buildEvent([], true, 'not-an-email'));
+
+      expect(result.response.publicChallengeParameters.destination).toBe(
+        '****@****',
+      );
     });
 
     it('logs the same record a real fresh challenge logs, so CloudWatch is not an enumeration oracle', async () => {
