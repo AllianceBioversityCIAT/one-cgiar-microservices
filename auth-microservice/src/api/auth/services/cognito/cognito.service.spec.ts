@@ -1452,23 +1452,81 @@ describe('CognitoService', () => {
     });
   });
 
+  // Corrected approach (design.md §13 (m), enumeration-tell fix): maskEmail()
+  // computes the response mask locally from the request username instead of
+  // trusting Cognito's ChallengeParameters.destination.
+  describe('maskEmail', () => {
+    it.each([
+      {
+        title: 'masks a plain email as first-char + *** on each side',
+        input: 'someone@icrisat.org',
+        expected: 's***@i***',
+      },
+      {
+        title: 'lower-cases an upper-case email before masking',
+        input: 'Someone@ICRISAT.ORG',
+        expected: 's***@i***',
+      },
+      {
+        title: 'trims surrounding whitespace before masking',
+        input: '  someone@icrisat.org  ',
+        expected: 's***@i***',
+      },
+      {
+        title: 'masks a plus-addressed email using the literal first character',
+        input: 'someone+tag@icrisat.org',
+        expected: 's***@i***',
+      },
+      {
+        title:
+          'masks an email whose local part starts with a multi-byte unicode grapheme (surrogate pair) without splitting it',
+        input: '😀user@example.com',
+        expected: '😀***@e***',
+      },
+      {
+        title: 'returns the generic mask for input with no @',
+        input: 'not-an-email',
+        expected: '****@****',
+      },
+      {
+        title: 'returns the generic mask for an empty local part',
+        input: '@icrisat.org',
+        expected: '****@****',
+      },
+      {
+        title: 'returns the generic mask for an empty domain part',
+        input: 'someone@',
+        expected: '****@****',
+      },
+      {
+        title: 'returns the generic mask for an empty string',
+        input: '',
+        expected: '****@****',
+      },
+    ])('$title', ({ input, expected }) => {
+      expect(service['maskEmail'](input)).toBe(expected);
+    });
+  });
+
   describe('startEmailOtp', () => {
     it('calls InitiateAuth with AuthFlow: CUSTOM_AUTH (no PREFERRED_CHALLENGE) and returns the CUSTOM_CHALLENGE', async () => {
       // design.md §18.1 steps 2-5: CUSTOM_AUTH replaces USER_AUTH/PREFERRED_CHALLENGE.
-      // OTP-T-14: CreateAuthChallenge (OTP-T-11) publishes the masked address
-      // as `destination`, not the built-in EMAIL_OTP `CODE_DELIVERY_DESTINATION`.
+      // Corrected approach (design.md §13 (m)): codeDeliveryDestination is
+      // derived locally from `username` via maskEmail() — Cognito's
+      // ChallengeParameters.destination is never read (see the enumeration-tell
+      // tests below).
       mockFetchOnce(
         200,
         makeInitiateAuthResponse({
           ChallengeName: 'CUSTOM_CHALLENGE',
           Session: 'session-from-initiate-auth',
           ChallengeParameters: {
-            destination: 'j***@g***',
+            destination: 'x***@y***',
           },
         }),
       );
 
-      const result = await service.startEmailOtp('user@icrisat.org');
+      const result = await service.startEmailOtp('someone@icrisat.org');
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(global.fetch).toHaveBeenCalledWith(
@@ -1483,7 +1541,7 @@ describe('CognitoService', () => {
             AuthFlow: 'CUSTOM_AUTH',
             ClientId: mockConfig.COGNITO_CLIENT_ID,
             AuthParameters: {
-              USERNAME: 'user@icrisat.org',
+              USERNAME: 'someone@icrisat.org',
               SECRET_HASH: 'mocked-hash-value',
             },
           }),
@@ -1493,47 +1551,76 @@ describe('CognitoService', () => {
       expect(result).toEqual({
         challengeName: 'CUSTOM_CHALLENGE',
         session: 'session-from-initiate-auth',
-        codeDeliveryDestination: 'j***@g***',
+        codeDeliveryDestination: 's***@i***',
       });
     });
 
-    it('falls back to the legacy EMAIL_OTP CODE_DELIVERY_DESTINATION key when destination is absent (OTP-T-14)', async () => {
+    it('ignores a known-user Cognito destination reply and derives codeDeliveryDestination from the username instead (enumeration-tell fix, design.md §13 (m))', async () => {
+      // Cognito's reply for a KNOWN user carries a real (but differently
+      // shaped) masked address — proves it is discarded, not merely echoed.
       mockFetchOnce(
         200,
         makeInitiateAuthResponse({
           ChallengeName: 'CUSTOM_CHALLENGE',
-          Session: 'session-legacy-key',
+          Session: 'session-known-user',
           ChallengeParameters: {
-            CODE_DELIVERY_DESTINATION: 'l***@e***',
+            destination: 'x***@y***',
           },
         }),
       );
 
-      const result = await service.startEmailOtp('user@icrisat.org');
+      const result = await service.startEmailOtp('someone@icrisat.org');
 
       expect(result).toEqual({
         challengeName: 'CUSTOM_CHALLENGE',
-        session: 'session-legacy-key',
-        codeDeliveryDestination: 'l***@e***',
+        session: 'session-known-user',
+        codeDeliveryDestination: 's***@i***',
       });
     });
 
-    it('returns codeDeliveryDestination: undefined when neither destination nor CODE_DELIVERY_DESTINATION is present', async () => {
+    it('produces the same codeDeliveryDestination for an UNKNOWN-user decoy reply (****@****) as for a known user with the same username (no enumeration tell)', async () => {
+      // PreventUserExistenceErrors makes Cognito substitute `userName` for the
+      // typed email here, so an unknown user's reply is the generic
+      // '****@****'. Since we never read this field, the response is
+      // identical to the known-user case above for the same username.
       mockFetchOnce(
         200,
         makeInitiateAuthResponse({
           ChallengeName: 'CUSTOM_CHALLENGE',
-          Session: 'session-no-destination',
-          ChallengeParameters: {},
+          Session: 'session-unknown-user',
+          ChallengeParameters: {
+            destination: '****@****',
+          },
         }),
       );
 
-      const result = await service.startEmailOtp('user@icrisat.org');
+      const result = await service.startEmailOtp('someone@icrisat.org');
 
       expect(result).toEqual({
         challengeName: 'CUSTOM_CHALLENGE',
-        session: 'session-no-destination',
-        codeDeliveryDestination: undefined,
+        session: 'session-unknown-user',
+        codeDeliveryDestination: 's***@i***',
+      });
+    });
+
+    it('returns the generic ****@**** mask when the request username is not email-shaped', async () => {
+      mockFetchOnce(
+        200,
+        makeInitiateAuthResponse({
+          ChallengeName: 'CUSTOM_CHALLENGE',
+          Session: 'session-non-email-username',
+          ChallengeParameters: {
+            destination: 'x***@y***',
+          },
+        }),
+      );
+
+      const result = await service.startEmailOtp('not-an-email');
+
+      expect(result).toEqual({
+        challengeName: 'CUSTOM_CHALLENGE',
+        session: 'session-non-email-username',
+        codeDeliveryDestination: '****@****',
       });
     });
 
@@ -1542,9 +1629,9 @@ describe('CognitoService', () => {
         200,
         makeInitiateAuthResponse({
           ChallengeName: 'CUSTOM_CHALLENGE',
-          Session: 'session-unknown-user',
+          Session: 'session-unknown-user-2',
           ChallengeParameters: {
-            destination: 'n***@i***',
+            destination: '****@****',
           },
         }),
       );
@@ -1553,7 +1640,7 @@ describe('CognitoService', () => {
 
       expect(result).toEqual({
         challengeName: 'CUSTOM_CHALLENGE',
-        session: 'session-unknown-user',
+        session: 'session-unknown-user-2',
         codeDeliveryDestination: 'n***@i***',
       });
     });

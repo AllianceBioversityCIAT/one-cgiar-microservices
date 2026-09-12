@@ -242,6 +242,39 @@ export class CognitoService {
   }
 
   /**
+   * Corrected approach (design.md §13 (m), enumeration-tell fix): derive the
+   * `codeDeliveryDestination` mask locally from the request `username`
+   * instead of trusting Cognito's `CreateAuthChallenge` reply. On TEST,
+   * `PreventUserExistenceErrors` makes Cognito substitute `userName` for the
+   * typed email when the user does not exist, so the trigger's
+   * `ChallengeParameters.destination` comes back `****@****` for an unknown
+   * user but the real masked address (e.g. `j***@g***`) for a known one —
+   * an enumeration tell at this boundary. Since the mask is computed here
+   * from the same input for every user, both cases now produce an
+   * identical, indistinguishable result.
+   *
+   * Mirrors the shape Cognito/the trigger use: first character of the local
+   * part + `***` + `@` + first character of the domain + `***` (e.g.
+   * `someone@icrisat.org` -> `s***@i***`). Non-email input (no `@`, or an
+   * empty local/domain part) -> `****@****`. Lower-cased and trimmed first.
+   * Never logs the raw username.
+   */
+  private maskEmail(username: string): string {
+    const normalized = (username || '').trim().toLowerCase();
+    const atIndex = normalized.indexOf('@');
+    const local = atIndex > 0 ? normalized.slice(0, atIndex) : '';
+    const domain = atIndex > 0 ? normalized.slice(atIndex + 1) : '';
+
+    if (!local || !domain) {
+      return '****@****';
+    }
+
+    const localFirst = Array.from(local)[0];
+    const domainFirst = Array.from(domain)[0];
+    return `${localFirst}***@${domainFirst}***`;
+  }
+
+  /**
    * Start the CUSTOM_AUTH challenge (OTP-R-7 modified, design.md §18.1 steps
    * 2-5). `DefineAuthChallenge`/`CreateAuthChallenge` (cognito-triggers,
    * OTP-T-11) always answer with a single `CUSTOM_CHALLENGE` — no
@@ -297,14 +330,11 @@ export class CognitoService {
       return {
         challengeName: 'CUSTOM_CHALLENGE',
         session: initiateResult.Session,
-        // OTP-T-14: our CreateAuthChallenge trigger (OTP-T-11) publishes the
-        // masked address as `publicChallengeParameters.destination`, which
-        // Cognito surfaces here as `ChallengeParameters.destination` — not
-        // the built-in EMAIL_OTP factor's `CODE_DELIVERY_DESTINATION` key,
-        // kept only as a legacy fallback.
-        codeDeliveryDestination:
-          initiateResult.ChallengeParameters?.destination ??
-          initiateResult.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
+        // Corrected approach (design.md §13 (m)): codeDeliveryDestination is
+        // derived locally from `username` via maskEmail() — Cognito's
+        // `ChallengeParameters.destination`/`CODE_DELIVERY_DESTINATION` is
+        // intentionally never read (see maskEmail's docstring for why).
+        codeDeliveryDestination: this.maskEmail(username),
       };
     } catch (error) {
       if (error instanceof HttpException) {
