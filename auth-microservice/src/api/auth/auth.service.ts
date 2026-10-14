@@ -581,7 +581,7 @@ export class AuthService {
    * @returns New authentication tokens
    */
   async refreshAuthenticationTokens(
-    data: { refreshToken: string; accessToken?: string },
+    data: { refreshToken: string; accessToken?: string; username?: string },
     @Req() request: RequestWithCustomAttrs,
   ): Promise<any> {
     try {
@@ -606,7 +606,13 @@ export class AuthService {
 
       this.logger.log('Refreshing authentication tokens');
 
-      let userInfo = await this.getUserInfo(data?.accessToken);
+      // With a username the access token is not needed (it may already be
+      // expired); without one, keep the previous behavior.
+      const username =
+        typeof data?.username === 'string' ? data.username.trim() : '';
+      let userInfo = username
+        ? { username }
+        : await this.getUserInfo(data?.accessToken);
 
       const newTokens = await this.cognitoService.refreshAccessToken(
         data?.refreshToken,
