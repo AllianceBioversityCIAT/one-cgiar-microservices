@@ -1037,4 +1037,117 @@ describe('AuthService', () => {
       );
     });
   });
+
+  describe('refreshAuthenticationTokens', () => {
+    const request = {
+      senderMisMetadata: {
+        mis_auth: {
+          cognito_client_id: 'mis-client-id',
+          cognito_client_secret: 'mis-client-secret',
+        },
+      },
+    } as any;
+    const newTokens = {
+      accessToken: 'new-access-token',
+      idToken: 'new-id-token',
+      refreshToken: 'new-refresh-token',
+      expiresIn: 3600,
+      tokenType: 'Bearer',
+    };
+
+    it('uses the given username for SECRET_HASH without reading userInfo first', async () => {
+      const getUserInfo = jest
+        .spyOn(service, 'getUserInfo')
+        .mockResolvedValueOnce(mockUserInfoResponse.data);
+      jest
+        .spyOn(cognitoService, 'refreshAccessToken')
+        .mockResolvedValueOnce(newTokens);
+
+      const result = await service.refreshAuthenticationTokens(
+        { refreshToken: 'refresh-token', username: 'cognito-user-1' },
+        request,
+      );
+
+      expect(cognitoService.refreshAccessToken).toHaveBeenCalledWith(
+        'refresh-token',
+        { username: 'cognito-user-1' },
+        'mis-client-id',
+        'mis-client-secret',
+      );
+      // Only the post-refresh lookup, with the NEW access token.
+      expect(getUserInfo).toHaveBeenCalledTimes(1);
+      expect(getUserInfo).toHaveBeenCalledWith('new-access-token');
+      expect(result).toMatchObject({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      });
+    });
+
+    it('works when the old access token is expired, as long as the username is sent', async () => {
+      jest
+        .spyOn(service, 'getUserInfo')
+        .mockImplementation(async (token: string) => {
+          if (token === 'expired-access-token') {
+            throw new HttpException('expired', HttpStatus.UNAUTHORIZED);
+          }
+          return mockUserInfoResponse.data;
+        });
+      jest
+        .spyOn(cognitoService, 'refreshAccessToken')
+        .mockResolvedValueOnce(newTokens);
+
+      const result = await service.refreshAuthenticationTokens(
+        {
+          refreshToken: 'refresh-token',
+          accessToken: 'expired-access-token',
+          username: 'cognito-user-1',
+        },
+        request,
+      );
+
+      expect(result).toMatchObject({ accessToken: 'new-access-token' });
+    });
+
+    it('keeps the previous behavior when no username is sent', async () => {
+      const getUserInfo = jest
+        .spyOn(service, 'getUserInfo')
+        .mockResolvedValue(mockUserInfoResponse.data);
+      jest
+        .spyOn(cognitoService, 'refreshAccessToken')
+        .mockResolvedValueOnce(newTokens);
+
+      await service.refreshAuthenticationTokens(
+        { refreshToken: 'refresh-token', accessToken: 'old-access-token' },
+        request,
+      );
+
+      expect(getUserInfo).toHaveBeenNthCalledWith(1, 'old-access-token');
+      expect(cognitoService.refreshAccessToken).toHaveBeenCalledWith(
+        'refresh-token',
+        mockUserInfoResponse.data,
+        'mis-client-id',
+        'mis-client-secret',
+      );
+    });
+
+    it('treats a blank username as absent', async () => {
+      const getUserInfo = jest
+        .spyOn(service, 'getUserInfo')
+        .mockResolvedValue(mockUserInfoResponse.data);
+      jest
+        .spyOn(cognitoService, 'refreshAccessToken')
+        .mockResolvedValueOnce(newTokens);
+
+      await service.refreshAuthenticationTokens(
+        {
+          refreshToken: 'refresh-token',
+          accessToken: 'old-access-token',
+          username: '   ',
+        },
+        request,
+      );
+
+      expect(getUserInfo).toHaveBeenNthCalledWith(1, 'old-access-token');
+    });
+  });
 });

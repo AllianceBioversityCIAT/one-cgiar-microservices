@@ -509,12 +509,19 @@ export class AuthController {
           example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           description: 'Valid access token obtained from login',
         },
+        username: {
+          type: 'string',
+          example: 'a1b2c3d4-5678-90ab-cdef-EXAMPLE11111',
+          description:
+            'Cognito username (the id token cognito:username claim). When sent, it is used for SECRET_HASH and the access token is not needed, so refresh works after the access token expired',
+        },
       },
       required: ['refreshToken'],
     },
   })
   async refreshToken(
-    @Body() body: { refreshToken: string; accessToken?: string },
+    @Body()
+    body: { refreshToken: string; accessToken?: string; username?: string },
     @Req() request: RequestWithCustomAttrs,
   ) {
     return this.authService.refreshAuthenticationTokens(body, request);
