@@ -1,6 +1,6 @@
 #################### BASE STAGE ####################
 # Base image
-FROM --platform=linux/amd64 node:22.11.0 as base
+FROM --platform=linux/amd64 node:22.23.4-alpine as base
 
 # Create app directory
 WORKDIR /app
@@ -40,7 +40,7 @@ RUN pnpm run build && pnpm prune --prod
 #################### PRODUCTION STAGE ####################
 
 # Base image
-FROM --platform=linux/amd64 node:22.11.0 as production
+FROM --platform=linux/amd64 node:22.23.4-alpine as production
 
 # Create app directory
 WORKDIR /app
