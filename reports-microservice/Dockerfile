@@ -1,6 +1,6 @@
 #################### BASE STAGE ####################
 # Usar una versión específica y compatible de Node.js
-FROM --platform=linux/amd64 node:24.22.1-alpine AS base
+FROM --platform=linux/amd64 node:24.22.1-bookworm AS base
 
 # Crear el directorio de la app
 WORKDIR /app
@@ -39,7 +39,7 @@ COPY . .
 RUN npm run build
 
 #################### PRODUCTION STAGE ####################
-FROM --platform=linux/amd64 node:24.22.1-alpine AS production
+FROM --platform=linux/amd64 node:24.22.1-bookworm AS production
 
 # Crear el directorio de la app
 WORKDIR /app
