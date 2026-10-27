@@ -1,6 +1,6 @@
 #################### BASE STAGE ####################
 # Use a stable and compatible version of Node.js
-FROM --platform=linux/amd64 node:23 AS base
+FROM --platform=linux/amd64 node:22.23.4-alpine AS base
 
 # Create the app directory
 WORKDIR /app
@@ -39,7 +39,7 @@ COPY . .
 RUN npm run build
 
 #################### PRODUCTION STAGE ####################
-FROM --platform=linux/amd64 node:23 AS production
+FROM --platform=linux/amd64 node:22.23.4-alpine AS production
 
 # Create the app directory
 WORKDIR /app
